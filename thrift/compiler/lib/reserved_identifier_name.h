@@ -27,7 +27,7 @@ inline bool is_reserved_identifier_name(std::string_view name) {
     return false;
   }
 
-  auto after_underscores = std::string_view(name.begin() + pos, name.end());
+  auto after_underscores = std::string_view(name.begin() + pos, name.end() - name.begin() - pos);
   static const std::string prefix = "fbthrift";
   std::locale utf8_locale("en_US.UTF-8");
 
