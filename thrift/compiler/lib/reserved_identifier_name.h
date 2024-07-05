@@ -22,17 +22,21 @@
 namespace apache::thrift::compiler {
 
 inline bool is_reserved_identifier_name(std::string_view name) {
+  static const std::string prefix = "fbthrift";
+  static const std::locale utf8_locale("en_US.UTF-8");
+
   auto pos = name.find_first_not_of("_");
   if (pos == std::string_view::npos) {
     return false;
   }
 
-  auto after_underscores = std::string_view(name.data() + pos, name.end() - name.begin() - pos);
-  static const std::string prefix = "fbthrift";
-  std::locale utf8_locale("en_US.UTF-8");
+  // For backwards compatibility with older C++ versions,
+  // use the string_view constructor that accepts a
+  // const char *const and size_t.
+  auto after_underscores =
+      std::string_view(name.data() + pos, name.end() - name.begin() - pos);
 
-  return boost::algorithm::istarts_with(
-      after_underscores, std::string_view(prefix), utf8_locale);
+  return boost::algorithm::istarts_with(after_underscores, prefix, utf8_locale);
 }
 
 } // namespace apache::thrift::compiler
