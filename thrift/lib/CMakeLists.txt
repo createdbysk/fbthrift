@@ -70,8 +70,6 @@ if(thriftpy3)
     _filerelpath
       "python/types.pxd"
       "python/types.pyx"
-      "python/util.pxd"
-      "python/util.pyx"
       "py3/stream.pxd"
       "py3/stream.pyx"
   )
@@ -124,9 +122,7 @@ if(thriftpy3)
     "python/client/sync_channel_factory.pxd"
     "python/client/sync_client.pxd"
     "python/common.pxd"
-    "python/converter.pxd"
     "python/exceptions.pxd"
-    "python/flags.pxd"
     "python/mutable_containers.pxd"
     "python/mutable_exceptions.pxd"
     "python/mutable_serializer.pxd"
@@ -136,9 +132,8 @@ if(thriftpy3)
     "python/serializer.pxd"
     "python/server/server.pxd"
     "python/std_libcpp.pxd"
-    "python/stream.pxd"
+    "python/streaming/stream.pxd"
     "python/types.pxd"
-    "python/util.pxd"
     "python/adapter.pyx"
     "python/client/async_client_factory.pyx"
     "python/client/async_client.pyx"
@@ -151,7 +146,6 @@ if(thriftpy3)
     "python/common.pyx"
     "python/converter.pyx"
     "python/exceptions.pyx"
-    "python/flags.pyx"
     "python/mutable_containers.pyx"
     "python/mutable_exceptions.pyx"
     "python/mutable_serializer.pyx"
@@ -159,15 +153,12 @@ if(thriftpy3)
     "python/mutable_types.pyx"
     "python/protocol.pyx"
     "python/serializer.pyx"
-    "python/stream.pyx"
+    "python/streaming/stream.pyx"
     "python/server/server.pyx"
-    "python/util.pyx"
-    "python/flags.h"
     "python/types.h"
     "python/Serializer.h"
     "python/server/PythonAsyncProcessor.cpp"
     "python/server/PythonAsyncProcessorFactory.cpp"
-    "python/server/flagged/EnableResourcePoolsForPython.cpp"
   )
 
   foreach(_src ${BindingFiles})
@@ -232,7 +223,6 @@ if(thriftpy3)
     BYPRODUCTS
       ${_cybld}/thrift/python/types_api.h
       ${_cybld}/thrift/python/server/server_api.h
-      ${_cybld}/thrift/python/util_api.h
     WORKING_DIRECTORY ${_cybld}
   )
 
@@ -267,18 +257,6 @@ if(thriftpy3)
     TARGET
     create_cython_types_api_symlink
       COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/_util_api.h" "${_cybld}/thrift/lib/python/util_api.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/_util.h" "${_cybld}/thrift/lib/python/_util.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
       ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/_stream_api.h" "${_cybld}/thrift/lib/py3/stream_api.h"
   )
   add_custom_command(
@@ -293,7 +271,6 @@ if(thriftpy3)
       python/client/RequestChannel.cpp
       python/client/ssl.cpp
       python/types.cpp
-      python/util.cpp
       python/Serializer.cpp
       py3/stream.cpp
   )

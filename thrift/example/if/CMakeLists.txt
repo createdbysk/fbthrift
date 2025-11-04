@@ -24,3 +24,13 @@ thrift_library(
   "${EXAMPLE_IF_HOME}" #output_path
   "thrift/example/if" #include_prefix
 )
+
+# WORKAROUND: thrift_library() macro doesn't propagate include dirs to object library
+# The object library created by the macro needs folly include directories to compile
+# the generated C++ files which include folly headers
+target_link_libraries(
+  chatroom-cpp2-obj
+  PUBLIC
+    Folly::folly
+    wangle::wangle
+)
