@@ -467,6 +467,9 @@ target_link_libraries(
     mvfst::mvfst_server_async_tran
 )
 
+# Add HTTP2 transport (proxygen is built from manifest dependency)
+add_subdirectory(transport/http2/common)
+
 # Install includes
 set(THRIFT2_HEADER_DIRS
   async
