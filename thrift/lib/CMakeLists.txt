@@ -31,7 +31,20 @@ if(thriftpy3)
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/flagged/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/interceptor/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/any/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/conformance/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/streaming/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/py3/")
+
+  # Create symlinks to folly .pxd files for Cython compilation
+  # Folly .pxd files are installed to ${FOLLY_INCLUDE_DIR}/folly/
+  file(MAKE_DIRECTORY "${_cybld}/folly/")
+  file(GLOB _folly_pxd_files "${FOLLY_INCLUDE_DIR}/folly/*.pxd")
+  foreach(_pxd ${_folly_pxd_files})
+    get_filename_component(_pxd_name "${_pxd}" NAME)
+    file(CREATE_LINK "${_pxd}" "${_cybld}/folly/${_pxd_name}" SYMBOLIC)
+  endforeach()
 
   # So that cython includes work correctly
   file(TOUCH "${_cybld}/thrift/__init__.pxd")
@@ -60,6 +73,22 @@ if(thriftpy3)
       ${_cybld}/apache/thrift/metadata/thrift_services.py
       ${_cybld}/apache/thrift/metadata/thrift_types.py
       ${_cybld}/apache/thrift/metadata/thrift_types.pyi
+  )
+
+  ###
+  # Also generate py3 version for apache.thrift.metadata (required by py3/metadata.pyx)
+  ###
+  add_custom_target(
+    generate_apache_thrift_metadata_py3
+    COMMAND
+      thrift1 -I ${CMAKE_SOURCE_DIR} --out . --gen mstch_py3
+      ${CMAKE_CURRENT_SOURCE_DIR}/thrift/metadata.thrift
+    WORKING_DIRECTORY ${_cybld}
+    BYPRODUCTS
+      ${_cybld}/apache/thrift/metadata/cbindings.pxd
+      ${_cybld}/apache/thrift/metadata/cbindings.pyx
+      ${_cybld}/apache/thrift/metadata/metadata.pxd
+      ${_cybld}/apache/thrift/metadata/metadata.pyx
   )
 
   ####
@@ -130,9 +159,21 @@ if(thriftpy3)
     "python/mutable_types.pxd"
     "python/protocol.pxd"
     "python/serializer.pxd"
+    "python/any/serializer.pxd"
+    "python/conformance/universal_name.pxd"
+    "python/server/async_processor.pxd"
+    "python/server/event_handler.pxd"
+    "python/server/interceptor/server_module.pxd"
+    "python/server/interceptor/service_interceptor.pxd"
+    "python/server/python_async_processor.pxd"
+    "python/server/request_context.pxd"
     "python/server/server.pxd"
     "python/std_libcpp.pxd"
-    "python/streaming/stream.pxd"
+    # "python/streaming/stream.pxd"  # DISABLED FOR NOW
+    # "python/streaming/py_promise.pxd"
+    # "python/streaming/python_user_exception.pxd"
+    # "python/streaming/sink.pxd"
+    # "python/streaming/bidistream.pxd"
     "python/types.pxd"
     "python/adapter.pyx"
     "python/client/async_client_factory.pyx"
@@ -147,13 +188,34 @@ if(thriftpy3)
     "python/converter.pyx"
     "python/exceptions.pyx"
     "python/mutable_containers.pyx"
+    "python/mutable_converter.pyx"
     "python/mutable_exceptions.pyx"
     "python/mutable_serializer.pyx"
     "python/mutable_typeinfos.pyx"
     "python/mutable_types.pyx"
     "python/protocol.pyx"
     "python/serializer.pyx"
-    "python/streaming/stream.pyx"
+    # "python/streaming/stream.pyx"  # DISABLED FOR NOW
+    # "python/streaming/py_promise.pyx"
+    # "python/streaming/python_user_exception.pyx"
+    # "python/streaming/PythonUserException.cpp"
+    # "python/streaming/PythonUserException.h"
+    # "python/streaming/sink.pyx"
+    # "python/streaming/Sink.cpp"
+    # "python/streaming/Sink.h"
+    # "python/streaming/bidistream.pyx"
+    # "python/streaming/bidistream.cpp"
+    # "python/streaming/bidistream.h"
+    # "python/streaming/StreamElementEncoder.cpp"
+    # "python/streaming/StreamElementEncoder.h"
+    # "python/streaming/SinkElementDecoder.h"
+    "python/any/serializer.pyx"
+    "python/conformance/universal_name.pyx"
+    "python/server/async_processor.pyx"
+    "python/server/interceptor/server_module.pyx"
+    "python/server/interceptor/service_interceptor.pyx"
+    "python/server/python_async_processor.pyx"
+    "python/server/request_context.pyx"
     "python/server/server.pyx"
     "python/types.h"
     "python/Serializer.h"
@@ -211,6 +273,7 @@ if(thriftpy3)
       create_binding_symlink_python_types
       create_binding_symlink_python
       create_binding_symlink_py3
+      create_binding_symlink_server_impl
       thriftcpp2
     WORKING_DIRECTORY ${_cybld}
   )
@@ -278,7 +341,7 @@ if(thriftpy3)
   set_property(TARGET thrift_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(thrift_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
   target_compile_definitions(thrift_python_cpp PRIVATE THRIFT_NO_HTTP_CLIENT_CHANNEL)
-  target_include_directories(thrift_python_cpp PRIVATE "${_cybld}")
+  target_include_directories(thrift_python_cpp PRIVATE "${_cybld}" ${PYTHON_INCLUDE_DIRS})
   target_link_libraries(
     thrift_python_cpp
     PUBLIC
@@ -303,8 +366,10 @@ if(thriftpy3)
     thrift_python_and_py3_bindings ALL
     DEPENDS
       generate_apache_thrift_metadata_python
+      generate_apache_thrift_metadata_py3
       create_binding_symlink_python
       create_binding_symlink_py3
+      create_binding_symlink_server_impl
       thriftcpp2
       thrift_python_cpp
     WORKING_DIRECTORY ${_cybld}
@@ -388,3 +453,110 @@ foreach(dir ${LIB_DIRS})
           PATTERN "*.tcc"
           PATTERN CMakeFiles EXCLUDE)
 endforeach()
+
+  #####
+  # Create server_impl alias for OSS builds
+  # Buck internal builds use package = "thrift.python.server_impl" remapping.
+  # OSS CMake builds need this alias created manually.
+  #####
+  add_custom_target(create_binding_symlink_server_impl ALL)
+
+  # Create server_impl directory structure
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/server_impl")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/server_impl/interceptor")
+
+  # Create symlinks for server_impl/*.pxd -> server/*.pxd (compile-time cimport)
+  file(GLOB ServerImplFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/*.pyx"
+  )
+
+  foreach(_src ${ServerImplFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    message(
+      STATUS
+      "Creating server_impl symlink: ${_cybld}/thrift/python/server_impl/${_target_file} -> ${_src}"
+    )
+    add_custom_command(
+      TARGET
+      create_binding_symlink_server_impl
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/python/server_impl/${_target_file}"
+    )
+  endforeach()
+
+  # Create symlinks for server_impl/interceptor/*.pxd
+  file(GLOB ServerImplInterceptorFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/interceptor/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/interceptor/*.pyx"
+  )
+
+  foreach(_src ${ServerImplInterceptorFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    message(
+      STATUS
+      "Creating server_impl/interceptor symlink: ${_cybld}/thrift/python/server_impl/interceptor/${_target_file} -> ${_src}"
+    )
+    add_custom_command(
+      TARGET
+      create_binding_symlink_server_impl
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/python/server_impl/interceptor/${_target_file}"
+    )
+  endforeach()
+
+  # Create server_impl/__init__.py with import hook (runtime)
+  file(WRITE "${_cybld}/thrift/python/server_impl/__init__.py" [=[
+"""
+OSS compatibility shim: thrift.python.server_impl -> thrift.python.server
+
+Internal Buck builds use package remapping. OSS CMake builds use this
+import hook to redirect server_impl imports to server modules.
+"""
+import sys
+import importlib
+import importlib.abc
+import importlib.machinery
+import importlib.util
+
+
+class _ServerImplFinder(importlib.abc.MetaPathFinder):
+    """Redirect thrift.python.server_impl.* to thrift.python.server.*"""
+
+    def find_spec(self, fullname, path, target=None):
+        if not fullname.startswith("thrift.python.server_impl."):
+            return None
+        real_name = fullname.replace(".server_impl.", ".server.")
+        real_spec = importlib.util.find_spec(real_name)
+        if real_spec is None:
+            return None
+        return importlib.machinery.ModuleSpec(
+            fullname,
+            _ServerImplLoader(real_name),
+            origin=real_spec.origin,
+            is_package=real_spec.submodule_search_locations is not None,
+        )
+
+
+class _ServerImplLoader(importlib.abc.Loader):
+    def __init__(self, real_name):
+        self.real_name = real_name
+
+    def create_module(self, spec):
+        real_module = importlib.import_module(self.real_name)
+        sys.modules[spec.name] = real_module
+        return real_module
+
+    def exec_module(self, module):
+        pass
+
+
+sys.meta_path.insert(0, _ServerImplFinder())
+]=])
+
+  # Create empty __init__.py for interceptor subpackage
+  file(WRITE "${_cybld}/thrift/python/server_impl/interceptor/__init__.py" "")
+
+

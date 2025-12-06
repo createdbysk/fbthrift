@@ -134,12 +134,8 @@ if (THRIFT_LIB_ONLY OR build_all)
 endif ()
 
 if(thriftpy3)
-  find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-  # Compatibility shims for code expecting old variable names
-  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
-  set(PYTHON_LIBRARY ${Python3_LIBRARIES})
-  set(PYTHON_LIBRARIES ${Python3_LIBRARIES})
-  set(PYTHON_INCLUDE_DIRS ${Python3_INCLUDE_DIRS})
+  find_package(PythonInterp 3.6 REQUIRED)
+  find_package(PythonLibs 3 REQUIRED)
   find_package(Cython 0.28 REQUIRED)
 endif()
 
