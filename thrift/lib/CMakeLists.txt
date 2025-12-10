@@ -47,13 +47,10 @@ if(thriftpy3)
   # Create symlinks to folly .pxd files for Cython compilation.
   # This must run at build time (not configure time) because folly .pxd files
   # are installed during the build, not before CMake configuration.
+  # Uses external script to avoid CMake shell escaping complexity.
   ###
   add_custom_target(create_binding_symlink_folly ALL
-    COMMAND ${CMAKE_COMMAND} -E echo "Creating folly .pxd symlinks from ${FOLLY_INCLUDE_DIR}/folly/"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${_cybld}/folly"
-    # Use shell glob to find all .pxd files and create symlinks
-    COMMAND bash -c "for pxd in ${FOLLY_INCLUDE_DIR}/folly/*.pxd\; do [ -f \"\\$pxd\" ] && ln -sf \"\\$pxd\" \"${_cybld}/folly/\\$(basename \"\\$pxd\")\"\; done"
-    VERBATIM
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/create_folly_symlinks.sh ${FOLLY_INCLUDE_DIR} ${_cybld}
   )
 
   ###
