@@ -52,7 +52,7 @@ if(thriftpy3)
     COMMAND ${CMAKE_COMMAND} -E echo "Creating folly .pxd symlinks from ${FOLLY_INCLUDE_DIR}/folly/"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${_cybld}/folly"
     # Use shell glob to find all .pxd files and create symlinks
-    COMMAND bash -c "for pxd in ${FOLLY_INCLUDE_DIR}/folly/*.pxd; do [ -f \"$$pxd\" ] && ln -sf \"$$pxd\" \"${_cybld}/folly/$$(basename \"$$pxd\")\"; done"
+    COMMAND bash -c "for pxd in ${FOLLY_INCLUDE_DIR}/folly/*.pxd\; do [ -f \"\\$pxd\" ] && ln -sf \"\\$pxd\" \"${_cybld}/folly/\\$(basename \"\\$pxd\")\"\; done"
     VERBATIM
   )
 
