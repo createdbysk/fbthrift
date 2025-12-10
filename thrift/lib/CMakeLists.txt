@@ -36,22 +36,11 @@ if(thriftpy3)
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/conformance/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/streaming/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/py3/")
-  file(MAKE_DIRECTORY "${_cybld}/folly/")
 
   # So that cython includes work correctly
   file(TOUCH "${_cybld}/thrift/__init__.pxd")
   file(TOUCH "${_cybld}/thrift/python/__init__.pxd")
   file(TOUCH "${_cybld}/thrift/py3/__init__.pxd")
-
-  ###
-  # Create symlinks to folly .pxd files for Cython compilation.
-  # This must run at build time (not configure time) because folly .pxd files
-  # are installed during the build, not before CMake configuration.
-  # Uses external script to avoid CMake shell escaping complexity.
-  ###
-  add_custom_target(create_binding_symlink_folly ALL
-    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/create_folly_symlinks.sh ${FOLLY_INCLUDE_DIR} ${_cybld}
-  )
 
   ###
   # First, run Thrift compiler on metadata.thrift. thrift-python runtime depends on
