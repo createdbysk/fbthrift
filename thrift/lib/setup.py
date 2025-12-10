@@ -37,8 +37,20 @@ if "--api-only" in sys.argv:
         language_level=3,
     )
     Cython.Compiler.Main.compile(
-        "thrift/python/server.pyx",
-        full_module_name="thrift.python.server",
+        "thrift/python/server/python_async_processor.pyx",
+        full_module_name="thrift.python.server.python_async_processor",
+        cplus=True,
+        language_level=3,
+    )
+    Cython.Compiler.Main.compile(
+        "thrift/python/server/request_context.pyx",
+        full_module_name="thrift.python.server.request_context",
+        cplus=True,
+        language_level=3,
+    )
+    Cython.Compiler.Main.compile(
+        "thrift/python/server/interceptor/service_interceptor.pyx",
+        full_module_name="thrift.python.server.interceptor.service_interceptor",
         cplus=True,
         language_level=3,
     )
@@ -52,12 +64,6 @@ if "--api-only" in sys.argv:
     Cython.Compiler.Main.compile(
         "thrift/python/server_impl/request_context.pyx",
         full_module_name="thrift.python.server_impl.request_context",
-        cplus=True,
-        language_level=3,
-    )
-    Cython.Compiler.Main.compile(
-        "thrift/python/server_impl/async_processor.pyx",
-        full_module_name="thrift.python.server_impl.async_processor",
         cplus=True,
         language_level=3,
     )
@@ -101,6 +107,7 @@ else:
     common_options = {
         "language": "c++",
         "libraries": libs,
+        "extra_compile_args": ["-std=c++20", "-fcoroutines"],
     }
 
     exts = [
