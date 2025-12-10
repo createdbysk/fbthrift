@@ -41,8 +41,11 @@ if(thriftpy3)
   # Folly .pxd files are installed to ${FOLLY_INCLUDE_DIR}/folly/
   file(MAKE_DIRECTORY "${_cybld}/folly/")
   file(GLOB _folly_pxd_files "${FOLLY_INCLUDE_DIR}/folly/*.pxd")
+  list(LENGTH _folly_pxd_files _folly_pxd_count)
+  message(STATUS "Found ${_folly_pxd_count} folly .pxd files in ${FOLLY_INCLUDE_DIR}/folly/")
   foreach(_pxd ${_folly_pxd_files})
     get_filename_component(_pxd_name "${_pxd}" NAME)
+    message(STATUS "Linking ${_pxd} to ${_cybld}/folly/${_pxd_name}")
     file(CREATE_LINK "${_pxd}" "${_cybld}/folly/${_pxd_name}" SYMBOLIC)
   endforeach()
 
