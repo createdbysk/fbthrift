@@ -48,10 +48,7 @@ if(thriftpy3)
   # This must run at build time (not configure time) because folly .pxd files
   # are installed during the build, not before CMake configuration.
   ###
-  add_custom_target(create_binding_symlink_folly ALL)
-  add_custom_command(
-    TARGET create_binding_symlink_folly
-    PRE_BUILD
+  add_custom_target(create_binding_symlink_folly ALL
     COMMAND ${CMAKE_COMMAND} -E echo "Creating folly .pxd symlinks from ${FOLLY_INCLUDE_DIR}/folly/"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${_cybld}/folly"
     # Use shell glob to find all .pxd files and create symlinks
