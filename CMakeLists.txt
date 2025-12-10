@@ -96,6 +96,15 @@ option(thriftpy3
 
 find_package(folly CONFIG REQUIRED)
 
+# Set FOLLY_INCLUDE_DIR for Cython .pxd file symlinking
+# folly CONFIG mode doesn't set this variable, but we need it for thrift/lib/CMakeLists.txt
+# Get it from the folly package's install prefix
+get_target_property(_folly_location Folly::folly LOCATION)
+get_filename_component(_folly_prefix "${_folly_location}" DIRECTORY)
+get_filename_component(_folly_prefix "${_folly_prefix}" DIRECTORY)
+set(FOLLY_INCLUDE_DIR "${_folly_prefix}/include")
+message(STATUS "FOLLY_INCLUDE_DIR set to: ${FOLLY_INCLUDE_DIR}")
+
 # Find required dependencies for the Thrift compiler.
 if (THRIFT_COMPILER_ONLY OR build_all)
   include_directories(${OPENSSL_INCLUDE_DIR})
