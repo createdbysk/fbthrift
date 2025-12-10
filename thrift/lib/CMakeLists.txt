@@ -36,23 +36,28 @@ if(thriftpy3)
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/conformance/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/streaming/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/py3/")
-
-  # Create symlinks to folly .pxd files for Cython compilation
-  # Folly .pxd files are installed to ${FOLLY_INCLUDE_DIR}/folly/
   file(MAKE_DIRECTORY "${_cybld}/folly/")
-  file(GLOB _folly_pxd_files "${FOLLY_INCLUDE_DIR}/folly/*.pxd")
-  list(LENGTH _folly_pxd_files _folly_pxd_count)
-  message(STATUS "Found ${_folly_pxd_count} folly .pxd files in ${FOLLY_INCLUDE_DIR}/folly/")
-  foreach(_pxd ${_folly_pxd_files})
-    get_filename_component(_pxd_name "${_pxd}" NAME)
-    message(STATUS "Linking ${_pxd} to ${_cybld}/folly/${_pxd_name}")
-    file(CREATE_LINK "${_pxd}" "${_cybld}/folly/${_pxd_name}" SYMBOLIC)
-  endforeach()
 
   # So that cython includes work correctly
   file(TOUCH "${_cybld}/thrift/__init__.pxd")
   file(TOUCH "${_cybld}/thrift/python/__init__.pxd")
   file(TOUCH "${_cybld}/thrift/py3/__init__.pxd")
+
+  ###
+  # Create symlinks to folly .pxd files for Cython compilation.
+  # This must run at build time (not configure time) because folly .pxd files
+  # are installed during the build, not before CMake configuration.
+  ###
+  add_custom_target(create_binding_symlink_folly ALL)
+  add_custom_command(
+    TARGET create_binding_symlink_folly
+    PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "Creating folly .pxd symlinks from ${FOLLY_INCLUDE_DIR}/folly/"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${_cybld}/folly"
+    # Use shell glob to find all .pxd files and create symlinks
+    COMMAND bash -c "for pxd in ${FOLLY_INCLUDE_DIR}/folly/*.pxd; do [ -f \"$$pxd\" ] && ln -sf \"$$pxd\" \"${_cybld}/folly/$$(basename \"$$pxd\")\"; done"
+    VERBATIM
+  )
 
   ###
   # First, run Thrift compiler on metadata.thrift. thrift-python runtime depends on
@@ -277,6 +282,7 @@ if(thriftpy3)
       create_binding_symlink_python
       create_binding_symlink_py3
       create_binding_symlink_server_impl
+      create_binding_symlink_folly
       thriftcpp2
     WORKING_DIRECTORY ${_cybld}
   )
