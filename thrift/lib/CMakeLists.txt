@@ -25,9 +25,18 @@ if(thriftpy)
   add_subdirectory(py)
 endif()
 
+if(thrift_python)
+  # Buck→CMake generated build for thrift-python
+  # Uses generated CMakeLists.txt from buck_to_cmake_generator.py
+  set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
+  add_subdirectory(python)
+endif()
+
 if(thriftpy3)
   set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
+
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/flagged/")
