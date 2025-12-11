@@ -265,7 +265,6 @@ if(thriftpy3)
       create_binding_symlink_python
       create_binding_symlink_py3
       create_binding_symlink_server_impl
-      create_binding_symlink_folly
       thriftcpp2
     WORKING_DIRECTORY ${_cybld}
   )
