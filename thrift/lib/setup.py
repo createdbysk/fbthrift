@@ -27,12 +27,16 @@ from setuptools import Extension, setup
 
 Options.fast_fail = True
 
+# Configure Cython include path from environment to find dependency .pxd files
+# CMake sets CYTHON_INCLUDE_PATH with paths to folly, boost, and build directories
+# This is needed for both --api-only and build_ext phases
+cython_include_path = os.environ.get("CYTHON_INCLUDE_PATH", "")
+include_dirs = []
+if cython_include_path:
+    include_dirs = [p for p in cython_include_path.split(":") if p]
+
 if "--api-only" in sys.argv:
-    # Configure Cython include path from environment to find dependency .pxd files
-    # CMake sets CYTHON_INCLUDE_PATH with paths to folly, boost, and build directories
-    cython_include_path = os.environ.get("CYTHON_INCLUDE_PATH", "")
-    if cython_include_path:
-        include_dirs = [p for p in cython_include_path.split(":") if p]
+    if include_dirs:
         # Create CompilationOptions with include_path
         # This allows Cython to find folly .pxd files during compilation
         compilation_options = Options.CompilationOptions(
@@ -428,5 +432,6 @@ else:
             exts,
             compiler_directives={"language_level": 3},
             build_dir="generated",
+            include_path=include_dirs,  # Allow Cython to find folly .pxd files
         ),
     )
