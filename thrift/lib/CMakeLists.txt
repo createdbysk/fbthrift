@@ -387,11 +387,14 @@ if(thriftpy3)
     set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
   endif()
 
+  # Pass include paths to Cython via environment variable for build_ext phase
+  # (needed for cythonize to find folly .pxd files)
   add_custom_command(TARGET thrift_python_and_py3_bindings
     COMMAND ${CMAKE_COMMAND} -E env
       "CFLAGS=${CMAKE_C_FLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
+      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
       build_ext -f ${incs} ${libs} --libpython ${python_libname}
     WORKING_DIRECTORY ${_cybld}
