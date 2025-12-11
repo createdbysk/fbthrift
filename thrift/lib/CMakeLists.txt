@@ -269,11 +269,14 @@ if(thriftpy3)
       thriftcpp2
     WORKING_DIRECTORY ${_cybld}
   )
+  # Pass include paths to Cython via environment variable so it can find folly .pxd files
+  # (needed for imports like "from folly cimport cFollyPromise")
   add_custom_command(TARGET thrift_python_types_bindings
     COMMAND ${CMAKE_COMMAND} -E env
       "CFLAGS=${CMAKE_C_FLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
+      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v --api-only
     BYPRODUCTS
       ${_cybld}/thrift/python/types_api.h

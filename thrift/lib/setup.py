@@ -17,6 +17,7 @@
 # Cython requires source files in a specific structure, the structure is
 # created as tree of links to the real source files.
 
+import os
 import sys
 
 import Cython
@@ -27,29 +28,47 @@ from setuptools import Extension, setup
 Options.fast_fail = True
 
 if "--api-only" in sys.argv:
+    # Configure Cython include path from environment to find dependency .pxd files
+    # CMake sets CYTHON_INCLUDE_PATH with paths to folly, boost, and build directories
+    cython_include_path = os.environ.get("CYTHON_INCLUDE_PATH", "")
+    if cython_include_path:
+        include_dirs = [p for p in cython_include_path.split(":") if p]
+        # Create CompilationOptions with include_path
+        # This allows Cython to find folly .pxd files during compilation
+        compilation_options = Options.CompilationOptions(
+            Options.default_options,
+            include_path=include_dirs,
+        )
+    else:
+        compilation_options = None
+
     # Invoke cython compiler directly instead of calling cythonize().
     # Generating *_api.h files only requires first stage of compilation
     # # from cython source -> cpp source.
     Cython.Compiler.Main.compile(
         "thrift/python/_types.pyx",
+        options=compilation_options,
         full_module_name="thrift.python.types",
         cplus=True,
         language_level=3,
     )
     Cython.Compiler.Main.compile(
         "thrift/python/server/python_async_processor.pyx",
+        options=compilation_options,
         full_module_name="thrift.python.server.python_async_processor",
         cplus=True,
         language_level=3,
     )
     Cython.Compiler.Main.compile(
         "thrift/python/server/request_context.pyx",
+        options=compilation_options,
         full_module_name="thrift.python.server.request_context",
         cplus=True,
         language_level=3,
     )
     Cython.Compiler.Main.compile(
         "thrift/python/server/interceptor/service_interceptor.pyx",
+        options=compilation_options,
         full_module_name="thrift.python.server.interceptor.service_interceptor",
         cplus=True,
         language_level=3,
@@ -57,24 +76,28 @@ if "--api-only" in sys.argv:
     # Compile server_impl modules (OSS compatibility shim)
     Cython.Compiler.Main.compile(
         "thrift/python/server_impl/python_async_processor.pyx",
+        options=compilation_options,
         full_module_name="thrift.python.server_impl.python_async_processor",
         cplus=True,
         language_level=3,
     )
     Cython.Compiler.Main.compile(
         "thrift/python/server_impl/request_context.pyx",
+        options=compilation_options,
         full_module_name="thrift.python.server_impl.request_context",
         cplus=True,
         language_level=3,
     )
     Cython.Compiler.Main.compile(
         "thrift/python/server_impl/interceptor/service_interceptor.pyx",
+        options=compilation_options,
         full_module_name="thrift.python.server_impl.interceptor.service_interceptor",
         cplus=True,
         language_level=3,
     )
     Cython.Compiler.Main.compile(
         "thrift/py3/_stream.pyx",
+        options=compilation_options,
         full_module_name="thrift.py3.stream",
         cplus=True,
         language_level=3,
