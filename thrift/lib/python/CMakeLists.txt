@@ -25,7 +25,7 @@ file(MAKE_DIRECTORY ${_cybld}/thrift/python/test)
 file(MAKE_DIRECTORY ${_cybld}/thrift/python/test/request_context_extractor)
 
 # Target for Cython API generation (--api-only phase)
-add_custom_target(cython_api_generation ALL
+add_custom_target(python_cython_api_generation ALL
   COMMAND ${CMAKE_COMMAND} -E env
     ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py --api-only
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -33,13 +33,13 @@ add_custom_target(cython_api_generation ALL
 )
 
 # Auto-generated symlinks from Buck→CMake generator
-add_custom_target(create_cython_api_symlinks ALL
-  DEPENDS cython_api_generation
+add_custom_target(python_create_cython_api_symlinks ALL
+  DEPENDS python_cython_api_generation
 )
 
 # types (package=thrift.python)
 
-add_custom_command(TARGET create_cython_api_symlinks
+add_custom_command(TARGET python_create_cython_api_symlinks
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/types_api.h"
     "${_cybld}/thrift/lib/python/types_api.h"
@@ -48,7 +48,7 @@ add_custom_command(TARGET create_cython_api_symlinks
 # python_async_processor (package=thrift.python.server_impl)
 # cpp_compiler_flags: ['-D__PYX_ENUM_CLASS_DECL=']
 
-add_custom_command(TARGET create_cython_api_symlinks
+add_custom_command(TARGET python_create_cython_api_symlinks
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/server_impl/python_async_processor_api.h"
     "${_cybld}/thrift/lib/python/server/python_async_processor_api.h"
@@ -56,7 +56,7 @@ add_custom_command(TARGET create_cython_api_symlinks
 
 # py_promise (package=thrift.python.streaming)
 
-add_custom_command(TARGET create_cython_api_symlinks
+add_custom_command(TARGET python_create_cython_api_symlinks
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/streaming/py_promise_api.h"
     "${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
@@ -64,7 +64,7 @@ add_custom_command(TARGET create_cython_api_symlinks
 
 # sink (package=thrift.python.streaming)
 
-add_custom_command(TARGET create_cython_api_symlinks
+add_custom_command(TARGET python_create_cython_api_symlinks
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/streaming/sink_api.h"
     "${_cybld}/thrift/lib/python/streaming/sink_api.h"
@@ -72,7 +72,7 @@ add_custom_command(TARGET create_cython_api_symlinks
 
 # bidistream (package=thrift.python.streaming)
 
-add_custom_command(TARGET create_cython_api_symlinks
+add_custom_command(TARGET python_create_cython_api_symlinks
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/streaming/bidistream_api.h"
     "${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
@@ -80,18 +80,18 @@ add_custom_command(TARGET create_cython_api_symlinks
 
 # service_interceptor (package=thrift.python.server_impl.interceptor)
 
-add_custom_command(TARGET create_cython_api_symlinks
+add_custom_command(TARGET python_create_cython_api_symlinks
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/server_impl/interceptor/service_interceptor_api.h"
     "${_cybld}/thrift/lib/python/server/interceptor/service_interceptor_api.h"
 )
 
 # Target for Cython compilation (build_ext phase)
-add_custom_target(cython_build_ext ALL
+add_custom_target(python_cython_build_ext ALL
   COMMAND ${CMAKE_COMMAND} -E env
     ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py build_ext --inplace
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  DEPENDS create_cython_api_symlinks
+  DEPENDS python_create_cython_api_symlinks
   COMMENT "Building Cython extensions"
 )
 

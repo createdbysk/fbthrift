@@ -25,12 +25,38 @@ if(thriftpy)
   add_subdirectory(py)
 endif()
 
+# thrift_python depends on thrift_py3 (python imports from py3 modules)
+# Automatically enable thrift_py3 when thrift_python is enabled
+if(thrift_python AND NOT thrift_py3)
+  message(STATUS "Auto-enabling thrift_py3 (required by thrift_python)")
+  set(thrift_py3 ON)
+endif()
+
+if(thrift_py3)
+  # Buck→CMake generated build for thrift-py3
+  # Uses generated CMakeLists.txt from buck_to_cmake_generator.py
+  message(STATUS "Enabling thrift-py3 build (Buck→CMake generated, 14 targets)")
+  set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/py3/")
+  add_subdirectory(py3)
+endif()
+
 if(thrift_python)
   # Buck→CMake generated build for thrift-python
   # Uses generated CMakeLists.txt from buck_to_cmake_generator.py
+  # Depends on thrift_py3 (python imports from py3 modules)
+  message(STATUS "Enabling thrift-python build (Buck→CMake generated, 37 targets)")
   set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
   add_subdirectory(python)
+
+  # Make python build depend on py3 build completing first
+  if(TARGET py3_cython_build_ext AND TARGET python_cython_api_generation)
+    message(STATUS "Adding dependency: python_cython_api_generation depends on py3_cython_build_ext")
+    add_dependencies(python_cython_api_generation py3_cython_build_ext)
+  elseif(NOT TARGET py3_cython_build_ext)
+    message(WARNING "py3_cython_build_ext target not found - enable thrift_py3 flag or python build will fail")
+  endif()
 endif()
 
 if(thriftpy3)
