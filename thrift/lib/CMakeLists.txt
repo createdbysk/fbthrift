@@ -278,8 +278,7 @@ if(thriftpy3)
       "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v --api-only
     BYPRODUCTS
-      ${_cybld}/thrift/python/types_api.h
-      ${_cybld}/thrift/python/server/server_api.h
+      ${_cybld}/thrift/python/_types_api.h
     WORKING_DIRECTORY ${_cybld}
   )
 
@@ -304,23 +303,21 @@ if(thriftpy3)
       COMMAND
       ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/_types.h" "${_cybld}/thrift/lib/python/_types.h"
   )
+  # Changed from server/ to server_impl/ because:
+  # - C++ code expects import_thrift__python__server_impl__python_async_processor
+  # - Buck uses package = "thrift.python.server_impl" which makes Cython generate server_impl API functions
+  # - Must match the import function names in the generated API headers
   add_custom_command(
     TARGET
     create_cython_types_api_symlink
       COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server_api.h" "${_cybld}/thrift/lib/python/server/server_api.h"
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server_impl/python_async_processor_api.h" "${_cybld}/thrift/lib/python/server/python_async_processor_api.h"
   )
   add_custom_command(
     TARGET
     create_cython_types_api_symlink
       COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/python_async_processor_api.h" "${_cybld}/thrift/lib/python/server/python_async_processor_api.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/request_context_api.h" "${_cybld}/thrift/lib/python/server/request_context_api.h"
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server_impl/request_context_api.h" "${_cybld}/thrift/lib/python/server/request_context_api.h"
   )
   add_custom_command(
     TARGET
