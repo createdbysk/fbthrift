@@ -314,6 +314,18 @@ if(thriftpy3)
     TARGET
     create_cython_types_api_symlink
       COMMAND
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/python_async_processor_api.h" "${_cybld}/thrift/lib/python/server/python_async_processor_api.h"
+  )
+  add_custom_command(
+    TARGET
+    create_cython_types_api_symlink
+      COMMAND
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/request_context_api.h" "${_cybld}/thrift/lib/python/server/request_context_api.h"
+  )
+  add_custom_command(
+    TARGET
+    create_cython_types_api_symlink
+      COMMAND
       ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/_stream_api.h" "${_cybld}/thrift/lib/py3/stream_api.h"
   )
   add_custom_command(
@@ -351,105 +363,6 @@ if(thriftpy3)
     TARGETS thrift_python_cpp
     DESTINATION ${py_install_dir}
   )
-
-  #####
-  # Now build everything else in lib/python, including all remaining Cython
-  # modules that depend on types_api.h and thrift_python_cpp.
-  #####
-  add_custom_target(
-    thrift_python_and_py3_bindings ALL
-    DEPENDS
-      generate_apache_thrift_metadata_python
-      generate_apache_thrift_metadata_py3
-      create_binding_symlink_python
-      create_binding_symlink_py3
-      create_binding_symlink_server_impl
-      thriftcpp2
-      thrift_python_cpp
-    WORKING_DIRECTORY ${_cybld}
-  )
-
-  set(inc_dirs "$<TARGET_PROPERTY:thrift,INCLUDE_DIRECTORIES>")
-  get_target_property(fmt_include_dirs fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
-  get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
-  get_target_property(thrift_include_dirs thrift INCLUDE_DIRECTORIES)
-  list(JOIN wangle_incs ":" wangle_include_dirs)
-  set(incs "-I$<JOIN:${inc_dirs},:>:${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${wangle_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib/cybld")
-  get_target_property(fmt_lib fmt::fmt LOCATION)
-  get_filename_component(fmt_lib_dir ${fmt_lib} DIRECTORY)
-  get_filename_component(folly_lib ${FOLLY_LIBRARY} DIRECTORY)
-  get_filename_component(glog_lib ${GLOG_LIBRARIES} DIRECTORY)
-  get_filename_component(python_lib ${PYTHON_LIBRARY} DIRECTORY)
-  get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
-  set(libs "-L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:${fmt_lib_dir}:${folly_lib}:${glog_lib}:${python_lib}")
-  set(py_install_dir ${CMAKE_INSTALL_PREFIX})
-  if (NOT ${PYTHON_PACKAGE_INSTALL_DIR} STREQUAL "")
-    set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
-  endif()
-
-  # Pass include paths to Cython via environment variable for build_ext phase
-  # (needed for cythonize to find folly .pxd files)
-  add_custom_command(TARGET thrift_python_and_py3_bindings
-    COMMAND ${CMAKE_COMMAND} -E env
-      "CFLAGS=${CMAKE_C_FLAGS}"
-      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
-      "CXX=${CMAKE_CXX_COMPILER}"
-      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
-      build_ext -f ${incs} ${libs} --libpython ${python_libname}
-    WORKING_DIRECTORY ${_cybld}
-  )
-  add_custom_command(TARGET thrift_python_and_py3_bindings
-    COMMAND ${CMAKE_COMMAND} -E env
-      "CFLAGS=${CMAKE_C_FLAGS}"
-      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
-      "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
-      bdist_wheel --libpython ${python_libname}
-    WORKING_DIRECTORY ${_cybld}
-  )
-  add_custom_command(TARGET thrift_python_and_py3_bindings POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E env
-      "CFLAGS=${CMAKE_C_FLAGS}"
-      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
-      "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
-      install --prefix ${CMAKE_INSTALL_PREFIX} --libpython ${python_libname}
-    WORKING_DIRECTORY ${_cybld}
-  )
-
-  # getdeps.py does not allow sufficient control of CMAKE_INSTALL_PREFIX,
-  # so PYTHON_PACKAGE_INSTALL_DIR can be used to control the installation
-  # location of Python packages.
-  set(ENV{CXX} ${CMAKE_CXX_COMPILER})
-  install(CODE "
-    execute_process(
-      COMMAND ${CMAKE_COMMAND} -E env
-        \"CFLAGS=${CMAKE_C_FLAGS}\"
-        \"CXXFLAGS=${CMAKE_CXX_FLAGS}\"
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py install -v
-        --prefix ${py_install_dir} --libpython ${python_libname}
-      COMMAND_ECHO STDOUT
-      WORKING_DIRECTORY ${_cybld}
-    )
-  ")
-endif()
-
-set(LIB_DIRS
-  thrift
-  cpp
-  cpp2
-  python
-  py3
-)
-foreach(dir ${LIB_DIRS})
-  install(DIRECTORY ${dir} "${CMAKE_CURRENT_BINARY_DIR}/${dir}"
-        DESTINATION include/thrift/lib
-        FILES_MATCHING
-          PATTERN "*.h"
-          PATTERN "*.tcc"
-          PATTERN CMakeFiles EXCLUDE)
-endforeach()
 
   #####
   # Create server_impl alias for OSS builds
@@ -556,4 +469,101 @@ sys.meta_path.insert(0, _ServerImplFinder())
   # Create empty __init__.py for interceptor subpackage
   file(WRITE "${_cybld}/thrift/python/server_impl/interceptor/__init__.py" "")
 
+  #####
+  # Now build everything else in lib/python, including all remaining Cython
+  # modules that depend on types_api.h and thrift_python_cpp.
+  #####
+  add_custom_target(
+    thrift_python_and_py3_bindings ALL
+    DEPENDS
+      generate_apache_thrift_metadata_python
+      generate_apache_thrift_metadata_py3
+      create_binding_symlink_python
+      create_binding_symlink_py3
+      create_binding_symlink_server_impl
+      thriftcpp2
+      thrift_python_cpp
+    WORKING_DIRECTORY ${_cybld}
+  )
 
+  set(inc_dirs "$<TARGET_PROPERTY:thrift,INCLUDE_DIRECTORIES>")
+  get_target_property(fmt_include_dirs fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(thrift_include_dirs thrift INCLUDE_DIRECTORIES)
+  list(JOIN wangle_incs ":" wangle_include_dirs)
+  set(incs "-I$<JOIN:${inc_dirs},:>:${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${wangle_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib/cybld")
+  get_target_property(fmt_lib fmt::fmt LOCATION)
+  get_filename_component(fmt_lib_dir ${fmt_lib} DIRECTORY)
+  get_filename_component(folly_lib ${FOLLY_LIBRARY} DIRECTORY)
+  get_filename_component(glog_lib ${GLOG_LIBRARIES} DIRECTORY)
+  get_filename_component(python_lib ${PYTHON_LIBRARY} DIRECTORY)
+  get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
+  set(libs "-L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:${fmt_lib_dir}:${folly_lib}:${glog_lib}:${python_lib}")
+  set(py_install_dir ${CMAKE_INSTALL_PREFIX})
+  if (NOT ${PYTHON_PACKAGE_INSTALL_DIR} STREQUAL "")
+    set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
+  endif()
+
+  # Pass include paths to Cython via environment variable for build_ext phase
+  # (needed for cythonize to find folly .pxd files)
+  add_custom_command(TARGET thrift_python_and_py3_bindings
+    COMMAND ${CMAKE_COMMAND} -E env
+      "CFLAGS=${CMAKE_C_FLAGS}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+      "CXX=${CMAKE_CXX_COMPILER}"
+      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
+      build_ext -f ${incs} ${libs} --libpython ${python_libname}
+    WORKING_DIRECTORY ${_cybld}
+  )
+  add_custom_command(TARGET thrift_python_and_py3_bindings
+    COMMAND ${CMAKE_COMMAND} -E env
+      "CFLAGS=${CMAKE_C_FLAGS}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+      "CXX=${CMAKE_CXX_COMPILER}"
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
+      bdist_wheel --libpython ${python_libname}
+    WORKING_DIRECTORY ${_cybld}
+  )
+  add_custom_command(TARGET thrift_python_and_py3_bindings POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E env
+      "CFLAGS=${CMAKE_C_FLAGS}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+      "CXX=${CMAKE_CXX_COMPILER}"
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
+      install --prefix ${CMAKE_INSTALL_PREFIX} --libpython ${python_libname}
+    WORKING_DIRECTORY ${_cybld}
+  )
+
+  # getdeps.py does not allow sufficient control of CMAKE_INSTALL_PREFIX,
+  # so PYTHON_PACKAGE_INSTALL_DIR can be used to control the installation
+  # location of Python packages.
+  set(ENV{CXX} ${CMAKE_CXX_COMPILER})
+  install(CODE "
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E env
+        \"CFLAGS=${CMAKE_C_FLAGS}\"
+        \"CXXFLAGS=${CMAKE_CXX_FLAGS}\"
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py install -v
+        --prefix ${py_install_dir} --libpython ${python_libname}
+      COMMAND_ECHO STDOUT
+      WORKING_DIRECTORY ${_cybld}
+    )
+  ")
+endif()
+
+set(LIB_DIRS
+  thrift
+  cpp
+  cpp2
+  python
+  py3
+)
+foreach(dir ${LIB_DIRS})
+  install(DIRECTORY ${dir} "${CMAKE_CURRENT_BINARY_DIR}/${dir}"
+        DESTINATION include/thrift/lib
+        FILES_MATCHING
+          PATTERN "*.h"
+          PATTERN "*.tcc"
+          PATTERN CMakeFiles EXCLUDE)
+endforeach()
