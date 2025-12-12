@@ -19,23 +19,26 @@ if "--api-only" in sys.argv:
 
 # Build extensions
 extensions = [
-    Extension("thrift.py3.exceptions", ["exceptions.pyx"], extra_compile_args=["-fno-strict-aliasing"]),
-    Extension("thrift.py3.server", ["server.pyx"], extra_compile_args=["-fno-strict-aliasing", ""]),
-    Extension("thrift.py3.client", ["client.pyx"]),
-    Extension("thrift.py3.reflection", ["reflection.pyx"]),
-    Extension("thrift.py3.serializer", ["serializer.pyx"]),
-    Extension("thrift.py3.types", ["types.pyx"]),
-    Extension("thrift.py3.stream", ["stream.pyx"]),
-    Extension("thrift.py3.builder", ["builder.pyx"]),
-    Extension("thrift.py3.converter", ["converter.pyx"]),
-    Extension("thrift.py3.metadata", ["metadata.pyx"]),
-    Extension("thrift.py3.test.cpp_handler", ["cpp_handler.pyx"]),
-    Extension("thrift.py3.test.cpp_converter_helper", ["cpp_converter_helper.pyx"]),
-    Extension("thrift.py3.test.is_overload.helper", ["helper.pyx"]),
+    Extension("thrift.py3.exceptions", ["exceptions.pyx"], extra_compile_args=["-fno-strict-aliasing"], language="c++", libraries=["folly"]),
+    Extension("thrift.py3.server", ["server.pyx"], extra_compile_args=["-fno-strict-aliasing"], language="c++", libraries=["folly"]),
+    Extension("thrift.py3.client", ["client.pyx"], language="c++", libraries=["folly"]),
+    Extension("thrift.py3.reflection", ["reflection.pyx"], language="c++"),
+    Extension("thrift.py3.types", ["types.pyx"], language="c++", libraries=["folly"]),
+    Extension("thrift.py3.stream", ["stream.pyx", "stream.cpp"], language="c++", libraries=["folly"]),
+    Extension("thrift.py3.builder", ["builder.pyx"], language="c++"),
+    Extension("thrift.py3.converter", ["converter.pyx"], language="c++"),
+    Extension("thrift.py3.metadata", ["metadata.pyx"], language="c++"),
+    Extension("thrift.py3.test.cpp_handler", ["cpp_handler.pyx"], language="c++"),
+    Extension("thrift.lib.py3.test.exception_helper", ["exception_helper.pyx"], language="c++"),
+    Extension("thrift.py3.test.cpp_converter_helper", ["cpp_converter_helper.pyx"], language="c++"),
+    Extension("thrift.lib.py3.test.interactions.run_interaction", ["run_interaction.pyx"], language="c++"),
+    Extension("thrift.py3.test.is_overload.helper", ["helper.pyx"], language="c++"),
 ]
 
 setup(
     name="thrift",
+    packages=["thrift", "thrift.lib", "thrift.lib.py3", "thrift.lib.py3.test", "thrift.lib.py3.test.auto_migrate", "thrift.lib.py3.test.interactions", "thrift.py3", "thrift.py3.test", "thrift.py3.test.is_overload"],
+    package_data={"": ["*.pxd", "*.h", "*.py", "*.pyi"]},
     ext_modules=cythonize(
         extensions,
         language_level=3,
