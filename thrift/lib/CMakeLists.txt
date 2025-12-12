@@ -49,7 +49,7 @@ if(thriftpy3)
   add_custom_target(
     generate_apache_thrift_metadata_python
     COMMAND
-      thrift1 -I ${CMAKE_SOURCE_DIR} --out . --gen mstch_python
+      thrift1 -I ${CMAKE_SOURCE_DIR} --out . --gen "mstch_python:include_prefix=thrift"
       ${CMAKE_CURRENT_SOURCE_DIR}/thrift/metadata.thrift
     WORKING_DIRECTORY ${_cybld}
     BYPRODUCTS
@@ -72,7 +72,7 @@ if(thriftpy3)
   add_custom_target(
     generate_apache_thrift_metadata_py3
     COMMAND
-      thrift1 -I ${CMAKE_SOURCE_DIR} --out . --gen mstch_py3
+      thrift1 -I ${CMAKE_SOURCE_DIR} --out . --gen "mstch_py3:include_prefix=thrift"
       ${CMAKE_CURRENT_SOURCE_DIR}/thrift/metadata.thrift
     WORKING_DIRECTORY ${_cybld}
     BYPRODUCTS
