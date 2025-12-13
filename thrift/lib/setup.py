@@ -111,18 +111,27 @@ else:
     python_lib = sys.argv[python_lib_idx + 1][len("lib") : -len(".so")]
     del sys.argv[python_lib_idx : python_lib_idx + 2]
 
-    libs = [
-        # fmt, folly, glog, openssl
-        "crypto",
+    # Option C: Programmatic path detection for static library linking
+    # Parse library search paths from CMakeLists (passed via LIBRARY_DIRS env var)
+    lib_search_paths = os.environ.get("LIBRARY_DIRS", "").split(":")
+    lib_search_paths = [p for p in lib_search_paths if p]  # Filter empty strings
+
+    def find_static_lib(name, search_paths):
+        """Find .a file in search paths, return full path or None"""
+        for path in search_paths:
+            candidate = f"{path}/lib{name}.a"
+            if os.path.exists(candidate):
+                return candidate
+        return None
+
+    # Libraries we know are static (from getdeps build)
+    static_lib_names = [
         "fmt",
         "folly",
         "folly_python_cpp",
         "glog",
-        # Boost
         "boost_context",
-        # Event loop
         "event",
-        # Thrift
         "async",
         "concurrency",
         "rpcmetadata",
@@ -134,12 +143,29 @@ else:
         "transport",
         "thriftmetadata",
         "wangle",
-    ] + [python_lib]
+        "iberty",  # Provides cplus_demangle_v3_callback for C++ demangling
+    ]
+
+    # Find full paths to static libraries
+    static_lib_paths = []
+    dynamic_libs = ["crypto"]  # System shared library
+    for name in static_lib_names:
+        path = find_static_lib(name, lib_search_paths)
+        if path:
+            static_lib_paths.append(path)
+        else:
+            # Fallback to -l flag if .a file not found
+            dynamic_libs.append(name)
 
     common_options = {
         "language": "c++",
-        "libraries": libs,
+        "libraries": dynamic_libs + [python_lib],
         "extra_compile_args": ["-std=c++20", "-fcoroutines"],
+        "extra_link_args": (
+            ["-Wl,--whole-archive"] + static_lib_paths + ["-Wl,--no-whole-archive"]
+            if static_lib_paths
+            else []
+        ),
     }
 
     exts = [
