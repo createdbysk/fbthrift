@@ -135,10 +135,11 @@ else:
         "folly",
         "folly_python_cpp",
         "double-conversion",
+        "gflags",
         "z",  # zlib
         "lz4",
         "zstd",
-        "libdwarf",
+        "dwarf",
         "iberty",  # libiberty
 
         # Boost libraries (all static in this build)
@@ -180,7 +181,7 @@ else:
 
     # Find full paths to static libraries
     static_lib_paths = []
-    dynamic_libs = ["ssl", "crypto", "glog", "gflags", "event", "lzma", "snappy", "sodium", "unwind"]
+    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind"]
     for name in static_lib_names:
         path = find_static_lib(name, lib_search_paths)
         if path:
