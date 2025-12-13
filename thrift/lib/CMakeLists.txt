@@ -489,25 +489,30 @@ sys.meta_path.insert(0, _ServerImplFinder())
   get_target_property(thrift_include_dirs thrift INCLUDE_DIRECTORIES)
   list(JOIN wangle_incs ":" wangle_include_dirs)
   set(incs "-I$<JOIN:${inc_dirs},:>:${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${wangle_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib:${CMAKE_BINARY_DIR}/thrift/lib/cybld")
-  get_target_property(fmt_lib fmt::fmt LOCATION)
-  get_filename_component(fmt_lib_dir ${fmt_lib} DIRECTORY)
-  get_filename_component(folly_lib ${FOLLY_LIBRARY} DIRECTORY)
-  get_filename_component(glog_lib ${GLOG_LIBRARIES} DIRECTORY)
-  get_filename_component(python_lib ${PYTHON_LIBRARY} DIRECTORY)
   get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
-  find_library(BOOST_CONTEXT_LIB boost_context)
-  if(BOOST_CONTEXT_LIB)
-    get_filename_component(boost_lib ${BOOST_CONTEXT_LIB} DIRECTORY)
-  endif()
-  find_library(WANGLE_LIB wangle)
-  if(WANGLE_LIB)
-    get_filename_component(wangle_lib ${WANGLE_LIB} DIRECTORY)
-  endif()
-  find_library(IBERTY_LIB iberty)
-  if(IBERTY_LIB)
-    get_filename_component(iberty_lib ${IBERTY_LIB} DIRECTORY)
-  endif()
-  set(libs "-L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:${fmt_lib_dir}:${folly_lib}:${glog_lib}:${boost_lib}:${wangle_lib}:${iberty_lib}:${python_lib}")
+
+  # Auto-discover all library directories from getdeps installed packages
+  # This ensures setup.py's find_static_lib() can find ALL libraries in static_lib_names
+  get_filename_component(GETDEPS_INSTALL_ROOT "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  file(GLOB installed_packages "${GETDEPS_INSTALL_ROOT}/*")
+  set(all_lib_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+  foreach(pkg ${installed_packages})
+    if(EXISTS "${pkg}/lib")
+      list(APPEND all_lib_dirs "${pkg}/lib")
+    endif()
+    if(EXISTS "${pkg}/lib64")
+      list(APPEND all_lib_dirs "${pkg}/lib64")
+    endif()
+  endforeach()
+  # Add system library paths
+  list(APPEND all_lib_dirs "/usr/lib64")
+  # Add python library directory
+  get_filename_component(python_lib ${PYTHON_LIBRARY} DIRECTORY)
+  list(APPEND all_lib_dirs "${python_lib}")
+
+  # Join all library directories with colons for -L flags and LIBRARY_DIRS
+  list(JOIN all_lib_dirs ":" library_dirs_str)
+  set(libs "-L${library_dirs_str}")
   set(py_install_dir ${CMAKE_INSTALL_PREFIX})
   if (NOT ${PYTHON_PACKAGE_INSTALL_DIR} STREQUAL "")
     set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
@@ -521,7 +526,7 @@ sys.meta_path.insert(0, _ServerImplFinder())
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
       "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
-      "LIBRARY_DIRS=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:${fmt_lib_dir}:${folly_lib}:${glog_lib}:${boost_lib}:${wangle_lib}:${iberty_lib}:${python_lib}"
+      "LIBRARY_DIRS=${library_dirs_str}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
       build_ext -f ${incs} ${libs} --libpython ${python_libname}
     WORKING_DIRECTORY ${_cybld}
