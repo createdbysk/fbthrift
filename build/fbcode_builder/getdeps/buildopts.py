@@ -237,7 +237,7 @@ class BuildOptions(object):
                 "fb": "on" if self.facebook_internal else "off",
                 "fbsource": "on" if self.fbsource_dir else "off",
                 "test": "off",
-                "shared_libs": "on" if self.shared_libs else "off",
+                "shared_libs": "True" if self.shared_libs else "False",
             }
         )
 
