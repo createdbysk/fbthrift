@@ -503,7 +503,11 @@ sys.meta_path.insert(0, _ServerImplFinder())
   if(WANGLE_LIB)
     get_filename_component(wangle_lib ${WANGLE_LIB} DIRECTORY)
   endif()
-  set(libs "-L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:${fmt_lib_dir}:${folly_lib}:${glog_lib}:${boost_lib}:${wangle_lib}:${python_lib}")
+  find_library(IBERTY_LIB iberty)
+  if(IBERTY_LIB)
+    get_filename_component(iberty_lib ${IBERTY_LIB} DIRECTORY)
+  endif()
+  set(libs "-L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:${fmt_lib_dir}:${folly_lib}:${glog_lib}:${boost_lib}:${wangle_lib}:${iberty_lib}:${python_lib}")
   set(py_install_dir ${CMAKE_INSTALL_PREFIX})
   if (NOT ${PYTHON_PACKAGE_INSTALL_DIR} STREQUAL "")
     set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
@@ -517,6 +521,7 @@ sys.meta_path.insert(0, _ServerImplFinder())
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
       "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
+      "LIBRARY_DIRS=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:${fmt_lib_dir}:${folly_lib}:${glog_lib}:${boost_lib}:${wangle_lib}:${iberty_lib}:${python_lib}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
       build_ext -f ${incs} ${libs} --libpython ${python_libname}
     WORKING_DIRECTORY ${_cybld}
