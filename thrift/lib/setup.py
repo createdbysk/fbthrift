@@ -118,6 +118,10 @@ else:
         "folly",
         "folly_python_cpp",
         "glog",
+        # Boost
+        "boost_context",
+        # Event loop
+        "event",
         # Thrift
         "async",
         "concurrency",
@@ -129,6 +133,7 @@ else:
         "thrift_python_cpp",
         "transport",
         "thriftmetadata",
+        "wangle",
     ] + [python_lib]
 
     common_options = {
