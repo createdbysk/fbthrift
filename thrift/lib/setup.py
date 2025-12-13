@@ -157,15 +157,19 @@ else:
             # Fallback to -l flag if .a file not found
             dynamic_libs.append(name)
 
+    # Build linker args with --whole-archive to force inclusion of all static library code
+    extra_link_args = []
+    if static_lib_paths:
+        extra_link_args.append("-Wl,--whole-archive")
+        extra_link_args.extend(static_lib_paths)
+        extra_link_args.append("-Wl,--no-whole-archive")
+        extra_link_args.append("-Wl,--allow-multiple-definition")  # Ignore duplicate symbols
+
     common_options = {
         "language": "c++",
         "libraries": dynamic_libs + [python_lib],
         "extra_compile_args": ["-std=c++20", "-fcoroutines"],
-        "extra_link_args": (
-            ["-Wl,--whole-archive"] + static_lib_paths + ["-Wl,--no-whole-archive"]
-            if static_lib_paths
-            else []
-        ),
+        "extra_link_args": extra_link_args,
     }
 
     exts = [
