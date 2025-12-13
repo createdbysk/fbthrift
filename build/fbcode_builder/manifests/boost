@@ -107,6 +107,10 @@ patchfile = boost_1_83_0.patch
 # https://bugzilla.redhat.com/show_bug.cgi?id=1806545
 pch=off
 
+[b2.args.all(os=linux,shared_libs=False)]
+# Python extensions need -fPIC for static library linking
+cxxflags="-fPIC"
+
 [b2.args.os=darwin]
 toolset=clang
 # Since Xcode 15.3 std::piecewise_construct is only visible in C++17 and later modes
