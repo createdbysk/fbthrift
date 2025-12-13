@@ -1,16 +1,48 @@
 #!/usr/bin/env python3
 """Auto-generated setup.py from Buck TARGETS"""
 
+import os
 import sys
+from pathlib import Path
 from Cython.Build import cythonize
 from Cython.Compiler import Options, Main as CythonMain
 from setuptools import setup, Extension
 
+# Validate CYTHON_INCLUDE_PATH from CMakeLists.txt
+cython_include_path = os.environ.get("CYTHON_INCLUDE_PATH")
+if not cython_include_path:
+    raise RuntimeError(
+        "CYTHON_INCLUDE_PATH environment variable not set. "
+        "This should be set by CMakeLists.txt to the cybld directory."
+    )
+
+include_dirs = [p for p in cython_include_path.split(":") if p]
+if not include_dirs:
+    raise RuntimeError(
+        f"CYTHON_INCLUDE_PATH is empty: {cython_include_path!r}"
+    )
+
+# Validate paths exist
+for include_dir in include_dirs:
+    if not Path(include_dir).exists():
+        raise RuntimeError(
+            f"CYTHON_INCLUDE_PATH contains non-existent directory: {include_dir}\n"
+            f"Full path: {cython_include_path}"
+        )
+
 if "--api-only" in sys.argv:
     print("Generating Cython API headers...")
+
+    # Create CompilationOptions with include_path for cimport resolution
+    compilation_options = Options.CompilationOptions(
+        Options.default_options,
+        include_path=include_dirs,
+    )
+
     print(f"  thrift.py3.stream (api)")
     CythonMain.compile(
         "stream.pyx",
+        options=compilation_options,
         full_module_name="thrift.py3.stream",
         cplus=True,
         language_level=3,
@@ -28,11 +60,11 @@ extensions = [
     Extension("thrift.py3.builder", ["builder.pyx"], language="c++"),
     Extension("thrift.py3.converter", ["converter.pyx"], language="c++"),
     Extension("thrift.py3.metadata", ["metadata.pyx"], language="c++"),
-    Extension("thrift.py3.test.cpp_handler", ["cpp_handler.pyx"], language="c++"),
-    Extension("thrift.lib.py3.test.exception_helper", ["exception_helper.pyx"], language="c++"),
-    Extension("thrift.py3.test.cpp_converter_helper", ["cpp_converter_helper.pyx"], language="c++"),
-    Extension("thrift.lib.py3.test.interactions.run_interaction", ["run_interaction.pyx"], language="c++"),
-    Extension("thrift.py3.test.is_overload.helper", ["helper.pyx"], language="c++"),
+    Extension("thrift.py3.test.cpp_handler", ["test/cpp_handler.pyx"], language="c++"),
+    Extension("thrift.lib.py3.test.exception_helper", ["test/exception_helper.pyx"], language="c++"),
+    Extension("thrift.py3.test.cpp_converter_helper", ["test/auto_migrate/cpp_converter_helper.pyx"], language="c++"),
+    Extension("thrift.lib.py3.test.interactions.run_interaction", ["test/interactions/run_interaction.pyx"], language="c++"),
+    Extension("thrift.py3.test.is_overload.helper", ["test/is_overload/helper.pyx"], language="c++"),
 ]
 
 setup(
@@ -43,5 +75,6 @@ setup(
         extensions,
         language_level=3,
         compiler_directives={"binding": True},
+        include_path=include_dirs,  # Allow cimport to find .pxd files
     ),
 )

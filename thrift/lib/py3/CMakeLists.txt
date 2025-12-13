@@ -372,6 +372,7 @@ add_custom_target(py3_cython_source_symlinks ALL
 add_custom_target(py3_cython_api_generation ALL
   DEPENDS py3_python_symlinks py3_pxd_symlinks py3_cython_source_symlinks
   COMMAND ${CMAKE_COMMAND} -E env
+    "CYTHON_INCLUDE_PATH=${_cybld}"
     ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py --api-only
   WORKING_DIRECTORY ${_cybld}
   COMMENT "Generating Cython API headers"
@@ -380,11 +381,15 @@ add_custom_target(py3_cython_api_generation ALL
 # Target for Cython compilation (build_ext phase)
 add_custom_target(py3_cython_build_ext ALL
   COMMAND ${CMAKE_COMMAND} -E env
+    "CYTHON_INCLUDE_PATH=${_cybld}"
     ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py build_ext --inplace
   WORKING_DIRECTORY ${_cybld}
   DEPENDS py3_cython_api_generation
   COMMENT "Building Cython extensions"
 )
+
+# Target dependencies
+add_dependencies(py3_cython_build_ext py3_cython_build_ext)
 
 # Buck parameters for all targets:
 
