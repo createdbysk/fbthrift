@@ -131,6 +131,7 @@ else:
         "folly_python_cpp",
         "glog",
         "boost_context",
+        "boost_program_options",  # Required by folly
         "event",
         "async",
         "concurrency",
