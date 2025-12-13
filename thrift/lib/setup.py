@@ -125,31 +125,62 @@ else:
         return None
 
     # Libraries we know are static (from getdeps build)
+    # Complete list extracted from CMake dependency analysis (2025-12-13)
+    # Source: CMake config files (*-targets.cmake) for Folly, Wangle, Fizz, and CMakeLists.txt
     static_lib_names = [
+        # Format library
         "fmt",
+
+        # Folly and its static dependencies
         "folly",
         "folly_python_cpp",
-        "glog",
+        "double-conversion",
+        "z",  # zlib
+        "lz4",
+        "zstd",
+        "libdwarf",
+        "iberty",  # libiberty
+
+        # Boost libraries (all static in this build)
         "boost_context",
+        "boost_filesystem",
         "boost_program_options",  # Required by folly
-        "event",
+        "boost_regex",
+        "boost_thread",
+
+        # Wangle and Fizz
+        "wangle",
+        "fizz",
+
+        # Thrift core libraries
+        "thrift-core",
         "async",
         "concurrency",
-        "rpcmetadata",
         "runtime",
-        "thrift-core",
-        "thriftcpp2",
-        "thriftprotocol",
-        "thrift_python_cpp",
         "transport",
+
+        # Thrift cpp2 libraries (13 libraries)
+        "rpcmetadata",
+        "thriftannotation",
         "thriftmetadata",
-        "wangle",
-        "iberty",  # Provides cplus_demangle_v3_callback for C++ demangling
+        "thriftfrozen2",
+        "thriftprotocol",
+        "thrifttyperep",
+        "thrifttype",
+        "thriftanyrep",
+        "serverdbginfo",
+        "thriftcpp2",
+
+        # Python bindings
+        "thrift_python_cpp",
+
+        # Hash library
+        "xxhash",
     ]
 
     # Find full paths to static libraries
     static_lib_paths = []
-    dynamic_libs = ["crypto"]  # System shared library
+    dynamic_libs = ["ssl", "crypto", "glog", "gflags", "event", "lzma", "snappy", "sodium", "unwind"]
     for name in static_lib_names:
         path = find_static_lib(name, lib_search_paths)
         if path:
