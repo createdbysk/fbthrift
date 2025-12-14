@@ -95,6 +95,7 @@ option(thriftpy3
 )
 
 find_package(folly CONFIG REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
 # Set FOLLY_INCLUDE_DIR for Cython .pxd file symlinking
 # folly CONFIG mode doesn't set this variable, but we need it for thrift/lib/CMakeLists.txt
@@ -148,7 +149,6 @@ if (THRIFT_LIB_ONLY OR build_all)
 endif ()
 
 if(thriftpy3)
-  find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
   # Compatibility shims for code expecting old variable names
   set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
   set(PYTHON_LIBRARY ${Python3_LIBRARIES})
