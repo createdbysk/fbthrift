@@ -106,6 +106,28 @@ if "--api-only" in sys.argv:
         cplus=True,
         language_level=3,
     )
+    # Compile streaming modules to generate *_api.h headers
+    Cython.Compiler.Main.compile(
+        "thrift/python/streaming/sink.pyx",
+        options=compilation_options,
+        full_module_name="thrift.python.streaming.sink",
+        cplus=True,
+        language_level=3,
+    )
+    Cython.Compiler.Main.compile(
+        "thrift/python/streaming/bidistream.pyx",
+        options=compilation_options,
+        full_module_name="thrift.python.streaming.bidistream",
+        cplus=True,
+        language_level=3,
+    )
+    Cython.Compiler.Main.compile(
+        "thrift/python/streaming/py_promise.pyx",
+        options=compilation_options,
+        full_module_name="thrift.python.streaming.py_promise",
+        cplus=True,
+        language_level=3,
+    )
 else:
     python_lib_idx = sys.argv.index("--libpython")
     python_lib = sys.argv[python_lib_idx + 1][len("lib") : -len(".so")]
