@@ -394,7 +394,7 @@ if(thriftpy3)
       python/Serializer.cpp
       py3/stream.cpp
   )
-  add_dependencies(thrift_python_cpp create_cython_types_api_symlink)
+  add_dependencies(thrift_python_cpp thrift_python_types_bindings create_cython_types_api_symlink)
   set_property(TARGET thrift_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(thrift_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
   target_compile_definitions(thrift_python_cpp PRIVATE THRIFT_NO_HTTP_CLIENT_CHANNEL)
@@ -590,6 +590,19 @@ sys.meta_path.insert(0, _ServerImplFinder())
     set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
   endif()
 
+  # Set default LDFLAGS for setup.py to fix undefined symbol issues
+  # --no-as-needed ensures libfolly.so is in NEEDED list even if linker thinks it's not needed
+  set(DEFAULT_SETUP_LDFLAGS "-Wl,--no-as-needed")
+
+  # Allow users to override via environment variable (e.g., for custom RPATH)
+  if(DEFINED ENV{LDFLAGS})
+    set(SETUP_LDFLAGS "$ENV{LDFLAGS}")
+    message(STATUS "Using user-provided LDFLAGS: ${SETUP_LDFLAGS}")
+  else()
+    set(SETUP_LDFLAGS "${DEFAULT_SETUP_LDFLAGS}")
+    message(STATUS "Using default LDFLAGS: ${SETUP_LDFLAGS}")
+  endif()
+
   # Pass include paths to Cython via environment variable for build_ext phase
   # (needed for cythonize to find folly .pxd files)
   add_custom_command(TARGET thrift_python_and_py3_bindings
@@ -597,6 +610,7 @@ sys.meta_path.insert(0, _ServerImplFinder())
       "CFLAGS=${CMAKE_C_FLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
+      "LDFLAGS=${SETUP_LDFLAGS}"
       "CYTHON_INCLUDE_PATH=${cython_include_path}"
       "LIBRARY_DIRS=${library_dirs_str}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
