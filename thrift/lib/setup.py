@@ -205,7 +205,9 @@ else:
 
     # Find full paths to static libraries
     static_lib_paths = []
-    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind", "aio", "pthread"]
+    # Libraries that must be dynamically linked (to avoid duplicate linking errors)
+    # folly, gflags: Have runtime duplicate-linking detection, MUST be dynamic only
+    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind", "aio", "pthread", "gflags", "folly", "folly_python_cpp"]
     for name in static_lib_names:
         path = find_static_lib(name, lib_search_paths)
         if path:
@@ -225,6 +227,7 @@ else:
     common_options = {
         "language": "c++",
         "include_dirs": include_dirs,
+        "library_dirs": lib_search_paths,  # Tell linker where to find dynamic libraries
         "libraries": dynamic_libs + [python_lib],
         "extra_compile_args": ["-std=c++20", "-fcoroutines"],
         "extra_link_args": extra_link_args,
