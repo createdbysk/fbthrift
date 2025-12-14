@@ -301,7 +301,7 @@ if(thriftpy3)
       "CFLAGS=${CMAKE_C_FLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
+      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v --api-only
     BYPRODUCTS
       ${_cybld}/thrift/python/_types_api.h
@@ -553,7 +553,7 @@ sys.meta_path.insert(0, _ServerImplFinder())
       "CFLAGS=${CMAKE_C_FLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
+      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
       "LIBRARY_DIRS=${library_dirs_str}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
       build_ext -f ${incs} ${libs} --libpython ${python_libname}
