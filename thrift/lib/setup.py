@@ -202,6 +202,7 @@ else:
 
     common_options = {
         "language": "c++",
+        "include_dirs": include_dirs,
         "libraries": dynamic_libs + [python_lib],
         "extra_compile_args": ["-std=c++20", "-fcoroutines"],
         "extra_link_args": extra_link_args,
