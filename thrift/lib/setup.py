@@ -219,6 +219,13 @@ else:
     # Build linker args with --whole-archive to force inclusion of all static library code
     extra_link_args = []
 
+    # Read LDFLAGS from environment (allows CMake and users to pass linker flags)
+    ldflags_str = os.environ.get("LDFLAGS", "")
+    if ldflags_str:
+        # Split LDFLAGS by whitespace, preserving quoted arguments
+        import shlex
+        extra_link_args.extend(shlex.split(ldflags_str))
+
     # Add RPATH to embed library search paths in .so files for runtime resolution
     # This allows .so files to find their dependencies (libfolly.so, libgflags.so, etc.)
     # without relying solely on LD_LIBRARY_PATH
