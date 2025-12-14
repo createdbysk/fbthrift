@@ -154,6 +154,7 @@ else:
         "fizz",
 
         # Thrift core libraries
+        "common",  # Contains tree_printer, universal_name, etc.
         "thrift-core",
         "async",
         "concurrency",
@@ -181,7 +182,7 @@ else:
 
     # Find full paths to static libraries
     static_lib_paths = []
-    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind"]
+    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind", "aio", "pthread"]
     for name in static_lib_names:
         path = find_static_lib(name, lib_search_paths)
         if path:
