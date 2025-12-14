@@ -316,6 +316,7 @@ if(thriftpy3)
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server/interceptor")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/streaming")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/py3/")
 
   add_custom_command(
@@ -350,7 +351,7 @@ if(thriftpy3)
     TARGET
     create_cython_types_api_symlink
       COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/interceptor/service_interceptor_api.h" "${_cybld}/thrift/lib/python/server/interceptor/service_interceptor_api.h"
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server_impl/interceptor/service_interceptor_api.h" "${_cybld}/thrift/lib/python/server/interceptor/service_interceptor_api.h"
   )
   add_custom_command(
     TARGET
@@ -363,6 +364,24 @@ if(thriftpy3)
     create_cython_types_api_symlink
       COMMAND
       ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/_stream.h" "${_cybld}/thrift/lib/py3/_stream.h"
+  )
+  add_custom_command(
+    TARGET
+    create_cython_types_api_symlink
+      COMMAND
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/streaming/sink_api.h" "${_cybld}/thrift/lib/python/streaming/sink_api.h"
+  )
+  add_custom_command(
+    TARGET
+    create_cython_types_api_symlink
+      COMMAND
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/streaming/bidistream_api.h" "${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
+  )
+  add_custom_command(
+    TARGET
+    create_cython_types_api_symlink
+      COMMAND
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/streaming/py_promise_api.h" "${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
   )
   add_library(
     thrift_python_cpp
