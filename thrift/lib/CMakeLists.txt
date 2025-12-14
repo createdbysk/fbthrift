@@ -315,6 +315,7 @@ if(thriftpy3)
     WORKING_DIRECTORY ${_cybld})
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server/interceptor")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/py3/")
 
   add_custom_command(
@@ -344,6 +345,12 @@ if(thriftpy3)
     create_cython_types_api_symlink
       COMMAND
       ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server_impl/request_context_api.h" "${_cybld}/thrift/lib/python/server/request_context_api.h"
+  )
+  add_custom_command(
+    TARGET
+    create_cython_types_api_symlink
+      COMMAND
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/interceptor/service_interceptor_api.h" "${_cybld}/thrift/lib/python/server/interceptor/service_interceptor_api.h"
   )
   add_custom_command(
     TARGET
@@ -526,6 +533,7 @@ sys.meta_path.insert(0, _ServerImplFinder())
   set(_all_cython_includes
     ${thrift_include_dirs}
     ${FOLLY_INCLUDE_DIR}
+    ${FOLLY_PYTHON_SITE_PACKAGES}
     ${Boost_INCLUDE_DIRS}
     ${fmt_include_dirs}
     ${wangle_incs}

@@ -105,6 +105,11 @@ get_filename_component(_folly_prefix "${_folly_prefix}" DIRECTORY)
 set(FOLLY_INCLUDE_DIR "${_folly_prefix}/include")
 message(STATUS "FOLLY_INCLUDE_DIR set to: ${FOLLY_INCLUDE_DIR}")
 
+# Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files (folly.pxd, iobuf.pxd, etc.)
+# These are separate from C++ headers and live in Python site-packages
+set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_prefix}/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages")
+message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES}")
+
 # Find required dependencies for the Thrift compiler.
 if (THRIFT_COMPILER_ONLY OR build_all)
   include_directories(${OPENSSL_INCLUDE_DIR})
