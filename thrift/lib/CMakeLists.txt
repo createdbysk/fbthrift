@@ -301,7 +301,7 @@ if(thriftpy3)
       "CFLAGS=${CMAKE_C_FLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
+      "CYTHON_INCLUDE_PATH=${cython_include_path}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v --api-only
     BYPRODUCTS
       ${_cybld}/thrift/python/_types_api.h
@@ -515,9 +515,26 @@ sys.meta_path.insert(0, _ServerImplFinder())
   get_target_property(fmt_include_dirs fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
   get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
   get_target_property(thrift_include_dirs thrift INCLUDE_DIRECTORIES)
+  get_target_property(glog_include_dirs glog::glog INTERFACE_INCLUDE_DIRECTORIES)
   list(JOIN wangle_incs ":" wangle_include_dirs)
   set(incs "-I$<JOIN:${inc_dirs},:>:${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${wangle_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib:${CMAKE_BINARY_DIR}/thrift/lib/cybld")
   get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
+
+  # Create colon-separated include path for CYTHON_INCLUDE_PATH (same as incs but for env var)
+  # Collect all include directories into a single list first, then join with colons
+  # (embedding list variables directly in strings causes semicolon-separation, not colon-separation)
+  set(_all_cython_includes
+    ${thrift_include_dirs}
+    ${FOLLY_INCLUDE_DIR}
+    ${Boost_INCLUDE_DIRS}
+    ${fmt_include_dirs}
+    ${wangle_incs}
+    ${glog_include_dirs}
+    ${CMAKE_BINARY_DIR}/thrift/lib
+    ${CMAKE_BINARY_DIR}/thrift/lib/cybld
+  )
+  list(JOIN _all_cython_includes ":" cython_include_path)
+
 
   # Auto-discover all library directories from getdeps installed packages
   # This ensures setup.py's find_static_lib() can find ALL libraries in static_lib_names
@@ -553,7 +570,7 @@ sys.meta_path.insert(0, _ServerImplFinder())
       "CFLAGS=${CMAKE_C_FLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      "CYTHON_INCLUDE_PATH=${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib/cybld"
+      "CYTHON_INCLUDE_PATH=${cython_include_path}"
       "LIBRARY_DIRS=${library_dirs_str}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
       build_ext -f ${incs} ${libs} --libpython ${python_libname}
