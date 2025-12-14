@@ -369,19 +369,19 @@ if(thriftpy3)
     TARGET
     create_cython_types_api_symlink
       COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/streaming/sink_api.h" "${_cybld}/thrift/lib/python/streaming/sink_api.h"
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/generated/thrift/python/streaming/sink_api.h" "${_cybld}/thrift/lib/python/streaming/sink_api.h"
   )
   add_custom_command(
     TARGET
     create_cython_types_api_symlink
       COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/streaming/bidistream_api.h" "${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/generated/thrift/python/streaming/bidistream_api.h" "${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
   )
   add_custom_command(
     TARGET
     create_cython_types_api_symlink
       COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/streaming/py_promise_api.h" "${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
+      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/generated/thrift/python/streaming/py_promise_api.h" "${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
   )
   add_library(
     thrift_python_cpp
