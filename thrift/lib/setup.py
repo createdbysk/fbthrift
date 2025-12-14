@@ -157,7 +157,7 @@ else:
         "folly",
         "folly_python_cpp",
         "double-conversion",
-        "gflags",
+        # "gflags",  # REMOVED: Causes fatal "linked both statically and dynamically" error at runtime
         "z",  # zlib
         "lz4",
         "zstd",
