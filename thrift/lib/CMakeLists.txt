@@ -128,6 +128,21 @@ if(thriftpy3)
       ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/server.pyx" "${_cybld}/thrift/python/server.pyx"
   )
 
+  # Helper function to create a symlink with a different name than source
+  function(create_renamed_binding_symlink src_file dest_name)
+    message(STATUS "Linking ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} to ${_cybld}/thrift/${src_file} as ${dest_name}")
+    get_filename_component(_dest_dir "${CMAKE_CURRENT_SOURCE_DIR}/${src_file}" DIRECTORY)
+    file(RELATIVE_PATH _dest_reldir ${CMAKE_CURRENT_SOURCE_DIR} ${_dest_dir})
+    add_custom_command(
+      TARGET create_binding_symlink_python
+      PRE_BUILD
+      COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${CMAKE_CURRENT_SOURCE_DIR}/${src_file}"
+        "${_cybld}/thrift/${_dest_reldir}/${dest_name}"
+    )
+  endfunction()
+
   add_custom_target(create_binding_symlink_python ALL)
   file(GLOB BindingFiles
     "python/abstract_types.py"
@@ -195,7 +210,6 @@ if(thriftpy3)
     "python/streaming/Sink.cpp"
     "python/streaming/Sink.h"
     "python/streaming/bidistream.pyx"
-    "python/streaming/bidistream.cpp"
     "python/streaming/bidistream.h"
     "python/streaming/StreamElementEncoder.cpp"
     "python/streaming/StreamElementEncoder.h"
@@ -212,6 +226,12 @@ if(thriftpy3)
     "python/Serializer.h"
     "python/server/PythonAsyncProcessor.cpp"
     "python/server/PythonAsyncProcessorFactory.cpp"
+    "python/std_libcpp.cpp"
+    "python/std_libcpp.h"
+    "python/server/event_handler.cpp"
+    "python/server/event_handler.h"
+    "python/server/interceptor/PythonServiceInterceptor.cpp"
+    "python/server/interceptor/PythonServiceInterceptor.h"
   )
 
   foreach(_src ${BindingFiles})
@@ -231,6 +251,12 @@ if(thriftpy3)
         ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/${_filerelpath}"
     )
   endforeach()
+
+  # Special case: bidistream.cpp needs to be symlinked with capital B to avoid
+  # Cython conflict (bidistream.pyx would generate bidistream.cpp, conflicting
+  # with handwritten bidistream.cpp). Sink.cpp and PythonUserException.cpp work
+  # fine because their capital letters differ from lowercase .pyx names.
+  create_renamed_binding_symlink("python/streaming/bidistream.cpp" "Bidistream.cpp")
 
   add_custom_target(create_binding_symlink_py3 ALL)
   file(GLOB BindingFiles

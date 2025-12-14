@@ -152,6 +152,7 @@ else:
         # Wangle and Fizz
         "wangle",
         "fizz",
+        "oqs",  # Open Quantum Safe - post-quantum crypto for Fizz
 
         # Thrift core libraries
         "common",  # Contains tree_printer, universal_name, etc.
@@ -309,45 +310,50 @@ else:
                 "thrift/python/server.pyx",
                 "thrift/python/server/PythonAsyncProcessor.cpp",
                 "thrift/python/server/PythonAsyncProcessorFactory.cpp",
+                "thrift/python/server/event_handler.cpp",
+                "thrift/python/server/interceptor/PythonServiceInterceptor.cpp",
+                "thrift/python/std_libcpp.cpp",
             ],
             define_macros=[("__PYX_ENUM_CLASS_DECL", "")],
             **common_options,
         ),
-        # thrift.python.streaming extension modules - DISABLED FOR NOW
-        # Extension(
-        #     "thrift.python.streaming.stream",
-        #     sources=["thrift/python/streaming/stream.pyx"],
-        #     **common_options,
-        # ),
-        # Extension(
-        #     "thrift.python.streaming.py_promise",
-        #     sources=["thrift/python/streaming/py_promise.pyx"],
-        #     **common_options,
-        # ),
-        # Extension(
-        #     "thrift.python.streaming.python_user_exception",
-        #     sources=[
-        #         "thrift/python/streaming/python_user_exception.pyx",
-        #         "thrift/python/streaming/PythonUserException.cpp",
-        #     ],
-        #     **common_options,
-        # ),
-        # Extension(
-        #     "thrift.python.streaming.sink",
-        #     sources=[
-        #         "thrift/python/streaming/sink.pyx",
-        #         "thrift/python/streaming/Sink.cpp",
-        #     ],
-        #     **common_options,
-        # ),
-        # Extension(
-        #     "thrift.python.streaming.bidistream",
-        #     sources=[
-        #         "thrift/python/streaming/bidistream.pyx",
-        #         "thrift/python/streaming/bidistream.cpp",
-        #     ],
-        #     **common_options,
-        # ),
+        # thrift.python.streaming extension modules
+        # Each .pyx file generates to generated/*.cpp (via build_dir="generated")
+        # Handwritten .cpp files (e.g., Sink.cpp, Bidistream.cpp) are also compiled
+        Extension(
+            "thrift.python.streaming.stream",
+            sources=["thrift/python/streaming/stream.pyx"],
+            **common_options,
+        ),
+        Extension(
+            "thrift.python.streaming.py_promise",
+            sources=["thrift/python/streaming/py_promise.pyx"],
+            **common_options,
+        ),
+        Extension(
+            "thrift.python.streaming.python_user_exception",
+            sources=[
+                "thrift/python/streaming/python_user_exception.pyx",
+                "thrift/python/streaming/PythonUserException.cpp",
+            ],
+            **common_options,
+        ),
+        Extension(
+            "thrift.python.streaming.sink",
+            sources=[
+                "thrift/python/streaming/sink.pyx",
+                "thrift/python/streaming/Sink.cpp",
+            ],
+            **common_options,
+        ),
+        Extension(
+            "thrift.python.streaming.bidistream",
+            sources=[
+                "thrift/python/streaming/bidistream.pyx",
+                "thrift/python/streaming/Bidistream.cpp",  # Capital B to avoid Cython conflict
+            ],
+            **common_options,
+        ),
         Extension(
             "thrift.python.types",
             sources=["thrift/python/_types.pyx"],
@@ -495,8 +501,8 @@ else:
         setup_requires=["cython"],
         zip_safe=False,
         # build_dir separates Cython-generated .cpp files from handwritten .cpp files
-        # (e.g., bidistream.pyx -> generated/bidistream.cpp, avoiding conflict with
-        # handwritten bidistream.cpp in the source tree)
+        # (e.g., bidistream.pyx -> generated/bidistream.cpp). The handwritten
+        # bidistream.cpp is symlinked as Bidistream.cpp (capital B) to avoid conflict.
         ext_modules=cythonize(
             exts,
             compiler_directives={"language_level": 3},
