@@ -154,8 +154,8 @@ else:
         "fmt",
 
         # Folly and its static dependencies
-        "folly",
-        "folly_python_cpp",
+        # "folly",  # REMOVED: Causes fatal "linked both statically and dynamically" error (same as gflags)
+        # "folly_python_cpp",  # REMOVED: Depends on folly, must also be dynamic
         "double-conversion",
         # "gflags",  # REMOVED: Causes fatal "linked both statically and dynamically" error at runtime
         "z",  # zlib
