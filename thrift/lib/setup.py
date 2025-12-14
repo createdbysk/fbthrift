@@ -218,6 +218,13 @@ else:
 
     # Build linker args with --whole-archive to force inclusion of all static library code
     extra_link_args = []
+
+    # Add RPATH to embed library search paths in .so files for runtime resolution
+    # This allows .so files to find their dependencies (libfolly.so, libgflags.so, etc.)
+    # without relying solely on LD_LIBRARY_PATH
+    for lib_path in lib_search_paths:
+        extra_link_args.append(f"-Wl,-rpath,{lib_path}")
+
     if static_lib_paths:
         extra_link_args.append("-Wl,--whole-archive")
         extra_link_args.extend(static_lib_paths)
