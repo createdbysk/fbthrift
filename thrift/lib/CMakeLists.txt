@@ -336,6 +336,8 @@ if(thriftpy3)
       python/client/OmniClient.cpp
       python/client/RequestChannel.cpp
       python/client/ssl.cpp
+      python/streaming/StreamElementEncoder.cpp
+      python/streaming/PythonUserException.cpp
       python/types.cpp
       python/Serializer.cpp
       py3/stream.cpp
