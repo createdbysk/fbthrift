@@ -548,6 +548,7 @@ sys.meta_path.insert(0, _ServerImplFinder())
       create_binding_symlink_server_impl
       thriftcpp2
       thrift_python_cpp
+      thrift_python_types_bindings
     WORKING_DIRECTORY ${_cybld}
   )
 
