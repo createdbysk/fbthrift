@@ -133,114 +133,30 @@ else:
     python_lib = sys.argv[python_lib_idx + 1][len("lib") : -len(".so")]
     del sys.argv[python_lib_idx : python_lib_idx + 2]
 
-    # Option C: Programmatic path detection for static library linking
-    # Parse library search paths from CMakeLists (passed via LIBRARY_DIRS env var)
+    # Library search paths from CMakeLists (passed via LIBRARY_DIRS env var)
     lib_search_paths = os.environ.get("LIBRARY_DIRS", "").split(":")
     lib_search_paths = [p for p in lib_search_paths if p]  # Filter empty strings
 
-    def find_static_lib(name, search_paths):
-        """Find .a file in search paths, return full path or None"""
-        for path in search_paths:
-            candidate = f"{path}/lib{name}.a"
-            if os.path.exists(candidate):
-                return candidate
-        return None
-
-    # Libraries we know are static (from getdeps build)
-    # Complete list extracted from CMake dependency analysis (2025-12-13)
-    # Source: CMake config files (*-targets.cmake) for Folly, Wangle, Fizz, and CMakeLists.txt
-    #
-    # NOTE: folly is NOT here - it must be linked dynamically!
-    # Static linking folly into 49 extensions = 49 × 657MB = ~32GB of redundant code.
-    # Build with --shared-libs to create libfolly.so instead.
-    static_lib_names = [
-        # Format library
-        "fmt",
-
-        # Folly dependencies (but NOT folly itself - use dynamic linking)
-        "double-conversion",
-        # "gflags",  # REMOVED: Causes fatal "linked both statically and dynamically" error at runtime
-        "z",  # zlib
-        "lz4",
-        "zstd",
-        "dwarf",
-        "iberty",  # libiberty
-
-        # Boost libraries (all static in this build)
-        "boost_context",
-        "boost_filesystem",
-        "boost_program_options",  # Required by folly
-        "boost_regex",
-        "boost_thread",
-
-        # Wangle and Fizz
-        "wangle",
-        "fizz",
-        "oqs",  # Open Quantum Safe - post-quantum crypto for Fizz
-
-        # Thrift core libraries
-        "common",  # Contains tree_printer, universal_name, etc.
-        "thrift-core",
-        "async",
-        "concurrency",
-        "runtime",
-        "transport",
-
-        # Thrift cpp2 libraries (13 libraries)
-        "rpcmetadata",
-        "thriftannotation",
-        "thriftmetadata",
-        "thriftfrozen2",
-        "thriftprotocol",
-        "thrifttyperep",
-        "thrifttype",
-        "thriftanyrep",
-        "serverdbginfo",
-        "thriftcpp2",
-
-        # Python bindings
-        "thrift_python_cpp",
-
-        # Hash library
-        "xxhash",
+    # All C++ dependencies consolidated into libthrift_python_cpp.so
+    # Extensions only need to link to thrift_python_cpp + system libs
+    dynamic_libs = [
+        "thrift_python_cpp",  # Contains all thrift/folly/wangle/fizz code
+        "ssl", "crypto", "pthread", "aio",
+        "glog", "gflags", "event",
+        "lzma", "snappy", "sodium", "unwind",
     ]
 
-    # Find full paths to static libraries
-    static_lib_paths = []
-    # Libraries that must be dynamically linked
-    # folly: MUST be dynamic - static linking 49 extensions = 32GB redundant code!
-    # gflags: Has runtime duplicate-linking detection, MUST be dynamic only
-    # Build with --shared-libs to create libfolly.so
-    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind", "aio", "pthread", "gflags", "folly", "folly_python_cpp"]
-    for name in static_lib_names:
-        path = find_static_lib(name, lib_search_paths)
-        if path:
-            static_lib_paths.append(path)
-        else:
-            # Fallback to -l flag if .a file not found
-            dynamic_libs.append(name)
-
-    # Build linker args with --whole-archive to force inclusion of all static library code
     extra_link_args = []
 
-    # Read LDFLAGS from environment (allows CMake and users to pass linker flags)
+    # Read LDFLAGS from environment
     ldflags_str = os.environ.get("LDFLAGS", "")
     if ldflags_str:
-        # Split LDFLAGS by whitespace, preserving quoted arguments
         import shlex
         extra_link_args.extend(shlex.split(ldflags_str))
 
-    # Add RPATH to embed library search paths in .so files for runtime resolution
-    # This allows .so files to find their dependencies (libfolly.so, libgflags.so, etc.)
-    # without relying solely on LD_LIBRARY_PATH
+    # RPATH for runtime library resolution
     for lib_path in lib_search_paths:
         extra_link_args.append(f"-Wl,-rpath,{lib_path}")
-
-    if static_lib_paths:
-        extra_link_args.append("-Wl,--whole-archive")
-        extra_link_args.extend(static_lib_paths)
-        extra_link_args.append("-Wl,--no-whole-archive")
-        extra_link_args.append("-Wl,--allow-multiple-definition")  # Ignore duplicate symbols
 
     common_options = {
         "language": "c++",
