@@ -86,6 +86,56 @@ if(thriftpy3)
   list(JOIN _all_cython_includes ":" cython_include_path)
   log_debug("cython_include_path='${cython_include_path}'")
 
+  #####################################################################
+  # Library Path Setup
+  #####################################################################
+  # Auto-discover all library directories from getdeps installed packages
+  # This ensures setup.py's find_static_lib() can find ALL libraries in static_lib_names
+  get_filename_component(GETDEPS_INSTALL_ROOT "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  file(GLOB installed_packages "${GETDEPS_INSTALL_ROOT}/*")
+  set(all_lib_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+  foreach(pkg ${installed_packages})
+    if(EXISTS "${pkg}/lib")
+      list(APPEND all_lib_dirs "${pkg}/lib")
+    endif()
+    if(EXISTS "${pkg}/lib64")
+      list(APPEND all_lib_dirs "${pkg}/lib64")
+    endif()
+  endforeach()
+  # Add system library paths
+  list(APPEND all_lib_dirs "/usr/lib64")
+  # Add python library directory
+  get_filename_component(python_lib ${PYTHON_LIBRARY} DIRECTORY)
+  list(APPEND all_lib_dirs "${python_lib}")
+
+  # Join all library directories with colons for -L flags and LIBRARY_DIRS
+  list(JOIN all_lib_dirs ":" library_dirs_str)
+  set(libs "-L${library_dirs_str}")
+
+  #####################################################################
+  # Install Directory
+  #####################################################################
+  set(py_install_dir ${CMAKE_INSTALL_PREFIX})
+  if (NOT ${PYTHON_PACKAGE_INSTALL_DIR} STREQUAL "")
+    set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
+  endif()
+
+  #####################################################################
+  # Linker Flags
+  #####################################################################
+  # Set default LDFLAGS for setup.py to fix undefined symbol issues
+  # --no-as-needed ensures libfolly.so is in NEEDED list even if linker thinks it's not needed
+  set(DEFAULT_SETUP_LDFLAGS "-Wl,--no-as-needed")
+
+  # Allow users to override via environment variable (e.g., for custom RPATH)
+  if(DEFINED ENV{LDFLAGS})
+    set(SETUP_LDFLAGS "$ENV{LDFLAGS}")
+    message(STATUS "Using user-provided LDFLAGS: ${SETUP_LDFLAGS}")
+  else()
+    set(SETUP_LDFLAGS "${DEFAULT_SETUP_LDFLAGS}")
+    message(STATUS "Using default LDFLAGS: ${SETUP_LDFLAGS}")
+  endif()
+
   ###
   # First, run Thrift compiler on metadata.thrift. thrift-python runtime depends on
   # apache.thrift.metadata package, which is created and installed later in setup.py.
@@ -582,46 +632,6 @@ sys.meta_path.insert(0, _ServerImplFinder())
       thrift_python_types_bindings
     WORKING_DIRECTORY ${_cybld}
   )
-
-  # Auto-discover all library directories from getdeps installed packages
-  # This ensures setup.py's find_static_lib() can find ALL libraries in static_lib_names
-  get_filename_component(GETDEPS_INSTALL_ROOT "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
-  file(GLOB installed_packages "${GETDEPS_INSTALL_ROOT}/*")
-  set(all_lib_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-  foreach(pkg ${installed_packages})
-    if(EXISTS "${pkg}/lib")
-      list(APPEND all_lib_dirs "${pkg}/lib")
-    endif()
-    if(EXISTS "${pkg}/lib64")
-      list(APPEND all_lib_dirs "${pkg}/lib64")
-    endif()
-  endforeach()
-  # Add system library paths
-  list(APPEND all_lib_dirs "/usr/lib64")
-  # Add python library directory
-  get_filename_component(python_lib ${PYTHON_LIBRARY} DIRECTORY)
-  list(APPEND all_lib_dirs "${python_lib}")
-
-  # Join all library directories with colons for -L flags and LIBRARY_DIRS
-  list(JOIN all_lib_dirs ":" library_dirs_str)
-  set(libs "-L${library_dirs_str}")
-  set(py_install_dir ${CMAKE_INSTALL_PREFIX})
-  if (NOT ${PYTHON_PACKAGE_INSTALL_DIR} STREQUAL "")
-    set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
-  endif()
-
-  # Set default LDFLAGS for setup.py to fix undefined symbol issues
-  # --no-as-needed ensures libfolly.so is in NEEDED list even if linker thinks it's not needed
-  set(DEFAULT_SETUP_LDFLAGS "-Wl,--no-as-needed")
-
-  # Allow users to override via environment variable (e.g., for custom RPATH)
-  if(DEFINED ENV{LDFLAGS})
-    set(SETUP_LDFLAGS "$ENV{LDFLAGS}")
-    message(STATUS "Using user-provided LDFLAGS: ${SETUP_LDFLAGS}")
-  else()
-    set(SETUP_LDFLAGS "${DEFAULT_SETUP_LDFLAGS}")
-    message(STATUS "Using default LDFLAGS: ${SETUP_LDFLAGS}")
-  endif()
 
   # Pass include paths to Cython via environment variable for build_ext phase
   # (needed for cythonize to find folly .pxd files)
