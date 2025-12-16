@@ -149,16 +149,15 @@ else:
     # Libraries we know are static (from getdeps build)
     # Complete list extracted from CMake dependency analysis (2025-12-13)
     # Source: CMake config files (*-targets.cmake) for Folly, Wangle, Fizz, and CMakeLists.txt
+    #
+    # NOTE: folly is NOT here - it must be linked dynamically!
+    # Static linking folly into 49 extensions = 49 × 657MB = ~32GB of redundant code.
+    # Build with --shared-libs to create libfolly.so instead.
     static_lib_names = [
         # Format library
         "fmt",
 
-        # Folly and its static dependencies
-        # Must be in static_lib_names (NOT dynamic_libs) to use --whole-archive
-        # --whole-archive forces ALL object files to be linked, including typeinfo symbols
-        # Without it, typeinfo for virtual classes like AsyncServerSocket::AcceptCallback is undefined
-        "folly",
-        "folly_python_cpp",
+        # Folly dependencies (but NOT folly itself - use dynamic linking)
         "double-conversion",
         # "gflags",  # REMOVED: Causes fatal "linked both statically and dynamically" error at runtime
         "z",  # zlib
@@ -208,10 +207,11 @@ else:
 
     # Find full paths to static libraries
     static_lib_paths = []
-    # Libraries that must be dynamically linked (to avoid duplicate linking errors)
+    # Libraries that must be dynamically linked
+    # folly: MUST be dynamic - static linking 49 extensions = 32GB redundant code!
     # gflags: Has runtime duplicate-linking detection, MUST be dynamic only
-    # Note: folly/folly_python_cpp are in static_lib_names with --whole-archive
-    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind", "aio", "pthread", "gflags"]
+    # Build with --shared-libs to create libfolly.so
+    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind", "aio", "pthread", "gflags", "folly", "folly_python_cpp"]
     for name in static_lib_names:
         path = find_static_lib(name, lib_search_paths)
         if path:
