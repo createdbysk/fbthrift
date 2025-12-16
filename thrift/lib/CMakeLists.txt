@@ -26,6 +26,16 @@ if(thriftpy)
 endif()
 
 if(thriftpy3)
+  # Debug option for build troubleshooting
+  option(DEBUG_BUILD "Enable debug messages" OFF)
+
+  # Debug logging function
+  function(log_debug msg)
+    if(DEBUG_BUILD)
+      message(STATUS "[DEBUG] ${msg}")
+    endif()
+  endfunction()
+
   set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/")
@@ -299,6 +309,8 @@ if(thriftpy3)
     ${_cybld}/thrift/python/streaming/py_promise_api.h
   )
 
+  log_debug("At API header generation: cython_include_path='${cython_include_path}'")
+
   add_custom_command(
     OUTPUT ${CYTHON_GENERATED_API_HEADERS}
     COMMAND ${CMAKE_COMMAND} -E env
@@ -561,6 +573,7 @@ sys.meta_path.insert(0, _ServerImplFinder())
     ${CMAKE_BINARY_DIR}/thrift/lib/cybld
   )
   list(JOIN _all_cython_includes ":" cython_include_path)
+  log_debug("After definition: cython_include_path='${cython_include_path}'")
 
 
   # Auto-discover all library directories from getdeps installed packages
