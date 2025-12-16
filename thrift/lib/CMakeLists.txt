@@ -495,12 +495,27 @@ if(thriftpy3)
   target_compile_definitions(thrift_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
   target_compile_definitions(thrift_python_cpp PRIVATE THRIFT_NO_HTTP_CLIENT_CHANNEL)
   target_include_directories(thrift_python_cpp PRIVATE "${_cybld}" ${PYTHON_INCLUDE_DIRS})
+  # Embed all static libs with --whole-archive for complete symbol visibility
+  # --allow-multiple-definition handles duplicate symbols across static libs
+  # (e.g., librpcmetadata.a and libthriftprotocol.a both compile TJSONProtocol.cpp)
   target_link_libraries(
     thrift_python_cpp
     PUBLIC
+      "-Wl,--whole-archive"
+      "-Wl,--allow-multiple-definition"
       thriftcpp2
+      rpcmetadata
+      thriftannotation
+      thriftmetadata
+      thriftfrozen2
+      thriftprotocol
+      thrifttyperep
+      thrifttype
+      thriftanyrep
+      serverdbginfo
       Folly::folly
       Folly::folly_python_cpp
+      "-Wl,--no-whole-archive"
     )
   install(
     TARGETS thrift_python_cpp
