@@ -379,6 +379,9 @@ if(thriftpy3)
     create_cython_types_api_symlink ALL
     DEPENDS ${CYTHON_API_SYMLINKS}
   )
+  # Explicit target-level dependency: symlinks wait for API headers to be generated
+  add_dependencies(create_cython_types_api_symlink thrift_python_types_bindings)
+
   add_library(
     thrift_python_cpp
       python/client/OmniClient.cpp
@@ -390,7 +393,7 @@ if(thriftpy3)
       python/Serializer.cpp
       py3/stream.cpp
   )
-  add_dependencies(thrift_python_cpp thrift_python_types_bindings create_cython_types_api_symlink)
+  add_dependencies(thrift_python_cpp create_cython_types_api_symlink)
   set_property(TARGET thrift_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(thrift_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
   target_compile_definitions(thrift_python_cpp PRIVATE THRIFT_NO_HTTP_CLIENT_CHANNEL)
