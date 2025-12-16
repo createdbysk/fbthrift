@@ -478,8 +478,9 @@ if(thriftpy3)
   # Explicit target-level dependency: symlinks wait for API headers to be generated
   add_dependencies(create_cython_types_api_symlink thrift_python_types_bindings)
 
+  # SHARED to reduce build time, disk space, and runtime memory
   add_library(
-    thrift_python_cpp
+    thrift_python_cpp SHARED
       python/client/OmniClient.cpp
       python/client/RequestChannel.cpp
       python/client/ssl.cpp
