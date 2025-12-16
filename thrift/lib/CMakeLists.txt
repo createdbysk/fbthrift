@@ -52,6 +52,40 @@ if(thriftpy3)
   file(TOUCH "${_cybld}/thrift/python/__init__.pxd")
   file(TOUCH "${_cybld}/thrift/py3/__init__.pxd")
 
+  #####################################################################
+  # Include Path Setup (must be done early, before API header generation)
+  #####################################################################
+  # Get include directories from dependencies
+  get_target_property(thrift_include_dirs thrift INCLUDE_DIRECTORIES)
+  get_target_property(fmt_include_dirs fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(glog_include_dirs glog::glog INTERFACE_INCLUDE_DIRECTORIES)
+
+  # For setup.py build_ext -I flags
+  set(inc_dirs "$<TARGET_PROPERTY:thrift,INCLUDE_DIRECTORIES>")
+  list(JOIN wangle_incs ":" wangle_include_dirs)
+  set(incs "-I$<JOIN:${inc_dirs},:>:${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${wangle_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib:${CMAKE_BINARY_DIR}/thrift/lib/cybld")
+  get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
+
+  # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
+  set(_all_cython_includes
+    # Thrift includes
+    ${thrift_include_dirs}
+    ${CMAKE_BINARY_DIR}/thrift/lib
+    ${CMAKE_BINARY_DIR}/thrift/lib/cybld
+    # Folly includes (including .pxd files)
+    ${FOLLY_INCLUDE_DIR}
+    ${FOLLY_PYTHON_SITE_PACKAGES}
+    # Boost
+    ${Boost_INCLUDE_DIRS}
+    # Other dependencies
+    ${fmt_include_dirs}
+    ${wangle_incs}
+    ${glog_include_dirs}
+  )
+  list(JOIN _all_cython_includes ":" cython_include_path)
+  log_debug("cython_include_path='${cython_include_path}'")
+
   ###
   # First, run Thrift compiler on metadata.thrift. thrift-python runtime depends on
   # apache.thrift.metadata package, which is created and installed later in setup.py.
@@ -355,9 +389,9 @@ if(thriftpy3)
     "${_cybld}/thrift/python/server_impl/interceptor/service_interceptor_api.h|${_cybld}/thrift/lib/python/server/interceptor/service_interceptor_api.h"
     "${_cybld}/thrift/py3/_stream_api.h|${_cybld}/thrift/lib/py3/stream_api.h"
     "${_cybld}/thrift/py3/_stream.h|${_cybld}/thrift/lib/py3/_stream.h"
-    "${_cybld}/generated/thrift/python/streaming/sink_api.h|${_cybld}/thrift/lib/python/streaming/sink_api.h"
-    "${_cybld}/generated/thrift/python/streaming/bidistream_api.h|${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
-    "${_cybld}/generated/thrift/python/streaming/py_promise_api.h|${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
+    "${_cybld}/thrift/python/streaming/sink_api.h|${_cybld}/thrift/lib/python/streaming/sink_api.h"
+    "${_cybld}/thrift/python/streaming/bidistream_api.h|${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
+    "${_cybld}/thrift/python/streaming/py_promise_api.h|${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
   )
 
   # Generate symlink commands from mappings
@@ -548,33 +582,6 @@ sys.meta_path.insert(0, _ServerImplFinder())
       thrift_python_types_bindings
     WORKING_DIRECTORY ${_cybld}
   )
-
-  set(inc_dirs "$<TARGET_PROPERTY:thrift,INCLUDE_DIRECTORIES>")
-  get_target_property(fmt_include_dirs fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
-  get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
-  get_target_property(thrift_include_dirs thrift INCLUDE_DIRECTORIES)
-  get_target_property(glog_include_dirs glog::glog INTERFACE_INCLUDE_DIRECTORIES)
-  list(JOIN wangle_incs ":" wangle_include_dirs)
-  set(incs "-I$<JOIN:${inc_dirs},:>:${FOLLY_INCLUDE_DIR}:${Boost_INCLUDE_DIRS}:${fmt_include_dirs}:${wangle_include_dirs}:${CMAKE_BINARY_DIR}/thrift/lib:${CMAKE_BINARY_DIR}/thrift/lib/cybld")
-  get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
-
-  # Create colon-separated include path for CYTHON_INCLUDE_PATH (same as incs but for env var)
-  # Collect all include directories into a single list first, then join with colons
-  # (embedding list variables directly in strings causes semicolon-separation, not colon-separation)
-  set(_all_cython_includes
-    ${thrift_include_dirs}
-    ${FOLLY_INCLUDE_DIR}
-    ${FOLLY_PYTHON_SITE_PACKAGES}
-    ${Boost_INCLUDE_DIRS}
-    ${fmt_include_dirs}
-    ${wangle_incs}
-    ${glog_include_dirs}
-    ${CMAKE_BINARY_DIR}/thrift/lib
-    ${CMAKE_BINARY_DIR}/thrift/lib/cybld
-  )
-  list(JOIN _all_cython_includes ":" cython_include_path)
-  log_debug("After definition: cython_include_path='${cython_include_path}'")
-
 
   # Auto-discover all library directories from getdeps installed packages
   # This ensures setup.py's find_static_lib() can find ALL libraries in static_lib_names
