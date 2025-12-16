@@ -154,8 +154,11 @@ else:
         "fmt",
 
         # Folly and its static dependencies
-        # "folly",  # REMOVED: Causes fatal "linked both statically and dynamically" error (same as gflags)
-        # "folly_python_cpp",  # REMOVED: Depends on folly, must also be dynamic
+        # Must be in static_lib_names (NOT dynamic_libs) to use --whole-archive
+        # --whole-archive forces ALL object files to be linked, including typeinfo symbols
+        # Without it, typeinfo for virtual classes like AsyncServerSocket::AcceptCallback is undefined
+        "folly",
+        "folly_python_cpp",
         "double-conversion",
         # "gflags",  # REMOVED: Causes fatal "linked both statically and dynamically" error at runtime
         "z",  # zlib
@@ -206,8 +209,9 @@ else:
     # Find full paths to static libraries
     static_lib_paths = []
     # Libraries that must be dynamically linked (to avoid duplicate linking errors)
-    # folly, gflags: Have runtime duplicate-linking detection, MUST be dynamic only
-    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind", "aio", "pthread", "gflags", "folly", "folly_python_cpp"]
+    # gflags: Has runtime duplicate-linking detection, MUST be dynamic only
+    # Note: folly/folly_python_cpp are in static_lib_names with --whole-archive
+    dynamic_libs = ["ssl", "crypto", "glog", "event", "lzma", "snappy", "sodium", "unwind", "aio", "pthread", "gflags"]
     for name in static_lib_names:
         path = find_static_lib(name, lib_search_paths)
         if path:
