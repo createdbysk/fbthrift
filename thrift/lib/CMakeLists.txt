@@ -322,80 +322,62 @@ if(thriftpy3)
     DEPENDS ${CYTHON_GENERATED_API_HEADERS}
   )
 
-  # After cython runs, link _types_api.h to types_api.h
-  add_custom_target(
-    create_cython_types_api_symlink ALL
-    DEPENDS ${_cybld}/thrift/python/_types_api.h
-    WORKING_DIRECTORY ${_cybld})
+  #####################################################################
+  # API Header Symlinks
+  #####################################################################
+  # WHY: C++ code includes headers as "thrift/lib/python/types_api.h"
+  #      but setup.py generates them at "thrift/python/_types_api.h"
+  #      Symlinks bridge this path difference.
+  #
+  # NOTE: server_impl in source paths (not server) because:
+  #       - C++ code expects import_thrift__python__server_impl__python_async_processor
+  #       - Buck uses package = "thrift.python.server_impl"
+  #       - Must match the import function names in generated API headers
+
+  # Define all API header symlink mappings (source|destination)
+  set(CYTHON_API_SYMLINK_MAPPINGS
+    "${_cybld}/thrift/python/_types_api.h|${_cybld}/thrift/lib/python/types_api.h"
+    "${_cybld}/thrift/python/_types.h|${_cybld}/thrift/lib/python/_types.h"
+    "${_cybld}/thrift/python/server_impl/python_async_processor_api.h|${_cybld}/thrift/lib/python/server/python_async_processor_api.h"
+    "${_cybld}/thrift/python/server_impl/request_context_api.h|${_cybld}/thrift/lib/python/server/request_context_api.h"
+    "${_cybld}/thrift/python/server_impl/interceptor/service_interceptor_api.h|${_cybld}/thrift/lib/python/server/interceptor/service_interceptor_api.h"
+    "${_cybld}/thrift/py3/_stream_api.h|${_cybld}/thrift/lib/py3/stream_api.h"
+    "${_cybld}/thrift/py3/_stream.h|${_cybld}/thrift/lib/py3/_stream.h"
+    "${_cybld}/generated/thrift/python/streaming/sink_api.h|${_cybld}/thrift/lib/python/streaming/sink_api.h"
+    "${_cybld}/generated/thrift/python/streaming/bidistream_api.h|${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
+    "${_cybld}/generated/thrift/python/streaming/py_promise_api.h|${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
+  )
+
+  # Generate symlink commands from mappings
+  set(CYTHON_API_SYMLINKS "")
+  set(SYMLINK_COMMANDS "")
+  foreach(mapping IN LISTS CYTHON_API_SYMLINK_MAPPINGS)
+    string(REPLACE "|" ";" pair ${mapping})
+    list(GET pair 0 source)
+    list(GET pair 1 dest)
+    list(APPEND CYTHON_API_SYMLINKS ${dest})
+    list(APPEND SYMLINK_COMMANDS COMMAND ${CMAKE_COMMAND} -E create_symlink ${source} ${dest})
+  endforeach()
+
+  # Create destination directories
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server/interceptor")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/streaming")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/py3/")
 
+  # Create all symlinks (OUTPUT ensures files exist before dependent targets build)
   add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/_types_api.h" "${_cybld}/thrift/lib/python/types_api.h"
+    OUTPUT ${CYTHON_API_SYMLINKS}
+    ${SYMLINK_COMMANDS}
+    DEPENDS ${CYTHON_GENERATED_API_HEADERS}
+    COMMENT "Creating symlinks to Cython API headers"
   )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/_types.h" "${_cybld}/thrift/lib/python/_types.h"
-  )
-  # Changed from server/ to server_impl/ because:
-  # - C++ code expects import_thrift__python__server_impl__python_async_processor
-  # - Buck uses package = "thrift.python.server_impl" which makes Cython generate server_impl API functions
-  # - Must match the import function names in the generated API headers
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server_impl/python_async_processor_api.h" "${_cybld}/thrift/lib/python/server/python_async_processor_api.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server_impl/request_context_api.h" "${_cybld}/thrift/lib/python/server/request_context_api.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server_impl/interceptor/service_interceptor_api.h" "${_cybld}/thrift/lib/python/server/interceptor/service_interceptor_api.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/_stream_api.h" "${_cybld}/thrift/lib/py3/stream_api.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/_stream.h" "${_cybld}/thrift/lib/py3/_stream.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/generated/thrift/python/streaming/sink_api.h" "${_cybld}/thrift/lib/python/streaming/sink_api.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/generated/thrift/python/streaming/bidistream_api.h" "${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
-  )
-  add_custom_command(
-    TARGET
-    create_cython_types_api_symlink
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_cybld}/generated/thrift/python/streaming/py_promise_api.h" "${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
+
+  # Target for dependency tracking
+  add_custom_target(
+    create_cython_types_api_symlink ALL
+    DEPENDS ${CYTHON_API_SYMLINKS}
   )
   add_library(
     thrift_python_cpp
