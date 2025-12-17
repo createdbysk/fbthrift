@@ -12,6 +12,9 @@ subdir = fmt-11.0.2
 [cmake.defines]
 FMT_TEST = OFF
 FMT_DOC = OFF
+# Build as shared library so Python extensions can find fmt symbols at runtime
+# (fmt uses -fvisibility=hidden, so static linking leaves symbols unexported)
+BUILD_SHARED_LIBS = ON
 
 [homebrew]
 fmt
