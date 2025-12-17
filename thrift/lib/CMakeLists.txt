@@ -509,16 +509,16 @@ if(thriftpy3)
   target_compile_definitions(thrift_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
   target_compile_definitions(thrift_python_cpp PRIVATE THRIFT_NO_HTTP_CLIENT_CHANNEL)
   target_include_directories(thrift_python_cpp PRIVATE "${_cybld}" ${PYTHON_INCLUDE_DIRS})
-  # Embed all static libs with --whole-archive for complete symbol visibility
+  # Link strategy:
+  # - STATIC libs (thrift + deps): embed with --whole-archive to consolidate into single .so
+  # - SHARED libs (folly, fmt, glog): link normally, become runtime deps (NEEDED)
   # --allow-multiple-definition handles duplicate symbols across static libs
   # (e.g., librpcmetadata.a and libthriftprotocol.a both compile TJSONProtocol.cpp)
-  # --exclude-libs,NONE prevents linker from hiding symbols from static libraries
-  # (needed because fmt/folly are compiled with -fvisibility=hidden)
-  # Also include dependencies needed by folly Python extensions (iobuf.so, executor.so)
+  # libevent/libiberty: needed for undefined symbols, --allow-multiple-definition handles duplicates
   target_link_libraries(
     thrift_python_cpp
     PUBLIC
-      "-Wl,--exclude-libs=NONE"
+      # Static libs - embed all symbols
       "-Wl,--whole-archive"
       "-Wl,--allow-multiple-definition"
       thriftcpp2
@@ -531,14 +531,15 @@ if(thriftpy3)
       thrifttype
       thriftanyrep
       serverdbginfo
-      Folly::folly
-      Folly::folly_python_cpp
-      fmt::fmt
-      glog::glog
       libevent::core
       libevent::extra
       ${LIBIBERTY_LIBRARIES}
       "-Wl,--no-whole-archive"
+      # Shared libs - runtime deps (see manifests/folly, manifests/fmt)
+      Folly::folly
+      Folly::folly_python_cpp
+      fmt::fmt
+      glog::glog
     )
   install(
     TARGETS thrift_python_cpp
