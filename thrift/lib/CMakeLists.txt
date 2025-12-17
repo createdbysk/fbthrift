@@ -30,10 +30,19 @@ if(thriftpy3)
   option(DEBUG_BUILD "Enable debug messages" OFF)
 
   # Find libevent for Python bindings (needed for folly Python extensions)
+  # Force static linking to embed symbols into libthrift_python_cpp.so
+  # From LibeventConfig.cmake: "To find the static ones instead, you must set
+  # the LIBEVENT_STATIC_LINK variable to TRUE before calling find_package"
+  set(LIBEVENT_STATIC_LINK TRUE)
   find_package(Libevent REQUIRED CONFIG)
 
   # Find libiberty (provides cplus_demangle_v3_callback needed by folly)
   find_package(Libiberty REQUIRED)
+
+  # Find gflags - use namespaced gflags::gflags_static target for static symbol embedding
+  # gflags-config.cmake defaults to nonamespace; set this to get gflags:: prefix
+  set(GFLAGS_USE_TARGET_NAMESPACE TRUE)
+  find_package(gflags REQUIRED)
 
   # Debug logging function
   function(log_debug msg)
@@ -524,7 +533,7 @@ if(thriftpy3)
       Folly::folly_python_cpp
       fmt::fmt
       glog::glog
-      gflags
+      gflags::gflags_static
       libevent::core
       libevent::extra
       ${LIBIBERTY_LIBRARIES}
