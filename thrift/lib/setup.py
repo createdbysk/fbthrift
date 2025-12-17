@@ -399,7 +399,10 @@ else:
         ),
         Extension(
             "thrift.py3.server",
-            sources=["thrift/py3/server.pyx"],
+            sources=[
+                "thrift/py3/server.pyx",
+                "thrift/python/server/event_handler.cpp",
+            ],
             **common_options,
         ),
         Extension(
