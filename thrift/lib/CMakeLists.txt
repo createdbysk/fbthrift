@@ -512,12 +512,13 @@ if(thriftpy3)
   # Embed all static libs with --whole-archive for complete symbol visibility
   # --allow-multiple-definition handles duplicate symbols across static libs
   # (e.g., librpcmetadata.a and libthriftprotocol.a both compile TJSONProtocol.cpp)
-  # Version script forces ALL symbols to be exported (overrides -fvisibility=hidden)
+  # --exclude-libs,NONE prevents linker from hiding symbols from static libraries
+  # (needed because fmt/folly are compiled with -fvisibility=hidden)
   # Also include dependencies needed by folly Python extensions (iobuf.so, executor.so)
   target_link_libraries(
     thrift_python_cpp
     PUBLIC
-      "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/python/export_all.version"
+      "-Wl,--exclude-libs=NONE"
       "-Wl,--whole-archive"
       "-Wl,--allow-multiple-definition"
       thriftcpp2
