@@ -498,6 +498,7 @@ if(thriftpy3)
   # Embed all static libs with --whole-archive for complete symbol visibility
   # --allow-multiple-definition handles duplicate symbols across static libs
   # (e.g., librpcmetadata.a and libthriftprotocol.a both compile TJSONProtocol.cpp)
+  # Also include dependencies needed by folly Python extensions (iobuf.so, executor.so)
   target_link_libraries(
     thrift_python_cpp
     PUBLIC
@@ -515,6 +516,12 @@ if(thriftpy3)
       serverdbginfo
       Folly::folly
       Folly::folly_python_cpp
+      fmt::fmt
+      glog::glog
+      gflags
+      libevent::core
+      libevent::extra
+      iberty
       "-Wl,--no-whole-archive"
     )
   install(
