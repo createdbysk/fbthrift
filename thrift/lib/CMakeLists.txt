@@ -39,10 +39,9 @@ if(thriftpy3)
   # Find libiberty (provides cplus_demangle_v3_callback needed by folly)
   find_package(Libiberty REQUIRED)
 
-  # Find gflags - use namespaced gflags::gflags_static target for static symbol embedding
-  # gflags-config.cmake defaults to nonamespace; set this to get gflags:: prefix
-  set(GFLAGS_USE_TARGET_NAMESPACE TRUE)
-  find_package(gflags REQUIRED)
+  # NOTE: Do NOT add gflags here. glog::glog (shared) depends on gflags (shared).
+  # If we embed gflags_static AND glog loads gflags_shared at runtime = conflict.
+  # Let glog's dependency chain provide gflags at runtime.
 
   # Debug logging function
   function(log_debug msg)
@@ -513,10 +512,12 @@ if(thriftpy3)
   # Embed all static libs with --whole-archive for complete symbol visibility
   # --allow-multiple-definition handles duplicate symbols across static libs
   # (e.g., librpcmetadata.a and libthriftprotocol.a both compile TJSONProtocol.cpp)
+  # Version script forces ALL symbols to be exported (overrides -fvisibility=hidden)
   # Also include dependencies needed by folly Python extensions (iobuf.so, executor.so)
   target_link_libraries(
     thrift_python_cpp
     PUBLIC
+      "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/python/export_all.version"
       "-Wl,--whole-archive"
       "-Wl,--allow-multiple-definition"
       thriftcpp2
@@ -533,7 +534,6 @@ if(thriftpy3)
       Folly::folly_python_cpp
       fmt::fmt
       glog::glog
-      gflags::gflags_static
       libevent::core
       libevent::extra
       ${LIBIBERTY_LIBRARIES}
