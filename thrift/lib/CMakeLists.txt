@@ -29,6 +29,12 @@ if(thriftpy3)
   # Debug option for build troubleshooting
   option(DEBUG_BUILD "Enable debug messages" OFF)
 
+  # Find libevent for Python bindings (needed for folly Python extensions)
+  find_package(Libevent REQUIRED CONFIG)
+
+  # Find libiberty (provides cplus_demangle_v3_callback needed by folly)
+  find_package(Libiberty REQUIRED)
+
   # Debug logging function
   function(log_debug msg)
     if(DEBUG_BUILD)
@@ -521,7 +527,7 @@ if(thriftpy3)
       gflags
       libevent::core
       libevent::extra
-      iberty
+      ${LIBIBERTY_LIBRARIES}
       "-Wl,--no-whole-archive"
     )
   install(
