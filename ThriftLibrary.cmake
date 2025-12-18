@@ -130,7 +130,7 @@ macro(thrift_library
   include_prefix
 )
   # For Python languages, just generate - no C++ library needed
-  if("${language}" STREQUAL "python" OR "${language}" STREQUAL "py")
+  if("${language}" STREQUAL "thrift_python" OR "${language}" STREQUAL "py")
     thrift_generate(
       "${file_name}"
       "${services}"
@@ -294,7 +294,7 @@ macro(thrift_generate
   elseif("${language}" STREQUAL "py3")
     set(gen_language "mstch_py3")
     file(WRITE "${output_path}/gen-${language}/${source_file_name}/__init__.py")
-  elseif("${language}" STREQUAL "python")
+  elseif("${language}" STREQUAL "thrift_python")
     set(gen_language "mstch_python")
     # Determine output subdirectory based on NAMESPACE parameter
     # NAMESPACE should match the namespace py3 directive in the thrift file
@@ -305,7 +305,6 @@ macro(thrift_generate
       # No namespace means output directly to gen-python/<file_name>/
       set(_python_output_subdir "${source_file_name}")
     endif()
-    # file(WRITE "${output_path}/gen-${language}/${_python_output_subdir}/__init__.py")
     # Override the C++ file lists with Python file lists
     set("${target_file_name}-${language}-HEADERS" "")
     set("${target_file_name}-${language}-SOURCES"
