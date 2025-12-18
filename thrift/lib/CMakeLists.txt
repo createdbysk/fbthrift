@@ -631,6 +631,11 @@ In OSS/CMake builds, extensions are built directly under server_impl.
   file(WRITE "${_cybld}/thrift/python/server_impl/interceptor/__init__.py" "")
 
   #####
+  # Generate thrift-python test types
+  #####
+  add_subdirectory(python/test)
+
+  #####
   # Now build everything else in lib/python, including all remaining Cython
   # modules that depend on types_api.h and thrift_python_cpp.
   #####
