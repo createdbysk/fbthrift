@@ -99,7 +99,7 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
     COMMAND
       "${CMAKE_COMMAND}" -E make_directory "${output_dir}"
     COMMAND
-      "${FBTHRIFT_COMPILER}"
+      "${THRIFT1}"
       ${gen_arg}
       "${thrift_include_options}"
       -o "${output_dir}"
@@ -109,7 +109,7 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
     MAIN_DEPENDENCY
       "${THRIFT_FILE}"
     DEPENDS
-      "${FBTHRIFT_COMPILER}"
+      "${THRIFT1}"
   )
 
   # Create __init__.py for the package
@@ -121,12 +121,14 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
   list(APPEND generated_sources "${python_output_dir}/__init__.py")
 
   # Create Python library target
-  # Depends on thrift_python (the thrift-python runtime, distinct from thrift_py)
+  # Note: thrift_python runtime is built via setup.py, not add_fb_python_library,
+  # so we don't add it as a CMake dependency here. The runtime must be installed
+  # separately.
   add_fb_python_library(
     "${LIB_NAME}"
     BASE_DIR "${output_dir}/gen-python"
     NAMESPACE ""
     SOURCES ${generated_sources}
-    DEPENDS ${ARG_DEPENDS} thrift_python
+    DEPENDS ${ARG_DEPENDS}
   )
 endfunction()
