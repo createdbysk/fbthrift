@@ -34,3 +34,13 @@ target_link_libraries(
     Folly::folly
     wangle::wangle
 )
+
+# Generate thrift-python code for the Echo example
+if(thriftpy3)
+  add_fbthrift_python_library(
+    chatroom_python
+    chatroom.thrift
+    SERVICES ChatRoomService Echo
+    NAMESPACE "example.chatroom"
+  )
+endif()
