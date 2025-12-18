@@ -498,10 +498,19 @@ if(thriftpy3)
       python/client/OmniClient.cpp
       python/client/RequestChannel.cpp
       python/client/ssl.cpp
-      python/streaming/StreamElementEncoder.cpp
-      python/streaming/PythonUserException.cpp
-      python/types.cpp
       python/Serializer.cpp
+      python/server/event_handler.cpp
+      python/server/flagged/RcAwareTaskPatch.cpp
+      python/server/interceptor/PythonServiceInterceptor.cpp
+      python/server/PythonAsyncProcessor.cpp
+      python/server/PythonAsyncProcessorFactory.cpp
+      python/server/RequestContextExtractor.cpp
+      python/std_libcpp.cpp
+      python/streaming/bidistream.cpp
+      python/streaming/PythonUserException.cpp
+      python/streaming/Sink.cpp
+      python/streaming/StreamElementEncoder.cpp
+      python/types.cpp
       py3/stream.cpp
   )
   add_dependencies(thrift_python_cpp create_cython_types_api_symlink)
@@ -603,53 +612,19 @@ if(thriftpy3)
     )
   endforeach()
 
-  # Create server_impl/__init__.py with import hook (runtime)
+  # Create server_impl/__init__.py (simple package marker)
+  # Extensions are built directly under server_impl, no import hook needed
   file(WRITE "${_cybld}/thrift/python/server_impl/__init__.py" [=[
 """
-OSS compatibility shim: thrift.python.server_impl -> thrift.python.server
+thrift.python.server_impl - Server implementation submodules
 
-Internal Buck builds use package remapping. OSS CMake builds use this
-import hook to redirect server_impl imports to server modules.
+This package contains the server implementation modules that are imported
+by thrift.python.server and thrift.py3.server. The modules here avoid
+naming conflicts with the thrift.python.server extension module (.so).
+
+In Buck/internal builds, package remapping achieves this.
+In OSS/CMake builds, extensions are built directly under server_impl.
 """
-import sys
-import importlib
-import importlib.abc
-import importlib.machinery
-import importlib.util
-
-
-class _ServerImplFinder(importlib.abc.MetaPathFinder):
-    """Redirect thrift.python.server_impl.* to thrift.python.server.*"""
-
-    def find_spec(self, fullname, path, target=None):
-        if not fullname.startswith("thrift.python.server_impl."):
-            return None
-        real_name = fullname.replace(".server_impl.", ".server.")
-        real_spec = importlib.util.find_spec(real_name)
-        if real_spec is None:
-            return None
-        return importlib.machinery.ModuleSpec(
-            fullname,
-            _ServerImplLoader(real_name),
-            origin=real_spec.origin,
-            is_package=real_spec.submodule_search_locations is not None,
-        )
-
-
-class _ServerImplLoader(importlib.abc.Loader):
-    def __init__(self, real_name):
-        self.real_name = real_name
-
-    def create_module(self, spec):
-        real_module = importlib.import_module(self.real_name)
-        sys.modules[spec.name] = real_module
-        return real_module
-
-    def exec_module(self, module):
-        pass
-
-
-sys.meta_path.insert(0, _ServerImplFinder())
 ]=])
 
   # Create empty __init__.py for interceptor subpackage
