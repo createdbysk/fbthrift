@@ -335,32 +335,10 @@ else:
             sources=["thrift/python/mutable_converter.pyx"],
             **common_options,
         ),
-        Extension(
-            "thrift.python.server.async_processor",
-            sources=["thrift/python/server/async_processor.pyx"],
-            **common_options,
-        ),
-        Extension(
-            "thrift.python.server.interceptor.server_module",
-            sources=["thrift/python/server/interceptor/server_module.pyx"],
-            **common_options,
-        ),
-        Extension(
-            "thrift.python.server.interceptor.service_interceptor",
-            sources=["thrift/python/server/interceptor/service_interceptor.pyx"],
-            **common_options,
-        ),
-        Extension(
-            "thrift.python.server.python_async_processor",
-            sources=["thrift/python/server/python_async_processor.pyx"],
-            **common_options,
-        ),
-        Extension(
-            "thrift.python.server.request_context",
-            sources=["thrift/python/server/request_context.pyx"],
-            **common_options,
-        ),
-        # thrift.python.server_impl extension modules (OSS compatibility shim)
+        # NOTE: thrift.python.server.* submodule extensions are NOT built here.
+        # They would conflict with the thrift.python.server extension module (.so).
+        # All imports use thrift.python.server_impl.* instead (see server.pyx, py3/server.pyx).
+        # thrift.python.server_impl extension modules
         Extension(
             "thrift.python.server_impl.async_processor",
             sources=["thrift/python/server_impl/async_processor.pyx"],
@@ -374,6 +352,11 @@ else:
         Extension(
             "thrift.python.server_impl.request_context",
             sources=["thrift/python/server_impl/request_context.pyx"],
+            **common_options,
+        ),
+        Extension(
+            "thrift.python.server_impl.interceptor.server_module",
+            sources=["thrift/python/server_impl/interceptor/server_module.pyx"],
             **common_options,
         ),
         Extension(
@@ -452,8 +435,8 @@ else:
             "thrift.python.any",
             "thrift.python.client",
             "thrift.python.conformance",
-            "thrift.python.server",
-            "thrift.python.server.interceptor",
+            # NOTE: thrift.python.server is an extension module, NOT a package.
+            # The server submodules live in thrift.python.server_impl instead.
             "thrift.python.server_impl",
             "thrift.python.server_impl.interceptor",
             # "thrift.python.streaming",  # DISABLED FOR NOW
