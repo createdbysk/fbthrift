@@ -37,10 +37,18 @@ target_link_libraries(
 
 # Generate thrift-python code for the Echo example
 if(thriftpy3)
+  include(FBThriftPythonLibrary)
   add_fbthrift_python_library(
     chatroom_python
     chatroom.thrift
     SERVICES ChatRoomService Echo
     NAMESPACE "example.chatroom"
+  )
+
+  # Install Python example scripts
+  install(
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../python/
+    DESTINATION share/fbthrift/examples/python
+    FILES_MATCHING PATTERN "*.py"
   )
 endif()
