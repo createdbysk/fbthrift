@@ -12,5 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Generate thrift code (cpp2 and thrift-python) from interface definitions
 add_subdirectory(if)
-add_subdirectory(cpp2)
+
+# cpp2 examples are disabled by default due to build compatibility issues
+option(thrift_build_examples_cpp2
+  "Build C++ thrift examples"
+  OFF
+)
+if(thrift_build_examples_cpp2)
+  add_subdirectory(cpp2)
+endif()
