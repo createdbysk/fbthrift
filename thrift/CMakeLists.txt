@@ -23,6 +23,14 @@ if (THRIFT_LIB_ONLY OR build_all)
   add_subdirectory(lib)
 endif ()
 
+option(thrift_build_examples
+  "Build thrift examples (interface definitions and generated code)"
+  OFF
+)
+if(thrift_build_examples)
+  add_subdirectory(example)
+endif()
+
 # Install CMake package configuration files for Thrift.
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
