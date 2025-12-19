@@ -631,6 +631,83 @@ In OSS/CMake builds, extensions are built directly under server_impl.
   file(WRITE "${_cybld}/thrift/python/server_impl/interceptor/__init__.py" "")
 
   #####
+  # Create test package symlinks for thrift.python.test and thrift.python.test.adapters
+  #####
+  add_custom_target(create_binding_symlink_test ALL)
+
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/test")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/test/adapters")
+
+  file(GLOB TestFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/*.py"
+  )
+
+  foreach(_src ${TestFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/python/test/${_target_file}"
+    )
+  endforeach()
+
+  file(GLOB TestAdapterFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/adapters/*.py"
+  )
+
+  foreach(_src ${TestAdapterFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/python/test/adapters/${_target_file}"
+    )
+  endforeach()
+
+  #####
+  # Create thrift.lib.python.test package symlinks (fbcode import path shim)
+  # This mirrors thrift.python.test to thrift.lib.python.test for fbcode compatibility
+  #####
+  add_custom_target(create_binding_symlink_lib_test ALL)
+
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test/event_handlers")
+
+  foreach(_src ${TestFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/lib/python/test/${_target_file}"
+    )
+  endforeach()
+
+  file(GLOB TestEventHandlerFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/event_handlers/*.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/event_handlers/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/event_handlers/*.pxd"
+  )
+
+  foreach(_src ${TestEventHandlerFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/lib/python/test/event_handlers/${_target_file}"
+    )
+  endforeach()
+
+  #####
   # Generate thrift-python test types
   #####
   add_subdirectory(python/test)

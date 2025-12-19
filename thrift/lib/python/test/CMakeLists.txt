@@ -258,7 +258,7 @@ thrift_library(
   "${CMAKE_CURRENT_BINARY_DIR}"
   ""
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE ""
+  NAMESPACE "thrift.python.test"
 )
 
 thrift_library(
@@ -270,5 +270,55 @@ thrift_library(
   "${CMAKE_CURRENT_BINARY_DIR}"
   ""
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE ""
+  NAMESPACE "thrift.python.test"
+)
+
+set(THRIFT_PYTHON_TEST_DIR "${CMAKE_SOURCE_DIR}/thrift/test/thrift-python")
+
+thrift_library(
+  "struct_test"
+  ""
+  "python"
+  ""
+  "${THRIFT_PYTHON_TEST_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "thrift.test.thrift_python"
+)
+
+thrift_library(
+  "union_test"
+  ""
+  "python"
+  ""
+  "${THRIFT_PYTHON_TEST_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "thrift.test.thrift_python"
+)
+
+thrift_library(
+  "enum_test"
+  ""
+  "python"
+  ""
+  "${THRIFT_PYTHON_TEST_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "thrift.test.thrift_python"
+)
+
+thrift_library(
+  "included"
+  ""
+  "python"
+  ""
+  "${THRIFT_PYTHON_TEST_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "thrift.test.thrift_python"
 )
