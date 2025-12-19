@@ -322,3 +322,26 @@ thrift_library(
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
   NAMESPACE "thrift.test.thrift_python"
 )
+
+#####
+# Create symlink for thrift.test.thrift_python namespace
+# Files are generated in gen-python/thrift/test/thrift_python/
+# but need to be importable from cybld/thrift/test/thrift_python/
+#####
+set(_cybld "${CMAKE_BINARY_DIR}/thrift/lib/cybld/build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+
+add_custom_target(create_binding_symlink_thrift_test ALL
+  DEPENDS
+    struct_test-python-target
+    union_test-python-target
+    enum_test-python-target
+    included-python-target
+)
+
+add_custom_command(
+  TARGET create_binding_symlink_thrift_test
+  PRE_BUILD
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${CMAKE_CURRENT_BINARY_DIR}/gen-python/thrift/test"
+    "${_cybld}/thrift/test"
+)
