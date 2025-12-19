@@ -435,12 +435,16 @@ else:
             "thrift.python.any",
             "thrift.python.client",
             "thrift.python.conformance",
-            # NOTE: thrift.python.server is an extension module, NOT a package.
-            # The server submodules live in thrift.python.server_impl instead.
             "thrift.python.server_impl",
             "thrift.python.server_impl.interceptor",
             # "thrift.python.streaming",  # DISABLED FOR NOW
+            "thrift.python.test",
+            "thrift.python.test.adapters",
             "thrift.py3",
+            "thrift.lib",
+            "thrift.lib.python",
+            "thrift.lib.python.test",
+            "thrift.lib.python.test.event_handlers",
             "apache.thrift.metadata",
         ],
         package_data={"": ["*.pxd", "*.h"]},
