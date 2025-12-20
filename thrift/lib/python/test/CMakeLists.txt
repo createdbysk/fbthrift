@@ -694,6 +694,18 @@ foreach(test_file ${THRIFT_PYTHON_TEST_FILES} ${THRIFT_PYTHON_TEST_HELPERS})
   )
 endforeach()
 
+# Add server/test .py file to thrift_tests package
+# This file is in python/server/test/ but needs to be accessible via thrift_tests
+set(_server_test_src "${CMAKE_CURRENT_SOURCE_DIR}/../server/test/python_async_processor_factory_test.py")
+set(_server_test_dst "${_thrift_tests_dir}/python_async_processor_factory_test.py")
+add_custom_command(
+  OUTPUT "${_server_test_dst}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_server_test_src}" "${_server_test_dst}"
+  DEPENDS "${_server_test_src}" "${_thrift_tests_dir}/__init__.py"
+  COMMENT "Symlinking python_async_processor_factory_test.py to thrift_tests package"
+)
+list(APPEND TEST_SYMLINK_OUTPUTS "${_server_test_dst}")
+
 # Target to create all test symlinks
 add_custom_target(thrift_python_test_package ALL
   DEPENDS "${_thrift_tests_dir}/__init__.py" ${TEST_SYMLINK_OUTPUTS}
@@ -805,5 +817,19 @@ add_test(
   WORKING_DIRECTORY ${_gen_python}
 )
 set_tests_properties(thrift_python_request_context_extractor_test PROPERTIES
+  ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+)
+
+#####
+# thrift/lib/python/server/test/ tests
+# Note: The .py test file imports from thrift.python.test.python_async_processor_factory_test
+# We symlink the .py to thrift_tests/ and run via thrift_tests module
+#####
+add_test(
+  NAME thrift_python_server_python_async_processor_factory_test
+  COMMAND ${Python3_EXECUTABLE} -m unittest thrift_tests.python_async_processor_factory_test -v
+  WORKING_DIRECTORY ${_gen_python}
+)
+set_tests_properties(thrift_python_server_python_async_processor_factory_test PROPERTIES
   ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
 )
