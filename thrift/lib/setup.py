@@ -424,6 +424,12 @@ else:
             sources=["thrift/py3/reflection.pyx"],
             **common_options,
         ),
+        # Test extension modules
+        Extension(
+            "thrift.python.test.request_context_extractor.request_context_extractor",
+            sources=["thrift/python/test/request_context_extractor/request_context_extractor.pyx"],
+            **common_options,
+        ),
     ]
 
     setup(
@@ -440,6 +446,7 @@ else:
             # "thrift.python.streaming",  # DISABLED FOR NOW
             "thrift.python.test",
             "thrift.python.test.adapters",
+            "thrift.python.test.request_context_extractor",
             "thrift.py3",
             "thrift.lib",
             "thrift.lib.python",
