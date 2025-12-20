@@ -430,6 +430,11 @@ else:
             sources=["thrift/python/test/request_context_extractor/request_context_extractor.pyx"],
             **common_options,
         ),
+        Extension(
+            "thrift.python.test.python_async_processor_factory_test",
+            sources=["thrift/python/test/python_async_processor_factory_test.pyx"],
+            **common_options,
+        ),
     ]
 
     setup(

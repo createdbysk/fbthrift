@@ -689,6 +689,26 @@ In OSS/CMake builds, extensions are built directly under server_impl.
     )
   endforeach()
 
+  # Create server/test Cython module symlinks in thrift/python/test/
+  # Note: The Cython module needs to be at thrift.python.test.python_async_processor_factory_test
+  # because thrift.python.server is an extension module (.so), not a package
+  file(GLOB ServerTestCythonFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/test/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/test/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/test/*.pyi"
+  )
+
+  foreach(_src ${ServerTestCythonFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/python/test/${_target_file}"
+    )
+  endforeach()
+
   #####
   # Create thrift.lib.python.test package symlinks (fbcode import path shim)
   # This mirrors thrift.python.test to thrift.lib.python.test for fbcode compatibility
