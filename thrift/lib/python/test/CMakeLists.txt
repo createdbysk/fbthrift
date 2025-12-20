@@ -43,6 +43,32 @@ thrift_library(
   NAMESPACE ""
 )
 
+# derived.thrift - no py3 namespace, includes testing.thrift
+thrift_library(
+  "derived"
+  "DerivedTestingService"
+  "python"
+  ""
+  "${PY3_TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE ""
+)
+
+# convertible.thrift - no py3 namespace
+thrift_library(
+  "convertible"
+  ""
+  "python"
+  ""
+  "${PY3_TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE ""
+)
+
 # Files with namespace py3 "testing"
 thrift_library(
   "testing"
@@ -350,6 +376,74 @@ thrift_library(
   NAMESPACE "thrift.test.thrift_python"
 )
 
+# transitive_deps thrift files - from py3/test/transitive_deps/
+# namespace py3 transitive_deps -> output to transitive_deps/a/, transitive_deps/b/, etc.
+set(TRANSITIVE_DEPS_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test/transitive_deps)
+
+thrift_library(
+  "a"
+  ""
+  "python"
+  ""
+  "${TRANSITIVE_DEPS_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "transitive_deps"
+)
+
+thrift_library(
+  "b"
+  ""
+  "python"
+  ""
+  "${TRANSITIVE_DEPS_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "transitive_deps"
+)
+
+thrift_library(
+  "c"
+  ""
+  "python"
+  ""
+  "${TRANSITIVE_DEPS_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "transitive_deps"
+)
+
+thrift_library(
+  "d"
+  ""
+  "python"
+  ""
+  "${TRANSITIVE_DEPS_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "transitive_deps"
+)
+
+# terse_write.thrift - from thrift/test/terse_write/
+# namespace py3 apache.thrift.test.terse_write -> output to apache/thrift/test/terse_write/terse_write/
+set(TERSE_WRITE_DIR ${CMAKE_SOURCE_DIR}/thrift/test/terse_write)
+
+thrift_library(
+  "terse_write"
+  ""
+  "python"
+  ""
+  "${TERSE_WRITE_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "apache.thrift.test.terse_write"
+)
+
 #####
 # Create symlinks for test namespaces
 # gen-python/<namespace>/ -> cybld/<namespace>/
@@ -419,3 +513,22 @@ add_test_namespace_symlink(binary_direct
 add_test_namespace_symlink(iobuf_direct
   "${_gen_python}/iobuf" "${_cybld}/iobuf"
   iobuf-python-target)
+
+# 7. derived and convertible (no namespace) -> cybld/derived, cybld/convertible
+add_test_namespace_symlink(derived_direct
+  "${_gen_python}/derived" "${_cybld}/derived"
+  derived-python-target)
+
+add_test_namespace_symlink(convertible_direct
+  "${_gen_python}/convertible" "${_cybld}/convertible"
+  convertible-python-target)
+
+# 8. transitive_deps namespace -> cybld/transitive_deps
+add_test_namespace_symlink(transitive_deps
+  "${_gen_python}/transitive_deps" "${_cybld}/transitive_deps"
+  a-python-target b-python-target c-python-target d-python-target)
+
+# 9. apache.thrift.test.terse_write namespace -> cybld/apache/thrift/test/terse_write
+add_test_namespace_symlink(apache_thrift_test
+  "${_gen_python}/apache" "${_cybld}/apache"
+  terse_write-python-target)
