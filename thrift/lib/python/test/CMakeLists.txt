@@ -324,24 +324,62 @@ thrift_library(
 )
 
 #####
-# Create symlink for thrift.test.thrift_python namespace
-# Files are generated in gen-python/thrift/test/thrift_python/
-# but need to be importable from cybld/thrift/test/thrift_python/
+# Create symlinks for test namespaces
+# gen-python/<namespace>/ -> cybld/<namespace>/
 #####
 set(_cybld "${CMAKE_BINARY_DIR}/thrift/lib/cybld/build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+set(_gen_python "${CMAKE_CURRENT_BINARY_DIR}/gen-python")
 
-add_custom_target(create_binding_symlink_thrift_test ALL
-  DEPENDS
-    struct_test-python-target
-    union_test-python-target
-    enum_test-python-target
-    included-python-target
-)
+# Helper function: create symlink from gen-python to cybld
+function(add_test_namespace_symlink name source_path target_path)
+  add_custom_target(create_binding_symlink_${name} ALL
+    DEPENDS ${ARGN}
+  )
+  add_custom_command(
+    TARGET create_binding_symlink_${name}
+    PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${source_path}" "${target_path}"
+  )
+endfunction()
 
-add_custom_command(
-  TARGET create_binding_symlink_thrift_test
-  PRE_BUILD
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${CMAKE_CURRENT_BINARY_DIR}/gen-python/thrift/test"
-    "${_cybld}/thrift/test"
-)
+# Helper function: create multiple symlinks for one target
+function(add_test_namespace_symlinks name)
+  add_custom_target(create_binding_symlink_${name} ALL
+    DEPENDS ${ARGN}
+  )
+endfunction()
+
+function(add_symlink_command target_name source_path target_path)
+  add_custom_command(
+    TARGET create_binding_symlink_${target_name}
+    PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${source_path}" "${target_path}"
+  )
+endfunction()
+
+# 1. testing namespace -> cybld/testing
+add_test_namespace_symlink(testing
+  "${_gen_python}/testing" "${_cybld}/testing"
+  testing-python-target)
+
+# 2. python_test namespace -> cybld/python_test
+add_test_namespace_symlink(python_test
+  "${_gen_python}/python_test" "${_cybld}/python_test"
+  adapter-python-target containers-python-target enums-python-target
+  lists-python-target maps-python-target refs-python-target sets-python-target)
+
+# 3. thrift.test.thrift_python -> cybld/thrift/test
+add_test_namespace_symlink(thrift_test
+  "${_gen_python}/thrift/test" "${_cybld}/thrift/test"
+  struct_test-python-target union_test-python-target enum_test-python-target included-python-target)
+
+# 4. thrift.python.{bidi_service,sink_service} -> cybld/thrift/python/{bidi_service,sink_service}
+add_test_namespace_symlinks(thrift_python_services bidi_service-python-target sink_service-python-target)
+add_symlink_command(thrift_python_services "${_gen_python}/thrift/python/bidi_service" "${_cybld}/thrift/python/bidi_service")
+add_symlink_command(thrift_python_services "${_gen_python}/thrift/python/sink_service" "${_cybld}/thrift/python/sink_service")
+
+# 5. thrift.python.test.* -> cybld/thrift/python/test/*
+add_test_namespace_symlinks(thrift_python_test special_cases-python-target abstract_types_flags-python-target annotations-python-target)
+add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/special_cases" "${_cybld}/thrift/python/test/special_cases")
+add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/abstract_types_flags" "${_cybld}/thrift/python/test/abstract_types_flags")
+add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/annotations" "${_cybld}/thrift/python/test/annotations")
