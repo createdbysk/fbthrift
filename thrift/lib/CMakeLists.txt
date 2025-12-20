@@ -668,6 +668,27 @@ In OSS/CMake builds, extensions are built directly under server_impl.
     )
   endforeach()
 
+  # Create request_context_extractor subpackage symlinks
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/test/request_context_extractor")
+
+  file(GLOB TestRequestContextExtractorFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/request_context_extractor/*.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/request_context_extractor/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/request_context_extractor/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/request_context_extractor/*.pyi"
+  )
+
+  foreach(_src ${TestRequestContextExtractorFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/python/test/request_context_extractor/${_target_file}"
+    )
+  endforeach()
+
   #####
   # Create thrift.lib.python.test package symlinks (fbcode import path shim)
   # This mirrors thrift.python.test to thrift.lib.python.test for fbcode compatibility
