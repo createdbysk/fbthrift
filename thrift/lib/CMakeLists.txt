@@ -709,6 +709,26 @@ In OSS/CMake builds, extensions are built directly under server_impl.
     )
   endforeach()
 
+  # Create client/test Cython module symlinks in thrift/python/client/test/
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/test")
+  file(GLOB ClientTestCythonFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.h"
+  )
+
+  foreach(_src ${ClientTestCythonFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/python/client/test/${_target_file}"
+    )
+  endforeach()
+
   #####
   # Create thrift.lib.python.test package symlinks (fbcode import path shim)
   # This mirrors thrift.python.test to thrift.lib.python.test for fbcode compatibility
@@ -745,6 +765,49 @@ In OSS/CMake builds, extensions are built directly under server_impl.
       PRE_BUILD
         COMMAND
         ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/lib/python/test/event_handlers/${_target_file}"
+    )
+  endforeach()
+
+  # Create thrift/lib/python/client/test/ symlinks for client test Cython modules
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client/test")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client/test/client_event_handler")  # singular!
+
+  file(GLOB LibClientTestCythonFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.py"
+  )
+
+  foreach(_src ${LibClientTestCythonFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/lib/python/client/test/${_target_file}"
+    )
+  endforeach()
+
+  # client_event_handlers/ (plural) -> client_event_handler/ (singular) for import path
+  file(GLOB LibClientEventHandlerFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/client_event_handlers/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/client_event_handlers/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/client_event_handlers/*.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/client_event_handlers/*.h"
+  )
+
+  foreach(_src ${LibClientEventHandlerFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/lib/python/client/test/client_event_handler/${_target_file}"
     )
   endforeach()
 

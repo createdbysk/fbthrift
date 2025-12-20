@@ -435,6 +435,33 @@ else:
             sources=["thrift/python/test/python_async_processor_factory_test.pyx"],
             **common_options,
         ),
+        # client/test Cython helpers (thrift.python.* namespace for internal use)
+        Extension(
+            "thrift.python.client.test.event_handler_helper",
+            sources=["thrift/python/client/test/event_handler_helper.pyx"],
+            **common_options,
+        ),
+        Extension(
+            "thrift.python.client.test.exceptions_helper",
+            sources=["thrift/python/client/test/exceptions_helper.pyx"],
+            **common_options,
+        ),
+        # client/test Cython helpers (thrift.lib.python.* namespace for test imports)
+        Extension(
+            "thrift.lib.python.client.test.event_handler_helper",
+            sources=["thrift/lib/python/client/test/event_handler_helper.pyx"],
+            **common_options,
+        ),
+        Extension(
+            "thrift.lib.python.client.test.exceptions_helper",
+            sources=["thrift/lib/python/client/test/exceptions_helper.pyx"],
+            **common_options,
+        ),
+        Extension(
+            "thrift.lib.python.client.test.client_event_handler.helper",
+            sources=["thrift/lib/python/client/test/client_event_handler/helper.pyx"],  # singular dir via symlink
+            **common_options,
+        ),
     ]
 
     setup(
@@ -452,11 +479,15 @@ else:
             "thrift.python.test",
             "thrift.python.test.adapters",
             "thrift.python.test.request_context_extractor",
+            "thrift.python.client.test",
             "thrift.py3",
             "thrift.lib",
             "thrift.lib.python",
             "thrift.lib.python.test",
             "thrift.lib.python.test.event_handlers",
+            "thrift.lib.python.client",
+            "thrift.lib.python.client.test",
+            "thrift.lib.python.client.test.client_event_handler",  # singular!
             "apache.thrift.metadata",
         ],
         package_data={"": ["*.pxd", "*.h"]},
