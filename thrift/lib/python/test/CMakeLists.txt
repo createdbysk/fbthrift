@@ -69,6 +69,19 @@ thrift_library(
   NAMESPACE ""
 )
 
+# stack_args.thrift - no py3 namespace
+thrift_library(
+  "stack_args"
+  "StackService"
+  "python"
+  ""
+  "${PY3_TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE ""
+)
+
 # Files with namespace py3 "testing"
 thrift_library(
   "testing"
@@ -523,12 +536,154 @@ add_test_namespace_symlink(convertible_direct
   "${_gen_python}/convertible" "${_cybld}/convertible"
   convertible-python-target)
 
+add_test_namespace_symlink(stack_args_direct
+  "${_gen_python}/stack_args" "${_cybld}/stack_args"
+  stack_args-python-target)
+
 # 8. transitive_deps namespace -> cybld/transitive_deps
 add_test_namespace_symlink(transitive_deps
   "${_gen_python}/transitive_deps" "${_cybld}/transitive_deps"
   a-python-target b-python-target c-python-target d-python-target)
 
-# 9. apache.thrift.test.terse_write namespace -> cybld/apache/thrift/test/terse_write
+# 9. apache.thrift.test.terse_write namespace -> cybld/apache/thrift/test
+# Note: cybld/apache/thrift/ already exists (for metadata), so we symlink test/ subdirectory
 add_test_namespace_symlink(apache_thrift_test
-  "${_gen_python}/apache" "${_cybld}/apache"
+  "${_gen_python}/apache/thrift/test" "${_cybld}/apache/thrift/test"
   terse_write-python-target)
+
+#####
+# Make directories into Python packages
+#####
+
+include(${CMAKE_SOURCE_DIR}/PythonPackage.cmake)
+
+# transitive_deps package
+make_python_package(create_binding_symlink_transitive_deps "${_gen_python}/transitive_deps")
+
+# apache namespace packages
+add_custom_target(python_package_apache ALL
+  DEPENDS terse_write-python-target
+)
+make_python_package(python_package_apache "${_gen_python}/apache")
+make_python_package(python_package_apache "${_gen_python}/apache/thrift")
+
+#####
+# Python Test Definitions
+#####
+
+# Enable testing
+enable_testing()
+
+# Build PYTHONPATH for tests
+set(TEST_PYTHONPATH "${_gen_python}:${_cybld}")
+
+# Add folly python site-packages
+if(DEFINED FOLLY_PYTHON_SITE_PACKAGES AND EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}")
+  set(TEST_PYTHONPATH "${TEST_PYTHONPATH}:${FOLLY_PYTHON_SITE_PACKAGES}")
+endif()
+
+# Add installed fbthrift site-packages
+if(EXISTS "${CMAKE_INSTALL_PREFIX}/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages")
+  set(TEST_PYTHONPATH "${TEST_PYTHONPATH}:${CMAKE_INSTALL_PREFIX}/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages")
+endif()
+
+#####
+# Create thrift_tests package to avoid module shadowing
+#####
+# Problem: Test files like binary.py, iobuf.py, transitive_deps.py have same names
+# as gen-python packages (binary/, iobuf/, transitive_deps/).
+# When running "python binary.py", Python adds the test directory to sys.path[0],
+# causing "import binary" to find the test file instead of the package.
+#
+# Solution (same as Buck): Run tests as modules, not scripts.
+# Create a thrift_tests/ package with symlinks to test files, then run:
+#   python -m unittest thrift_tests.binary
+# This sets sys.path[0] to '' (cwd), so "import binary" finds the package.
+#####
+
+set(_thrift_tests_dir "${_gen_python}/thrift_tests")
+
+# Create thrift_tests package directory
+add_custom_command(
+  OUTPUT "${_thrift_tests_dir}/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_thrift_tests_dir}"
+  COMMAND ${CMAKE_COMMAND} -E touch "${_thrift_tests_dir}/__init__.py"
+  COMMENT "Creating thrift_tests package directory"
+)
+
+# List of test files (excluding non-test files like testing_utils.py, test_server.py)
+set(THRIFT_PYTHON_TEST_FILES
+  abstract_types_flags_test.py
+  adapter.py
+  binary.py
+  converter.py
+  enums.py
+  exceptions.py
+  exceptions_ft.py
+  iobuf.py
+  intercompatibility.py
+  lists.py
+  maps.py
+  metadata.py
+  mutable_exceptions.py
+  mutable_list_test.py
+  mutable_map_test.py
+  mutable_set_test.py
+  mutable_structs.py
+  mutable_structs_ft.py
+  mutable_unions.py
+  python_annotations_test.py
+  refs.py
+  serializer.py
+  sets.py
+  special_cases_test.py
+  structs.py
+  structs_ft.py
+  test_helpers.py
+  transitive_deps.py
+  typeinfo_test.py
+  unions.py
+  unions_ft.py
+)
+
+# Also symlink helper files that tests import
+set(THRIFT_PYTHON_TEST_HELPERS
+  testing_utils.py
+  test_server.py
+)
+
+# Create symlinks for all test files
+set(TEST_SYMLINK_OUTPUTS "")
+foreach(test_file ${THRIFT_PYTHON_TEST_FILES} ${THRIFT_PYTHON_TEST_HELPERS})
+  set(_src "${CMAKE_CURRENT_SOURCE_DIR}/${test_file}")
+  set(_dst "${_thrift_tests_dir}/${test_file}")
+  list(APPEND TEST_SYMLINK_OUTPUTS "${_dst}")
+  add_custom_command(
+    OUTPUT "${_dst}"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_dst}"
+    DEPENDS "${_src}" "${_thrift_tests_dir}/__init__.py"
+    COMMENT "Symlinking ${test_file} to thrift_tests package"
+  )
+endforeach()
+
+# Target to create all test symlinks
+add_custom_target(thrift_python_test_package ALL
+  DEPENDS "${_thrift_tests_dir}/__init__.py" ${TEST_SYMLINK_OUTPUTS}
+)
+
+# Use DEPENDENCY_LIB_PATH from top-level CMakeLists.txt for LD_LIBRARY_PATH
+# This contains all dependency library paths (glog, gflags, fmt, etc.)
+
+# Register each test file with ctest
+# Run as module to avoid sys.path[0] = test_dir shadowing
+foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
+  get_filename_component(test_name ${test_file} NAME_WE)
+  add_test(
+    NAME thrift_python_${test_name}
+    COMMAND ${Python3_EXECUTABLE} -m unittest thrift_tests.${test_name} -v
+    WORKING_DIRECTORY ${_gen_python}
+  )
+  set_tests_properties(thrift_python_${test_name} PROPERTIES
+    ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+  )
+endforeach()
