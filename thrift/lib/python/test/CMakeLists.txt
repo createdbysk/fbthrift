@@ -795,3 +795,15 @@ foreach(test_file ${ADAPTERS_TEST_FILES})
     ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
   )
 endforeach()
+
+#####
+# thrift/lib/python/test/request_context_extractor/ tests
+#####
+add_test(
+  NAME thrift_python_request_context_extractor_test
+  COMMAND ${Python3_EXECUTABLE} -m unittest thrift.python.test.request_context_extractor.request_context_extractor_test -v
+  WORKING_DIRECTORY ${_gen_python}
+)
+set_tests_properties(thrift_python_request_context_extractor_test PROPERTIES
+  ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+)
