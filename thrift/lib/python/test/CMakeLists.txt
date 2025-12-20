@@ -82,6 +82,19 @@ thrift_library(
   NAMESPACE ""
 )
 
+set(THRIFT_TEST_DIR ${CMAKE_SOURCE_DIR}/thrift/test)
+thrift_library(
+  "schema_evolution_test"
+  ""
+  "python"
+  ""
+  "${THRIFT_TEST_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE ""
+)
+
 # Files with namespace py3 "testing"
 thrift_library(
   "testing"
@@ -540,6 +553,10 @@ add_test_namespace_symlink(stack_args_direct
   "${_gen_python}/stack_args" "${_cybld}/stack_args"
   stack_args-python-target)
 
+add_test_namespace_symlink(schema_evolution_test_direct
+  "${_gen_python}/schema_evolution_test" "${_cybld}/schema_evolution_test"
+  schema_evolution_test-python-target)
+
 # 8. transitive_deps namespace -> cybld/transitive_deps
 add_test_namespace_symlink(transitive_deps
   "${_gen_python}/transitive_deps" "${_cybld}/transitive_deps"
@@ -550,6 +567,17 @@ add_test_namespace_symlink(transitive_deps
 add_test_namespace_symlink(apache_thrift_test
   "${_gen_python}/apache/thrift/test" "${_cybld}/apache/thrift/test"
   terse_write-python-target)
+
+# 10. apache.thrift.metadata namespace -> cybld/apache/thrift/metadata
+# The metadata module is built by the main thrift library, we need to link it into gen-python
+# so tests can import apache.thrift.metadata.thrift_types
+add_custom_target(apache_thrift_metadata_symlink ALL
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/apache/thrift/metadata"
+    "${_gen_python}/apache/thrift/metadata"
+  DEPENDS terse_write-python-target
+  COMMENT "Creating symlink for apache.thrift.metadata"
+)
 
 #####
 # Make directories into Python packages
@@ -684,6 +712,86 @@ foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
     WORKING_DIRECTORY ${_gen_python}
   )
   set_tests_properties(thrift_python_${test_name} PROPERTIES
+    ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+  )
+endforeach()
+
+#####
+# thrift/test/thrift-python/ tests
+#####
+# These tests are in a separate directory and use namespace thrift.test.thrift_python
+# The thrift_library entries already exist above (struct_test, union_test, enum_test, included)
+
+set(THRIFT_TEST_THRIFT_PYTHON_DIR "${CMAKE_SOURCE_DIR}/thrift/test/thrift-python")
+
+# Create thrift_test_thrift_python_tests package for these tests
+set(_thrift_test_tests_dir "${_gen_python}/thrift_test_thrift_python_tests")
+
+add_custom_command(
+  OUTPUT "${_thrift_test_tests_dir}/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_thrift_test_tests_dir}"
+  COMMAND ${CMAKE_COMMAND} -E touch "${_thrift_test_tests_dir}/__init__.py"
+  COMMENT "Creating thrift_test_thrift_python_tests package directory"
+)
+
+# Test files from thrift/test/thrift-python/
+set(THRIFT_TEST_THRIFT_PYTHON_TEST_FILES
+  abstract_types_test.py
+  enum_test.py
+  schema_evolution_test.py
+  struct_test.py
+  union_test.py
+)
+
+# Create symlinks for thrift/test/thrift-python/ test files
+set(THRIFT_TEST_SYMLINK_OUTPUTS "")
+foreach(test_file ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
+  set(_src "${THRIFT_TEST_THRIFT_PYTHON_DIR}/${test_file}")
+  set(_dst "${_thrift_test_tests_dir}/${test_file}")
+  list(APPEND THRIFT_TEST_SYMLINK_OUTPUTS "${_dst}")
+  add_custom_command(
+    OUTPUT "${_dst}"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_dst}"
+    DEPENDS "${_src}" "${_thrift_test_tests_dir}/__init__.py"
+    COMMENT "Symlinking ${test_file} to thrift_test_thrift_python_tests package"
+  )
+endforeach()
+
+# Target to create all thrift/test/thrift-python/ test symlinks
+add_custom_target(thrift_test_thrift_python_test_package ALL
+  DEPENDS "${_thrift_test_tests_dir}/__init__.py" ${THRIFT_TEST_SYMLINK_OUTPUTS}
+  struct_test-python-target union_test-python-target enum_test-python-target included-python-target
+)
+
+# Register thrift/test/thrift-python/ tests with ctest
+foreach(test_file ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
+  get_filename_component(test_name ${test_file} NAME_WE)
+  add_test(
+    NAME thrift_test_thrift_python_${test_name}
+    COMMAND ${Python3_EXECUTABLE} -m unittest thrift_test_thrift_python_tests.${test_name} -v
+    WORKING_DIRECTORY ${_gen_python}
+  )
+  set_tests_properties(thrift_test_thrift_python_${test_name} PROPERTIES
+    ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+  )
+endforeach()
+
+#####
+# thrift/lib/python/test/adapters/ tests
+#####
+set(ADAPTERS_TEST_FILES
+  atoi_test.py
+  datetime_test.py
+)
+
+foreach(test_file ${ADAPTERS_TEST_FILES})
+  get_filename_component(test_name ${test_file} NAME_WE)
+  add_test(
+    NAME thrift_python_adapters_${test_name}
+    COMMAND ${Python3_EXECUTABLE} -m unittest thrift.python.test.adapters.${test_name} -v
+    WORKING_DIRECTORY ${_gen_python}
+  )
+  set_tests_properties(thrift_python_adapters_${test_name} PROPERTIES
     ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
   )
 endforeach()
