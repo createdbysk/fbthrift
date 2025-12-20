@@ -15,6 +15,33 @@
 # Generate thrift-python test types
 
 set(TEST_THRIFT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(PY3_TEST_THRIFT_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test)
+
+# Files from py3/test needed by thrift-python tests (no namespace in thrift file)
+# Output goes to gen-python/binary/, gen-python/iobuf/ etc.
+thrift_library(
+  "binary"
+  "BinaryService"
+  "python"
+  ""
+  "${PY3_TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE ""
+)
+
+thrift_library(
+  "iobuf"
+  "IobufTestService"
+  "python"
+  ""
+  "${PY3_TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE ""
+)
 
 # Files with namespace py3 "testing"
 thrift_library(
@@ -383,3 +410,12 @@ add_test_namespace_symlinks(thrift_python_test special_cases-python-target abstr
 add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/special_cases" "${_cybld}/thrift/python/test/special_cases")
 add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/abstract_types_flags" "${_cybld}/thrift/python/test/abstract_types_flags")
 add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/annotations" "${_cybld}/thrift/python/test/annotations")
+
+# 6. binary and iobuf (no namespace) -> cybld/binary, cybld/iobuf
+add_test_namespace_symlink(binary_direct
+  "${_gen_python}/binary" "${_cybld}/binary"
+  binary-python-target)
+
+add_test_namespace_symlink(iobuf_direct
+  "${_gen_python}/iobuf" "${_cybld}/iobuf"
+  iobuf-python-target)
