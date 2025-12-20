@@ -106,6 +106,10 @@ get_filename_component(_folly_prefix "${_folly_prefix}" DIRECTORY)
 set(FOLLY_INCLUDE_DIR "${_folly_prefix}/include")
 message(STATUS "FOLLY_INCLUDE_DIR set to: ${FOLLY_INCLUDE_DIR}")
 
+# Set FOLLY_LIB_DIR for LD_LIBRARY_PATH in tests
+set(FOLLY_LIB_DIR "${_folly_prefix}/lib")
+message(STATUS "FOLLY_LIB_DIR set to: ${FOLLY_LIB_DIR}")
+
 # Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files (folly.pxd, iobuf.pxd, etc.)
 # These are separate from C++ headers and live in Python site-packages
 set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_prefix}/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages")
@@ -155,6 +159,115 @@ if(thriftpy3)
   set(PYTHON_LIBRARIES ${Python3_LIBRARIES})
   set(PYTHON_INCLUDE_DIRS ${Python3_INCLUDE_DIRS})
   find_package(Cython 0.28 REQUIRED)
+
+  # TODO: FRANKENSTEIN'S MONSTER - Clean this up later
+  # Build DEPENDENCY_LIB_PATH for Python test LD_LIBRARY_PATH
+  # This extracts library paths from CMake variables using inconsistent patterns.
+  # Better approach: Use RPATH in built libraries so they find dependencies at runtime.
+  # For now, we manually collect paths from known CMake variables.
+  set(DEPENDENCY_LIB_DIRS "")
+
+  # Add folly lib dir
+  if(DEFINED FOLLY_LIB_DIR AND EXISTS "${FOLLY_LIB_DIR}")
+    list(APPEND DEPENDENCY_LIB_DIRS "${FOLLY_LIB_DIR}")
+  endif()
+
+  # Add glog lib dir (extract from library path)
+  if(DEFINED GLOG_LIBRARY_RELEASE AND EXISTS "${GLOG_LIBRARY_RELEASE}")
+    get_filename_component(_glog_lib_dir "${GLOG_LIBRARY_RELEASE}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_glog_lib_dir}")
+  elseif(DEFINED GLOG_LIBRARY AND EXISTS "${GLOG_LIBRARY}")
+    get_filename_component(_glog_lib_dir "${GLOG_LIBRARY}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_glog_lib_dir}")
+  endif()
+
+  # Add gflags lib dir (extract from CMake config dir: lib/cmake/gflags -> lib)
+  if(DEFINED gflags_DIR AND EXISTS "${gflags_DIR}")
+    get_filename_component(_gflags_cmake_parent "${gflags_DIR}" DIRECTORY)  # cmake/gflags -> cmake
+    get_filename_component(_gflags_lib_dir "${_gflags_cmake_parent}" DIRECTORY)  # cmake -> lib
+    list(APPEND DEPENDENCY_LIB_DIRS "${_gflags_lib_dir}")
+  endif()
+
+  # Add fmt lib dir (lib64/cmake/fmt -> lib64)
+  if(DEFINED fmt_DIR AND EXISTS "${fmt_DIR}")
+    get_filename_component(_fmt_cmake_parent "${fmt_DIR}" DIRECTORY)
+    get_filename_component(_fmt_lib_dir "${_fmt_cmake_parent}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_fmt_lib_dir}")
+  endif()
+
+  # Add libevent lib dir (lib/cmake/libevent -> lib)
+  if(DEFINED Libevent_DIR AND EXISTS "${Libevent_DIR}")
+    get_filename_component(_libevent_cmake_parent "${Libevent_DIR}" DIRECTORY)
+    get_filename_component(_libevent_lib_dir "${_libevent_cmake_parent}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_libevent_lib_dir}")
+  endif()
+
+  # Add libunwind lib dir
+  if(DEFINED LIBUNWIND_LIBRARY AND EXISTS "${LIBUNWIND_LIBRARY}")
+    get_filename_component(_libunwind_lib_dir "${LIBUNWIND_LIBRARY}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_libunwind_lib_dir}")
+  endif()
+
+  # Add fizz, wangle, mvfst lib dirs (lib/cmake/pkg -> lib)
+  if(DEFINED fizz_DIR AND EXISTS "${fizz_DIR}")
+    get_filename_component(_fizz_cmake_parent "${fizz_DIR}" DIRECTORY)
+    get_filename_component(_fizz_lib_dir "${_fizz_cmake_parent}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_fizz_lib_dir}")
+  endif()
+  if(DEFINED wangle_DIR AND EXISTS "${wangle_DIR}")
+    get_filename_component(_wangle_cmake_parent "${wangle_DIR}" DIRECTORY)
+    get_filename_component(_wangle_lib_dir "${_wangle_cmake_parent}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_wangle_lib_dir}")
+  endif()
+  if(DEFINED mvfst_DIR AND EXISTS "${mvfst_DIR}")
+    get_filename_component(_mvfst_cmake_parent "${mvfst_DIR}" DIRECTORY)
+    get_filename_component(_mvfst_lib_dir "${_mvfst_cmake_parent}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_mvfst_lib_dir}")
+  endif()
+
+  # Add double-conversion lib dir
+  if(DEFINED double-conversion_DIR AND EXISTS "${double-conversion_DIR}")
+    get_filename_component(_dc_cmake_parent "${double-conversion_DIR}" DIRECTORY)
+    get_filename_component(_dc_lib_dir "${_dc_cmake_parent}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_dc_lib_dir}")
+  endif()
+
+  # Add boost lib dirs
+  if(DEFINED Boost_LIBRARY_DIRS)
+    list(APPEND DEPENDENCY_LIB_DIRS ${Boost_LIBRARY_DIRS})
+  endif()
+
+  # Add libsodium lib dir
+  if(DEFINED sodium_DIR AND EXISTS "${sodium_DIR}")
+    get_filename_component(_sodium_cmake_parent "${sodium_DIR}" DIRECTORY)
+    get_filename_component(_sodium_lib_dir "${_sodium_cmake_parent}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_sodium_lib_dir}")
+  endif()
+
+  # Add zstd, lz4, snappy lib dirs
+  if(DEFINED ZSTD_LIBRARY AND EXISTS "${ZSTD_LIBRARY}")
+    get_filename_component(_zstd_lib_dir "${ZSTD_LIBRARY}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_zstd_lib_dir}")
+  endif()
+  if(DEFINED LZ4_LIBRARY AND EXISTS "${LZ4_LIBRARY}")
+    get_filename_component(_lz4_lib_dir "${LZ4_LIBRARY}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_lz4_lib_dir}")
+  endif()
+  if(DEFINED SNAPPY_LIBRARY AND EXISTS "${SNAPPY_LIBRARY}")
+    get_filename_component(_snappy_lib_dir "${SNAPPY_LIBRARY}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_snappy_lib_dir}")
+  endif()
+
+  # Add xz/lzma lib dir
+  if(DEFINED LIBLZMA_LIBRARY AND EXISTS "${LIBLZMA_LIBRARY}")
+    get_filename_component(_lzma_lib_dir "${LIBLZMA_LIBRARY}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_lzma_lib_dir}")
+  endif()
+
+  # Remove duplicates and convert to colon-separated path
+  list(REMOVE_DUPLICATES DEPENDENCY_LIB_DIRS)
+  string(REPLACE ";" ":" DEPENDENCY_LIB_PATH "${DEPENDENCY_LIB_DIRS}")
+  message(STATUS "DEPENDENCY_LIB_PATH for Python tests: ${DEPENDENCY_LIB_PATH}")
 endif()
 
 # Add the test dependencies
