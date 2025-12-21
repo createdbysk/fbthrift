@@ -86,20 +86,9 @@ thrift_library(
   TARGET_NAME_BASE "convertible_py_deprecated"
 )
 
-# convertible.thrift - py3 (generates types.py for converter.py test)
-# The converter test imports convertible.types which is the py3 types module
-thrift_library(
-  "convertible"
-  ""
-  "py3"
-  ""
-  "${PY3_TEST_THRIFT_DIR}"
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  ""
-  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE ""
-  TARGET_NAME_BASE "convertible_py3"
-)
+# NOTE: convertible.thrift py3 generator is NOT supported by thrift_library.
+# The py3 generator creates Cython code requiring separate compilation.
+# converter.py test is BLOCKED until py3/Cython support is added.
 
 # stack_args.thrift - no py3 namespace
 thrift_library(
@@ -869,6 +858,9 @@ list(APPEND TEST_SYMLINK_OUTPUTS "${_server_test_dst}")
 add_custom_target(thrift_python_test_package ALL
   DEPENDS "${_fbthrift_test_dir}/__init__.py" ${TEST_SYMLINK_OUTPUTS}
 )
+
+# Add dependency on py-deprecated symlinks for converter test
+add_dependencies(thrift_python_test_package convertible_py_deprecated_symlink)
 
 # Use DEPENDENCY_LIB_PATH from top-level CMakeLists.txt for LD_LIBRARY_PATH
 # This contains all dependency library paths (glog, gflags, fmt, etc.)
