@@ -462,6 +462,24 @@ else:
             sources=["thrift/lib/python/client/test/client_event_handler/helper.pyx"],  # singular dir via symlink
             **common_options,
         ),
+        # event_handlers/helper extension for client_server tests
+        Extension(
+            "thrift.lib.python.test.event_handlers.helper",
+            sources=["thrift/lib/python/test/event_handlers/helper.pyx"],
+            **common_options,
+        ),
+        # http2_helper extension for client tests - requires proxygen
+        # This extension is only built if proxygen is available
+        Extension(
+            "thrift.lib.python.client.test.http2_helper",
+            sources=["thrift/lib/python/client/test/http2_helper.pyx"],
+            language="c++",
+            include_dirs=include_dirs,
+            library_dirs=lib_search_paths,
+            libraries=dynamic_libs + ["proxygen", "proxygenhttpserver"] + [python_lib],
+            extra_compile_args=["-std=c++20", "-fcoroutines"],
+            extra_link_args=extra_link_args,
+        ),
     ]
 
     setup(
