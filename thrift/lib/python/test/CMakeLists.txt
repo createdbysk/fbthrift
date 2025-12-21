@@ -86,6 +86,21 @@ thrift_library(
   TARGET_NAME_BASE "convertible_py_deprecated"
 )
 
+# convertible.thrift - py3 (generates types.py for converter.py test)
+# The converter test imports convertible.types which is the py3 types module
+thrift_library(
+  "convertible"
+  ""
+  "py3"
+  ""
+  "${PY3_TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE ""
+  TARGET_NAME_BASE "convertible_py3"
+)
+
 # stack_args.thrift - no py3 namespace
 thrift_library(
   "stack_args"
@@ -691,6 +706,20 @@ add_custom_target(apache_thrift_metadata_symlink ALL
     "${_gen_python}/apache/thrift/metadata"
   DEPENDS terse_write-python-target
   COMMENT "Creating symlink for apache.thrift.metadata"
+)
+
+# 11. Symlink py-deprecated files from gen-py to gen-python for converter.py test
+# Problem: gen-python/convertible/ shadows gen-py/convertible/ in PYTHONPATH
+# Solution: symlink ttypes.py and constants.py into gen-python/convertible/
+add_custom_target(convertible_py_deprecated_symlink ALL
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_gen_py}/convertible/ttypes.py"
+    "${_gen_python}/convertible/ttypes.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_gen_py}/convertible/constants.py"
+    "${_gen_python}/convertible/constants.py"
+  DEPENDS convertible_py_deprecated-py-target convertible-python-target
+  COMMENT "Creating symlinks for py-deprecated files in gen-python/convertible/"
 )
 
 #####
