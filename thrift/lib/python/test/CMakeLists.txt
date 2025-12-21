@@ -903,71 +903,68 @@ set_tests_properties(thrift_python_server_python_async_processor_factory_test PR
 #####
 # thrift/lib/python/client/test/ tests
 #
-# BLOCKED: These tests require proxygen library (for http2_helper.pyx) which is
-# not currently built as an OSS dependency. The test_server.py imports http2_helper
-# which depends on proxygen::httpserver. Once proxygen is added as a dependency,
-# uncomment the sections below to enable client tests.
+# These tests require proxygen library (for http2_helper.pyx).
+# The test_server.py imports http2_helper which depends on proxygen::httpserver.
 #
-# Dependencies needed:
-# - proxygen (HTTPServerOptions)
-# - http2_helper.pyx must be added to setup.py Cython extensions
-# - thrift.py3.server must be importable (for get_context, SocketAddress)
+# Dependencies:
+# - proxygen (HTTPServerOptions) - added as fbthrift manifest dependency
+# - http2_helper.pyx - added to setup.py Cython extensions
+# - thrift.py3.server - for get_context, SocketAddress (built as part of py3 bindings)
 #####
 
-# TODO: Uncomment when proxygen is available
-# set(CLIENT_TEST_DIR "${CMAKE_SOURCE_DIR}/thrift/lib/python/client/test")
-#
-# # Create thrift_client_tests package for client tests (same approach as thrift_tests)
-# set(_thrift_client_tests_dir "${_gen_python}/thrift_client_tests")
-#
-# add_custom_command(
-#   OUTPUT "${_thrift_client_tests_dir}/__init__.py"
-#   COMMAND ${CMAKE_COMMAND} -E make_directory "${_thrift_client_tests_dir}"
-#   COMMAND ${CMAKE_COMMAND} -E touch "${_thrift_client_tests_dir}/__init__.py"
-#   COMMENT "Creating thrift_client_tests package directory"
-# )
-#
-# # Client test files
-# set(CLIENT_TEST_FILES
-#   async_client_test.py
-#   sync_client_test.py
-# )
-#
-# # Helper files needed by client tests
-# set(CLIENT_TEST_HELPERS
-#   test_server.py
-# )
-#
-# # Create symlinks for client test files
-# set(CLIENT_TEST_SYMLINK_OUTPUTS "")
-# foreach(test_file ${CLIENT_TEST_FILES} ${CLIENT_TEST_HELPERS})
-#   set(_src "${CLIENT_TEST_DIR}/${test_file}")
-#   set(_dst "${_thrift_client_tests_dir}/${test_file}")
-#   list(APPEND CLIENT_TEST_SYMLINK_OUTPUTS "${_dst}")
-#   add_custom_command(
-#     OUTPUT "${_dst}"
-#     COMMAND ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_dst}"
-#     DEPENDS "${_src}" "${_thrift_client_tests_dir}/__init__.py"
-#     COMMENT "Symlinking ${test_file} to thrift_client_tests package"
-#   )
-# endforeach()
-#
-# # Target to create all client test symlinks
-# add_custom_target(thrift_python_client_test_package ALL
-#   DEPENDS "${_thrift_client_tests_dir}/__init__.py" ${CLIENT_TEST_SYMLINK_OUTPUTS}
-#   create_binding_symlink_thrift_python_client_test
-#   test-python-target leaf-python-target
-# )
-#
-# # Register client tests with ctest
-# foreach(test_file ${CLIENT_TEST_FILES})
-#   get_filename_component(test_name ${test_file} NAME_WE)
-#   add_test(
-#     NAME thrift_python_client_${test_name}
-#     COMMAND ${Python3_EXECUTABLE} -m unittest thrift_client_tests.${test_name} -v
-#     WORKING_DIRECTORY ${_gen_python}
-#   )
-#   set_tests_properties(thrift_python_client_${test_name} PROPERTIES
-#     ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
-#   )
-# endforeach()
+set(CLIENT_TEST_DIR "${CMAKE_SOURCE_DIR}/thrift/lib/python/client/test")
+
+# Create thrift_client_tests package for client tests (same approach as thrift_tests)
+set(_thrift_client_tests_dir "${_gen_python}/thrift_client_tests")
+
+add_custom_command(
+  OUTPUT "${_thrift_client_tests_dir}/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_thrift_client_tests_dir}"
+  COMMAND ${CMAKE_COMMAND} -E touch "${_thrift_client_tests_dir}/__init__.py"
+  COMMENT "Creating thrift_client_tests package directory"
+)
+
+# Client test files
+set(CLIENT_TEST_FILES
+  async_client_test.py
+  sync_client_test.py
+)
+
+# Helper files needed by client tests
+set(CLIENT_TEST_HELPERS
+  test_server.py
+)
+
+# Create symlinks for client test files
+set(CLIENT_TEST_SYMLINK_OUTPUTS "")
+foreach(test_file ${CLIENT_TEST_FILES} ${CLIENT_TEST_HELPERS})
+  set(_src "${CLIENT_TEST_DIR}/${test_file}")
+  set(_dst "${_thrift_client_tests_dir}/${test_file}")
+  list(APPEND CLIENT_TEST_SYMLINK_OUTPUTS "${_dst}")
+  add_custom_command(
+    OUTPUT "${_dst}"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_dst}"
+    DEPENDS "${_src}" "${_thrift_client_tests_dir}/__init__.py"
+    COMMENT "Symlinking ${test_file} to thrift_client_tests package"
+  )
+endforeach()
+
+# Target to create all client test symlinks
+add_custom_target(thrift_python_client_test_package ALL
+  DEPENDS "${_thrift_client_tests_dir}/__init__.py" ${CLIENT_TEST_SYMLINK_OUTPUTS}
+  create_binding_symlink_thrift_python_client_test
+  test-python-target leaf-python-target
+)
+
+# Register client tests with ctest
+foreach(test_file ${CLIENT_TEST_FILES})
+  get_filename_component(test_name ${test_file} NAME_WE)
+  add_test(
+    NAME thrift_python_client_${test_name}
+    COMMAND ${Python3_EXECUTABLE} -m unittest thrift_client_tests.${test_name} -v
+    WORKING_DIRECTORY ${_gen_python}
+  )
+  set_tests_properties(thrift_python_client_${test_name} PROPERTIES
+    ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+  )
+endforeach()

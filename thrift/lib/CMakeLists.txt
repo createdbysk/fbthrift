@@ -82,6 +82,11 @@ if(thriftpy3)
   get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
 
   # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
+  # Proxygen and mvfst include directories (for http2_helper in client tests)
+  get_filename_component(GETDEPS_INSTALL_ROOT_INC "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  set(proxygen_include_dir "${GETDEPS_INSTALL_ROOT_INC}/proxygen/include")
+  set(mvfst_include_dir "${GETDEPS_INSTALL_ROOT_INC}/mvfst/include")
+
   set(_all_cython_includes
     # Thrift includes
     ${thrift_include_dirs}
@@ -96,6 +101,9 @@ if(thriftpy3)
     ${fmt_include_dirs}
     ${wangle_incs}
     ${glog_include_dirs}
+    # Proxygen and mvfst (for http2_helper.pyx client tests)
+    ${proxygen_include_dir}
+    ${mvfst_include_dir}
   )
   list(JOIN _all_cython_includes ":" cython_include_path)
   log_debug("cython_include_path='${cython_include_path}'")
