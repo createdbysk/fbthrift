@@ -14,6 +14,9 @@
 
 # Generate thrift-python test types
 
+# Include ThriftLibrary macros (for standalone builds, CMAKE_MODULE_PATH must be set)
+include(ThriftLibrary OPTIONAL)
+
 set(TEST_THRIFT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PY3_TEST_THRIFT_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test)
 
@@ -67,6 +70,20 @@ thrift_library(
   ""
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
   NAMESPACE ""
+)
+
+# convertible.thrift - py-deprecated (generates ttypes.py for converter.py test)
+thrift_library(
+  "convertible"
+  ""
+  "py"
+  ""
+  "${PY3_TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE ""
+  TARGET_NAME_BASE "convertible_py_deprecated"
 )
 
 # stack_args.thrift - no py3 namespace
@@ -168,6 +185,21 @@ thrift_library(
   NAMESPACE "testing"
 )
 
+# py_deprecated_asyncio_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
+# namespace py.asyncio testing.py_deprecated_asyncio_test
+thrift_library(
+  "py_deprecated_asyncio_test"
+  ""
+  "py"
+  "asyncio"
+  "${TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "testing.py_deprecated_asyncio_test"
+  TARGET_NAME_BASE "py_deprecated_asyncio_test_py"
+)
+
 thrift_library(
   "py_deprecated_asyncio_fallback_test"
   ""
@@ -178,6 +210,21 @@ thrift_library(
   ""
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
   NAMESPACE "testing"
+)
+
+# py_deprecated_asyncio_fallback_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
+# namespace py testing.py_deprecated_asyncio_fallback_test
+thrift_library(
+  "py_deprecated_asyncio_fallback_test"
+  ""
+  "py"
+  ""
+  "${TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "testing.py_deprecated_asyncio_fallback_test"
+  TARGET_NAME_BASE "py_deprecated_asyncio_fallback_test_py"
 )
 
 thrift_library(
@@ -506,6 +553,7 @@ thrift_library(
 #####
 set(_cybld "${CMAKE_BINARY_DIR}/thrift/lib/cybld/build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
 set(_gen_python "${CMAKE_CURRENT_BINARY_DIR}/gen-python")
+set(_gen_py "${CMAKE_CURRENT_BINARY_DIR}/gen-py")
 
 # Helper function: create symlink from gen-python to cybld
 function(add_test_namespace_symlink name source_path target_path)
@@ -661,6 +709,19 @@ add_custom_target(python_package_apache ALL
 make_python_package(python_package_apache "${_gen_python}/apache")
 make_python_package(python_package_apache "${_gen_python}/apache/thrift")
 
+# py-deprecated testing namespace package (for gen-py/testing/)
+# Required for imports like testing.py_deprecated_asyncio_test.ttypes
+add_custom_target(python_package_testing_py_deprecated ALL
+  DEPENDS py_deprecated_asyncio_test_py-py-target py_deprecated_asyncio_fallback_test_py-py-target
+)
+add_custom_command(
+  TARGET python_package_testing_py_deprecated
+  PRE_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_py}/testing"
+  COMMAND ${CMAKE_COMMAND} -E touch "${_gen_py}/testing/__init__.py"
+  COMMENT "Creating gen-py/testing/__init__.py for py-deprecated imports"
+)
+
 #####
 # Python Test Definitions
 #####
@@ -669,7 +730,9 @@ make_python_package(python_package_apache "${_gen_python}/apache/thrift")
 enable_testing()
 
 # Build PYTHONPATH for tests
-set(TEST_PYTHONPATH "${_gen_python}:${_cybld}")
+# Include thrift_py library for py-deprecated runtime (thrift.Thrift, thrift.transport, etc.)
+set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
+set(TEST_PYTHONPATH "${_gen_python}:${_cybld}:${_gen_py}:${_thrift_py}")
 
 # Add folly python site-packages
 if(DEFINED FOLLY_PYTHON_SITE_PACKAGES AND EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}")
