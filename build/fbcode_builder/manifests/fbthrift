@@ -23,6 +23,7 @@ fmt
 folly
 googletest
 libsodium
+proxygen
 wangle
 zstd
 mvfst
