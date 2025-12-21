@@ -14,8 +14,7 @@
 
 # Generate thrift-python test types
 
-# Include ThriftLibrary macros
-# (for standalone builds, CMAKE_MODULE_PATH must be set)
+# Include ThriftLibrary macros (for standalone builds, CMAKE_MODULE_PATH must be set)
 include(ThriftLibrary OPTIONAL)
 
 set(TEST_THRIFT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
