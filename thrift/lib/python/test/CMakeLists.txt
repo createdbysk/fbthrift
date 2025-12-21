@@ -773,6 +773,7 @@ set(THRIFT_PYTHON_TEST_FILES
   abstract_types_flags_test.py
   adapter.py
   binary.py
+  client_server.py
   converter.py
   enums.py
   exceptions.py
