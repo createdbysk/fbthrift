@@ -14,8 +14,7 @@
 
 # Generate thrift-python test types
 
-# Include ThriftLibrary macros
-# (for standalone builds, CMAKE_MODULE_PATH must be set)
+# Include ThriftLibrary macros (for standalone builds, CMAKE_MODULE_PATH must be set)
 include(ThriftLibrary OPTIONAL)
 
 set(TEST_THRIFT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -195,6 +194,21 @@ thrift_library(
   NAMESPACE "testing"
 )
 
+# py_deprecated_asyncio_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
+# namespace py.asyncio testing.py_deprecated_asyncio_test
+thrift_library(
+  "py_deprecated_asyncio_test"
+  ""
+  "py"
+  "asyncio"
+  "${TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "testing.py_deprecated_asyncio_test"
+  TARGET_NAME_BASE "py_deprecated_asyncio_test_py"
+)
+
 thrift_library(
   "py_deprecated_asyncio_fallback_test"
   ""
@@ -205,6 +219,21 @@ thrift_library(
   ""
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
   NAMESPACE "testing"
+)
+
+# py_deprecated_asyncio_fallback_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
+# namespace py testing.py_deprecated_asyncio_fallback_test
+thrift_library(
+  "py_deprecated_asyncio_fallback_test"
+  ""
+  "py"
+  ""
+  "${TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "testing.py_deprecated_asyncio_fallback_test"
+  TARGET_NAME_BASE "py_deprecated_asyncio_fallback_test_py"
 )
 
 thrift_library(
@@ -756,6 +785,19 @@ add_custom_target(python_package_apache ALL
 )
 make_python_package(python_package_apache "${_gen_python}/apache")
 make_python_package(python_package_apache "${_gen_python}/apache/thrift")
+
+# py-deprecated testing namespace package (for gen-py/testing/)
+# Required for imports like testing.py_deprecated_asyncio_test.ttypes
+add_custom_target(python_package_testing_py_deprecated ALL
+  DEPENDS py_deprecated_asyncio_test_py-py-target py_deprecated_asyncio_fallback_test_py-py-target
+)
+add_custom_command(
+  TARGET python_package_testing_py_deprecated
+  PRE_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_py}/testing"
+  COMMAND ${CMAKE_COMMAND} -E touch "${_gen_py}/testing/__init__.py"
+  COMMENT "Creating gen-py/testing/__init__.py for py-deprecated imports"
+)
 
 #####
 # Python Test Definitions
