@@ -21,6 +21,9 @@ BUILD_TESTS = ON
 [cmake.defines.test=off]
 BUILD_TESTS = OFF
 
+[cmake.defines]
+BUILD_SAMPLES = OFF
+
 [dependencies]
 zlib
 gperf
