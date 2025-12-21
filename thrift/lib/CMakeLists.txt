@@ -776,6 +776,28 @@ In OSS/CMake builds, extensions are built directly under server_impl.
     )
   endforeach()
 
+  # Create thrift/lib/python/test/metadata_response/ symlinks for metadata_response Cython module
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test/metadata_response")
+
+  file(GLOB TestMetadataResponseFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.h"
+  )
+
+  foreach(_src ${TestMetadataResponseFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/lib/python/test/metadata_response/${_target_file}"
+    )
+  endforeach()
+
   # Create thrift/lib/python/client/test/ symlinks for client test Cython modules
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client/test")

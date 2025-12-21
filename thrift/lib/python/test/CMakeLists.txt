@@ -1031,3 +1031,22 @@ foreach(test_file ${CLIENT_TEST_FILES})
     ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
   )
 endforeach()
+
+#####
+# thrift/lib/python/test/metadata_response/ tests
+#
+# Tests for metadata response handling.
+# Requires:
+# - metadata_response.pyx Cython extension (added to setup.py)
+# - thrift.lib.python.test.test_server helper
+# - testing.thrift_services and testing.thrift_types (generated)
+# - apache.thrift.metadata.thrift_types (generated)
+#####
+add_test(
+  NAME thrift_python_metadata_response_test
+  COMMAND ${Python3_EXECUTABLE} -m unittest thrift.lib.python.test.metadata_response.metadata_response_test -v
+  WORKING_DIRECTORY ${_gen_python}
+)
+set_tests_properties(thrift_python_metadata_response_test PROPERTIES
+  ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+)
