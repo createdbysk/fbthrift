@@ -480,6 +480,13 @@ else:
             extra_compile_args=["-std=c++20", "-fcoroutines"],
             extra_link_args=extra_link_args,
         ),
+        # metadata_response extension for metadata response tests
+        # Uses header-only C++ implementation in metadata_response.h
+        Extension(
+            "thrift.lib.python.test.metadata_response.metadata_response",
+            sources=["thrift/lib/python/test/metadata_response/metadata_response.pyx"],
+            **common_options,
+        ),
     ]
 
     setup(
@@ -503,6 +510,7 @@ else:
             "thrift.lib.python",
             "thrift.lib.python.test",
             "thrift.lib.python.test.event_handlers",
+            "thrift.lib.python.test.metadata_response",
             "thrift.lib.python.client",
             "thrift.lib.python.client.test",
             "thrift.lib.python.client.test.client_event_handler",  # singular!
