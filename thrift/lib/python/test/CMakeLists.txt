@@ -682,7 +682,7 @@ if(EXISTS "${CMAKE_INSTALL_PREFIX}/lib/python${Python3_VERSION_MAJOR}.${Python3_
 endif()
 
 #####
-# Create thrift_tests package to avoid module shadowing
+# Create fbthrift_test package to avoid module shadowing
 #####
 # Problem: Test files like binary.py, iobuf.py, transitive_deps.py have same names
 # as gen-python packages (binary/, iobuf/, transitive_deps/).
@@ -690,19 +690,19 @@ endif()
 # causing "import binary" to find the test file instead of the package.
 #
 # Solution (same as Buck): Run tests as modules, not scripts.
-# Create a thrift_tests/ package with symlinks to test files, then run:
-#   python -m unittest thrift_tests.binary
+# Create a fbthrift_test/ package with symlinks to test files, then run:
+#   python -m unittest fbthrift_test.binary
 # This sets sys.path[0] to '' (cwd), so "import binary" finds the package.
 #####
 
-set(_thrift_tests_dir "${_gen_python}/thrift_tests")
+set(_fbthrift_test_dir "${_gen_python}/fbthrift_test")
 
-# Create thrift_tests package directory
+# Create fbthrift_test package directory
 add_custom_command(
-  OUTPUT "${_thrift_tests_dir}/__init__.py"
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${_thrift_tests_dir}"
-  COMMAND ${CMAKE_COMMAND} -E touch "${_thrift_tests_dir}/__init__.py"
-  COMMENT "Creating thrift_tests package directory"
+  OUTPUT "${_fbthrift_test_dir}/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_fbthrift_test_dir}"
+  COMMAND ${CMAKE_COMMAND} -E touch "${_fbthrift_test_dir}/__init__.py"
+  COMMENT "Creating fbthrift_test package directory"
 )
 
 # List of test files (excluding non-test files like testing_utils.py, test_server.py)
@@ -750,31 +750,31 @@ set(THRIFT_PYTHON_TEST_HELPERS
 set(TEST_SYMLINK_OUTPUTS "")
 foreach(test_file ${THRIFT_PYTHON_TEST_FILES} ${THRIFT_PYTHON_TEST_HELPERS})
   set(_src "${CMAKE_CURRENT_SOURCE_DIR}/${test_file}")
-  set(_dst "${_thrift_tests_dir}/${test_file}")
+  set(_dst "${_fbthrift_test_dir}/${test_file}")
   list(APPEND TEST_SYMLINK_OUTPUTS "${_dst}")
   add_custom_command(
     OUTPUT "${_dst}"
     COMMAND ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_dst}"
-    DEPENDS "${_src}" "${_thrift_tests_dir}/__init__.py"
-    COMMENT "Symlinking ${test_file} to thrift_tests package"
+    DEPENDS "${_src}" "${_fbthrift_test_dir}/__init__.py"
+    COMMENT "Symlinking ${test_file} to fbthrift_test package"
   )
 endforeach()
 
-# Add server/test .py file to thrift_tests package
-# This file is in python/server/test/ but needs to be accessible via thrift_tests
+# Add server/test .py file to fbthrift_test package
+# This file is in python/server/test/ but needs to be accessible via fbthrift_test
 set(_server_test_src "${CMAKE_CURRENT_SOURCE_DIR}/../server/test/python_async_processor_factory_test.py")
-set(_server_test_dst "${_thrift_tests_dir}/python_async_processor_factory_test.py")
+set(_server_test_dst "${_fbthrift_test_dir}/python_async_processor_factory_test.py")
 add_custom_command(
   OUTPUT "${_server_test_dst}"
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${_server_test_src}" "${_server_test_dst}"
-  DEPENDS "${_server_test_src}" "${_thrift_tests_dir}/__init__.py"
-  COMMENT "Symlinking python_async_processor_factory_test.py to thrift_tests package"
+  DEPENDS "${_server_test_src}" "${_fbthrift_test_dir}/__init__.py"
+  COMMENT "Symlinking python_async_processor_factory_test.py to fbthrift_test package"
 )
 list(APPEND TEST_SYMLINK_OUTPUTS "${_server_test_dst}")
 
 # Target to create all test symlinks
 add_custom_target(thrift_python_test_package ALL
-  DEPENDS "${_thrift_tests_dir}/__init__.py" ${TEST_SYMLINK_OUTPUTS}
+  DEPENDS "${_fbthrift_test_dir}/__init__.py" ${TEST_SYMLINK_OUTPUTS}
 )
 
 # Use DEPENDENCY_LIB_PATH from top-level CMakeLists.txt for LD_LIBRARY_PATH
@@ -786,7 +786,7 @@ foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
     NAME thrift_python_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest thrift_tests.${test_name} -v
+    COMMAND ${Python3_EXECUTABLE} -m unittest fbthrift_test.${test_name} -v
     WORKING_DIRECTORY ${_gen_python}
   )
   set_tests_properties(thrift_python_${test_name} PROPERTIES
@@ -889,11 +889,11 @@ set_tests_properties(thrift_python_request_context_extractor_test PROPERTIES
 #####
 # thrift/lib/python/server/test/ tests
 # Note: The .py test file imports from thrift.python.test.python_async_processor_factory_test
-# We symlink the .py to thrift_tests/ and run via thrift_tests module
+# We symlink the .py to fbthrift_test/ and run via fbthrift_test module
 #####
 add_test(
   NAME thrift_python_server_python_async_processor_factory_test
-  COMMAND ${Python3_EXECUTABLE} -m unittest thrift_tests.python_async_processor_factory_test -v
+  COMMAND ${Python3_EXECUTABLE} -m unittest fbthrift_test.python_async_processor_factory_test -v
   WORKING_DIRECTORY ${_gen_python}
 )
 set_tests_properties(thrift_python_server_python_async_processor_factory_test PROPERTIES
@@ -914,14 +914,14 @@ set_tests_properties(thrift_python_server_python_async_processor_factory_test PR
 
 set(CLIENT_TEST_DIR "${CMAKE_SOURCE_DIR}/thrift/lib/python/client/test")
 
-# Create thrift_client_tests package for client tests (same approach as thrift_tests)
-set(_thrift_client_tests_dir "${_gen_python}/thrift_client_tests")
+# Create fbthrift_client_test package for client tests (same approach as fbthrift_test)
+set(_fbthrift_client_test_dir "${_gen_python}/fbthrift_client_test")
 
 add_custom_command(
-  OUTPUT "${_thrift_client_tests_dir}/__init__.py"
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${_thrift_client_tests_dir}"
-  COMMAND ${CMAKE_COMMAND} -E touch "${_thrift_client_tests_dir}/__init__.py"
-  COMMENT "Creating thrift_client_tests package directory"
+  OUTPUT "${_fbthrift_client_test_dir}/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_fbthrift_client_test_dir}"
+  COMMAND ${CMAKE_COMMAND} -E touch "${_fbthrift_client_test_dir}/__init__.py"
+  COMMENT "Creating fbthrift_client_test package directory"
 )
 
 # Client test files
@@ -939,19 +939,19 @@ set(CLIENT_TEST_HELPERS
 set(CLIENT_TEST_SYMLINK_OUTPUTS "")
 foreach(test_file ${CLIENT_TEST_FILES} ${CLIENT_TEST_HELPERS})
   set(_src "${CLIENT_TEST_DIR}/${test_file}")
-  set(_dst "${_thrift_client_tests_dir}/${test_file}")
+  set(_dst "${_fbthrift_client_test_dir}/${test_file}")
   list(APPEND CLIENT_TEST_SYMLINK_OUTPUTS "${_dst}")
   add_custom_command(
     OUTPUT "${_dst}"
     COMMAND ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_dst}"
-    DEPENDS "${_src}" "${_thrift_client_tests_dir}/__init__.py"
-    COMMENT "Symlinking ${test_file} to thrift_client_tests package"
+    DEPENDS "${_src}" "${_fbthrift_client_test_dir}/__init__.py"
+    COMMENT "Symlinking ${test_file} to fbthrift_client_test package"
   )
 endforeach()
 
 # Target to create all client test symlinks
 add_custom_target(thrift_python_client_test_package ALL
-  DEPENDS "${_thrift_client_tests_dir}/__init__.py" ${CLIENT_TEST_SYMLINK_OUTPUTS}
+  DEPENDS "${_fbthrift_client_test_dir}/__init__.py" ${CLIENT_TEST_SYMLINK_OUTPUTS}
   create_binding_symlink_thrift_python_client_test
   test-python-target leaf-python-target
 )
@@ -961,7 +961,7 @@ foreach(test_file ${CLIENT_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
     NAME thrift_python_client_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest thrift_client_tests.${test_name} -v
+    COMMAND ${Python3_EXECUTABLE} -m unittest fbthrift_client_test.${test_name} -v
     WORKING_DIRECTORY ${_gen_python}
   )
   set_tests_properties(thrift_python_client_${test_name} PROPERTIES
