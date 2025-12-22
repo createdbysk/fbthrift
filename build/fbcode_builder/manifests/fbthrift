@@ -50,3 +50,8 @@ xplat/thrift = thrift
 ^xplat/thrift/perf/canary.py$
 ^xplat/thrift/perf/loadtest.py$
 ^xplat/thrift/.castle/.*
+
+[cmake.defines]
+PYTHON_EXTENSIONS=ON
+thriftpy3=ON
+CMAKE_POSITION_INDEPENDENT_CODE=ON
