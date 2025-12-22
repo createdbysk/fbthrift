@@ -281,7 +281,11 @@ macro(thrift_generate
   else()
     set(include_prefix_text "include_prefix=${include_prefix}")
     if(NOT "${options}" STREQUAL "")
+      # When options is provided, use comma separator
       set(include_prefix_text ",${include_prefix_text}")
+    else()
+      # When options is empty, we still need the colon separator for include_prefix
+      set(include_prefix_text ":${include_prefix_text}")
     endif()
   endif()
   set(gen_language ${language})
