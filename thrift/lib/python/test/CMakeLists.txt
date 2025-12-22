@@ -752,6 +752,134 @@ enable_testing()
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
 set(TEST_PYTHONPATH "${_gen_python}:${_cybld}:${_gen_py}:${_thrift_py}")
 
+# Symlink thrift.util from thrift_py to gen-python/thrift/util
+# Problem: gen-python/thrift/ shadows thrift_py/thrift/ in PYTHONPATH
+# py-deprecated imports like `from thrift.util.Recursive import ...` fail
+# because Python finds gen-python/thrift/ first, doesn't find util/ there
+# Solution: symlink thrift_py/thrift/util/ into gen-python/thrift/util/
+# Also need __init__.py for Python to recognize gen-python/thrift/ as a package
+add_custom_target(thrift_util_symlink ALL
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_thrift_py}/thrift/util"
+    "${_gen_python}/thrift/util"
+  COMMAND ${CMAKE_COMMAND} -E touch
+    "${_gen_python}/thrift/__init__.py"
+  COMMENT "Creating symlink for thrift.util and __init__.py in gen-python/thrift/"
+)
+
+# Symlink thrift.python runtime files from _cybld to gen-python/thrift/python/
+# Problem: gen-python/thrift/python/ only has generated packages (bidi_service, leaf, etc.)
+# thrift.python.abstract_types and other runtime modules are in _cybld build
+# Solution: symlink .py files and Cython .so files from _cybld to gen-python/thrift/python/
+# Note: _cybld already includes the build/lib.linux-arch-cpython-ver path
+
+# Build the .so suffix dynamically based on Python version and platform
+set(_python_so_suffix ".cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu.so")
+
+add_custom_target(thrift_python_runtime_symlinks ALL
+  DEPENDS thrift_python_and_py3_bindings
+  # Python files
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/abstract_types.py"
+    "${_gen_python}/thrift/python/abstract_types.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/__init__.py"
+    "${_gen_python}/thrift/python/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/metadata.py"
+    "${_gen_python}/thrift/python/metadata.py"
+  # Cython .so files - these are required for thrift.python.exceptions, thrift.python.types, etc.
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/exceptions${_python_so_suffix}"
+    "${_gen_python}/thrift/python/exceptions${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/types${_python_so_suffix}"
+    "${_gen_python}/thrift/python/types${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/common${_python_so_suffix}"
+    "${_gen_python}/thrift/python/common${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/mutable_types${_python_so_suffix}"
+    "${_gen_python}/thrift/python/mutable_types${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/mutable_exceptions${_python_so_suffix}"
+    "${_gen_python}/thrift/python/mutable_exceptions${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/mutable_typeinfos${_python_so_suffix}"
+    "${_gen_python}/thrift/python/mutable_typeinfos${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/mutable_serializer${_python_so_suffix}"
+    "${_gen_python}/thrift/python/mutable_serializer${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/mutable_containers${_python_so_suffix}"
+    "${_gen_python}/thrift/python/mutable_containers${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/serializer${_python_so_suffix}"
+    "${_gen_python}/thrift/python/serializer${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/protocol${_python_so_suffix}"
+    "${_gen_python}/thrift/python/protocol${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/adapter${_python_so_suffix}"
+    "${_gen_python}/thrift/python/adapter${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/converter${_python_so_suffix}"
+    "${_gen_python}/thrift/python/converter${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/mutable_converter${_python_so_suffix}"
+    "${_gen_python}/thrift/python/mutable_converter${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/server${_python_so_suffix}"
+    "${_gen_python}/thrift/python/server${_python_so_suffix}"
+  # Create client/ directory and symlink all files
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/client"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/__init__.py"
+    "${_gen_python}/thrift/python/client/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/client_wrapper.py"
+    "${_gen_python}/thrift/python/client/client_wrapper.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/async_client${_python_so_suffix}"
+    "${_gen_python}/thrift/python/client/async_client${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/async_client_factory${_python_so_suffix}"
+    "${_gen_python}/thrift/python/client/async_client_factory${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/omni_client${_python_so_suffix}"
+    "${_gen_python}/thrift/python/client/omni_client${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/request_channel${_python_so_suffix}"
+    "${_gen_python}/thrift/python/client/request_channel${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/ssl${_python_so_suffix}"
+    "${_gen_python}/thrift/python/client/ssl${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/sync_client${_python_so_suffix}"
+    "${_gen_python}/thrift/python/client/sync_client${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/sync_client_factory${_python_so_suffix}"
+    "${_gen_python}/thrift/python/client/sync_client_factory${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/client/sync_channel_factory${_python_so_suffix}"
+    "${_gen_python}/thrift/python/client/sync_channel_factory${_python_so_suffix}"
+  # Create test/adapters/ directory and symlink all files
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/test/adapters"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/test/adapters/__init__.py"
+    "${_gen_python}/thrift/python/test/adapters/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/test/adapters/atoi.py"
+    "${_gen_python}/thrift/python/test/adapters/atoi.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/test/adapters/datetime.py"
+    "${_gen_python}/thrift/python/test/adapters/datetime.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/test/adapters/noop.py"
+    "${_gen_python}/thrift/python/test/adapters/noop.py"
+  COMMENT "Creating symlinks for thrift.python runtime in gen-python/thrift/python/"
+)
+
 # Add folly python site-packages
 if(DEFINED FOLLY_PYTHON_SITE_PACKAGES AND EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}")
   set(TEST_PYTHONPATH "${TEST_PYTHONPATH}:${FOLLY_PYTHON_SITE_PACKAGES}")
@@ -861,6 +989,12 @@ add_custom_target(thrift_python_test_package ALL
 
 # Add dependency on py-deprecated symlinks for converter test
 add_dependencies(thrift_python_test_package convertible_py_deprecated_symlink)
+
+# Add dependency on thrift.util symlink to fix namespace shadowing
+add_dependencies(thrift_python_test_package thrift_util_symlink)
+
+# Add dependency on thrift.python runtime symlinks
+add_dependencies(thrift_python_test_package thrift_python_runtime_symlinks)
 
 # Use DEPENDENCY_LIB_PATH from top-level CMakeLists.txt for LD_LIBRARY_PATH
 # This contains all dependency library paths (glog, gflags, fmt, etc.)
