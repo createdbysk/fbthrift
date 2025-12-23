@@ -63,13 +63,8 @@ fbcode/folly = folly
 ^fbcode/folly/public_tld/build/facebook_.*
 
 [cmake.defines]
-# Build folly as shared library to avoid double-linking gflags conflicts.
-# When both libthrift_python_cpp.so and folly/iobuf.so embed static libfolly.a,
-# gflags like FLAGS_folly_hazptr_use_executor get registered twice at runtime.
-# With shared libfolly.so, both Python extensions share one copy of folly.
-# IMPORTANT: This changes C++ thrift deployment - thriftcpp2 now requires
-# libfolly.so at runtime. See README.md "Resolve Folly Shared Library Impact".
 BUILD_SHARED_LIBS=ON
+PYTHON_EXTENSIONS=ON
 
 [cmake.defines.not(os=windows)]
 BOOST_LINK_STATIC=ON
