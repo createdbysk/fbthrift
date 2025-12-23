@@ -23,6 +23,7 @@ BUILD_TESTS = OFF
 
 [cmake.defines]
 BUILD_SAMPLES = OFF
+CMAKE_POSITION_INDEPENDENT_CODE = ON
 
 [dependencies]
 zlib
