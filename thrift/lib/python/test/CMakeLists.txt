@@ -561,12 +561,18 @@ set(_gen_py "${CMAKE_CURRENT_BINARY_DIR}/gen-py")
 
 # Helper function: create symlink from gen-python to cybld
 function(add_test_namespace_symlink name source_path target_path)
+  # Get the parent directory of the symlink target
+  get_filename_component(target_parent_dir "${target_path}" DIRECTORY)
+
   add_custom_target(create_binding_symlink_${name} ALL
-    DEPENDS ${ARGN}
+    DEPENDS ${ARGN} thrift_python_and_py3_bindings
   )
   add_custom_command(
     TARGET create_binding_symlink_${name}
     PRE_BUILD
+    # First create the parent directory if it doesn't exist
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${target_parent_dir}"
+    # Then create the symlink
     COMMAND ${CMAKE_COMMAND} -E create_symlink "${source_path}" "${target_path}"
   )
 endfunction()
@@ -574,14 +580,20 @@ endfunction()
 # Helper function: create multiple symlinks for one target
 function(add_test_namespace_symlinks name)
   add_custom_target(create_binding_symlink_${name} ALL
-    DEPENDS ${ARGN}
+    DEPENDS ${ARGN} thrift_python_and_py3_bindings
   )
 endfunction()
 
 function(add_symlink_command target_name source_path target_path)
+  # Get the parent directory of the symlink target
+  get_filename_component(target_parent_dir "${target_path}" DIRECTORY)
+
   add_custom_command(
     TARGET create_binding_symlink_${target_name}
     PRE_BUILD
+    # First create the parent directory if it doesn't exist
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${target_parent_dir}"
+    # Then create the symlink
     COMMAND ${CMAKE_COMMAND} -E create_symlink "${source_path}" "${target_path}"
   )
 endfunction()
