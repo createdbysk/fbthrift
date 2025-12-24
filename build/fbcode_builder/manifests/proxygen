@@ -23,6 +23,8 @@ BUILD_TESTS = OFF
 
 [cmake.defines]
 BUILD_SAMPLES = OFF
+
+[cmake.defines.os=linux]
 CMAKE_POSITION_INDEPENDENT_CODE = ON
 
 [dependencies]
