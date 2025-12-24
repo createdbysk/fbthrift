@@ -28,6 +28,10 @@ jobs:
       run: sudo --preserve-env=http_proxy apt-get update
     - name: Install system deps
       run: sudo --preserve-env=http_proxy python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive fbthrift && sudo --preserve-env=http_proxy python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf
+    - name: Install Cython
+      run: |
+        sudo apt-get remove -y cython3 || true
+        pip3 install --upgrade cython
     - id: paths
       name: Query paths
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. fbthrift  >> "$GITHUB_OUTPUT"
