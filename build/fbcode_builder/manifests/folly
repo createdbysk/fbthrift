@@ -8,7 +8,7 @@ shipit_fbcode_builder = true
 # Temporarily use fork with Python extensions fixes for OSS thrift-python build
 # Commits: libaio dependency, CMAKE_CURRENT_BINARY_DIR fix, --api-only support
 repo_url = https://github.com/createdbysk/folly.git
-rev = oss-thrift-python
+rev = main
 
 [build]
 builder = cmake
