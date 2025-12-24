@@ -13,6 +13,8 @@ subdir = fizz
 
 [cmake.defines]
 BUILD_EXAMPLES = OFF
+
+[cmake.defines.os=linux]
 CMAKE_POSITION_INDEPENDENT_CODE = ON
 
 [cmake.defines.test=on]
