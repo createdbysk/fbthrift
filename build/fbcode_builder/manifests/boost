@@ -14,8 +14,10 @@ sha256 = c86bd9d9eef795b4b0d3802279419fde5221922805b073b9bd822edecb1ca28e
 BOOST_ROOT_1_69_0
 BOOST_ROOT_1_83_0
 
-[debs]
-libboost-all-dev
+# [debs]
+# libboost-all-dev
+# Commented out: System Boost packages don't have -fPIC, which breaks
+# Python extension linking. Force building from source with -fPIC instead.
 
 [homebrew]
 boost
@@ -106,10 +108,12 @@ patchfile = boost_1_83_0.patch
 # RHEL hardened gcc is not compatible with PCH
 # https://bugzilla.redhat.com/show_bug.cgi?id=1806545
 pch=off
+# Python extensions need -fPIC for static library linking into shared objects
+cxxflags="-fPIC"
 
 [b2.args.all(os=linux,shared_libs=False)]
-# Python extensions need -fPIC for static library linking
-cxxflags="-fPIC"
+# -fPIC is now set for all Linux builds above
+# Keeping this section for any future shared_libs=False specific flags
 
 [b2.args.os=darwin]
 toolset=clang
