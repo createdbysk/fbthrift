@@ -67,6 +67,8 @@ fbcode/folly = folly
 
 [cmake.defines]
 BUILD_SHARED_LIBS=ON
+
+[cmake.defines.os=linux]
 PYTHON_EXTENSIONS=ON
 
 [cmake.defines.not(os=windows)]
