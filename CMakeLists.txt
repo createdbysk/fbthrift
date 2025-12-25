@@ -20,6 +20,9 @@ if (NOT DEFINED PACKAGE_VERSION)
 endif ()
 project(THRIFT VERSION ${PACKAGE_VERSION} LANGUAGES CXX)
 
+# Enable testing early so tests registered in subdirectories are visible to ctest
+enable_testing()
+
 if (NOT DEFINED CPACK_GENERATOR)
   set(CPACK_GENERATOR RPM)
 endif ()
@@ -280,7 +283,6 @@ if(enable_tests)
     ${GTEST_INCLUDE_DIRS}
     ${GMOCK_INCLUDE_DIRS}
   )
-  enable_testing()
 endif(enable_tests)
 
 # Create a generalized function for tests
