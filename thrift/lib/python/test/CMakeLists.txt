@@ -116,7 +116,7 @@ thrift_library(
   NAMESPACE ""
 )
 
-# Files with namespace py3 "testing"
+# testing.thrift has namespace py3 "" (empty) - uses filename as package
 thrift_library(
   "testing"
   "TestingService;TestingServiceChild;ExtendServiceWithNoTypes;ClientMetadataTestingService"
@@ -126,9 +126,9 @@ thrift_library(
   "${CMAKE_CURRENT_BINARY_DIR}"
   ""
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE "testing"
 )
 
+# Files with namespace py3 "testing" - output to testing/<filename>/
 thrift_library(
   "base_service_only"
   "BaseService"
@@ -797,8 +797,8 @@ add_custom_target(thrift_python_runtime_symlinks ALL
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/abstract_types.py"
     "${_gen_python}/thrift/python/abstract_types.py"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/__init__.py"
+  # Create __init__.py (not a symlink - the source doesn't exist in cybld)
+  COMMAND ${CMAKE_COMMAND} -E touch
     "${_gen_python}/thrift/python/__init__.py"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/metadata.py"

@@ -31,7 +31,7 @@ jobs:
     - name: Install Cython
       run: |
         sudo apt-get remove -y cython3 || true
-        pip3 install --upgrade cython
+        pip3 install --upgrade cython parameterized
     - id: paths
       name: Query paths
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. fbthrift  >> "$GITHUB_OUTPUT"

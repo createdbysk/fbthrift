@@ -179,6 +179,10 @@ if(thriftpy3)
     COMMAND
       thrift1 -I ${CMAKE_SOURCE_DIR} --out . --gen "mstch_python:include_prefix=thrift"
       ${CMAKE_CURRENT_SOURCE_DIR}/thrift/metadata.thrift
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${_cybld}/apache/thrift/metadata
+    COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/__init__.py
+    COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/thrift/__init__.py
+    COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/thrift/metadata/__init__.py
     WORKING_DIRECTORY ${_cybld}
     BYPRODUCTS
       ${_cybld}/apache/thrift/metadata/thrift_abstract_types.py
@@ -760,6 +764,20 @@ In OSS/CMake builds, extensions are built directly under server_impl.
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test/event_handlers")
 
+  add_custom_command(
+    TARGET create_binding_symlink_lib_test
+    PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/event_handlers/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/metadata_response/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/test/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/test/client_event_handler/__init__.py"
+    COMMENT "Creating __init__.py files for thrift.lib.python packages"
+  )
+
   foreach(_src ${TestFiles})
     get_filename_component(_target_file "${_src}" NAME)
     add_custom_command(
@@ -870,6 +888,7 @@ In OSS/CMake builds, extensions are built directly under server_impl.
       create_binding_symlink_python
       create_binding_symlink_py3
       create_binding_symlink_server_impl
+      create_binding_symlink_lib_test
       thriftcpp2
       thrift_python_cpp
       thrift_python_types_bindings
