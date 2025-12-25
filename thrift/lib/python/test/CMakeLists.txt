@@ -762,9 +762,6 @@ add_custom_command(
 # Python Test Definitions
 #####
 
-# Enable testing
-enable_testing()
-
 # Build PYTHONPATH for tests
 # Include thrift_py library for py-deprecated runtime (thrift.Thrift, thrift.transport, etc.)
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
