@@ -895,9 +895,13 @@ add_custom_target(thrift_python_runtime_symlinks ALL
   COMMENT "Creating symlinks for thrift.python runtime in gen-python/thrift/python/"
 )
 
-# Add folly python site-packages
-if(DEFINED FOLLY_PYTHON_SITE_PACKAGES AND EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}")
+# Add folly python site-packages to TEST_PYTHONPATH
+# This is required for tests to find 'folly.iobuf' module
+if(DEFINED FOLLY_PYTHON_SITE_PACKAGES)
+  message(STATUS "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: ${FOLLY_PYTHON_SITE_PACKAGES}")
   set(TEST_PYTHONPATH "${TEST_PYTHONPATH}:${FOLLY_PYTHON_SITE_PACKAGES}")
+else()
+  message(WARNING "FOLLY_PYTHON_SITE_PACKAGES not defined - tests may fail to find folly module")
 endif()
 
 # Add installed fbthrift site-packages
