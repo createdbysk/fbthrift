@@ -113,7 +113,14 @@ if(thriftpy3)
   #####################################################################
   # Auto-discover all library directories from getdeps installed packages
   # This ensures setup.py's find_static_lib() can find ALL libraries in static_lib_names
-  get_filename_component(GETDEPS_INSTALL_ROOT "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  # Use GETDEPS_INSTALL_DIR env var if set (getdeps always sets this), otherwise fall back
+  # to deriving from CMAKE_INSTALL_PREFIX (works when CMAKE_INSTALL_PREFIX is in the
+  # getdeps installed directory, but NOT when --project-install-prefix overrides it)
+  if(DEFINED ENV{GETDEPS_INSTALL_DIR})
+    set(GETDEPS_INSTALL_ROOT "$ENV{GETDEPS_INSTALL_DIR}")
+  else()
+    get_filename_component(GETDEPS_INSTALL_ROOT "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  endif()
   file(GLOB installed_packages "${GETDEPS_INSTALL_ROOT}/*")
   set(all_lib_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
   foreach(pkg ${installed_packages})
