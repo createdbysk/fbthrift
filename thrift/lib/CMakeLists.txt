@@ -83,7 +83,12 @@ if(thriftpy3)
 
   # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
   # Proxygen and mvfst include directories (for http2_helper in client tests)
-  get_filename_component(GETDEPS_INSTALL_ROOT_INC "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  # Use GETDEPS_INSTALL_DIR env var if set (same fix as library path discovery above)
+  if(DEFINED ENV{GETDEPS_INSTALL_DIR})
+    set(GETDEPS_INSTALL_ROOT_INC "$ENV{GETDEPS_INSTALL_DIR}")
+  else()
+    get_filename_component(GETDEPS_INSTALL_ROOT_INC "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  endif()
   set(proxygen_include_dir "${GETDEPS_INSTALL_ROOT_INC}/proxygen/include")
   set(mvfst_include_dir "${GETDEPS_INSTALL_ROOT_INC}/mvfst/include")
 
