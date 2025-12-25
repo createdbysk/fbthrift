@@ -648,6 +648,12 @@ set(_client_test_gen_files
   thrift_types.py
   thrift_types.pyi
 )
+# Create the target directory first
+add_custom_command(
+  TARGET create_binding_symlink_thrift_python_client_test
+  PRE_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_cybld}/thrift/python/test"
+)
 foreach(_file ${_client_test_gen_files})
   add_custom_command(
     TARGET create_binding_symlink_thrift_python_client_test
