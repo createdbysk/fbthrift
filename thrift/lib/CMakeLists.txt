@@ -899,15 +899,6 @@ In OSS/CMake builds, extensions are built directly under server_impl.
       bdist_wheel --libpython ${python_libname}
     WORKING_DIRECTORY ${_cybld}
   )
-  add_custom_command(TARGET thrift_python_and_py3_bindings POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E env
-      "CFLAGS=${CMAKE_C_FLAGS}"
-      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
-      "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
-      install --prefix ${CMAKE_INSTALL_PREFIX} --libpython ${python_libname}
-    WORKING_DIRECTORY ${_cybld}
-  )
 
   # getdeps.py does not allow sufficient control of CMAKE_INSTALL_PREFIX,
   # so PYTHON_PACKAGE_INSTALL_DIR can be used to control the installation
