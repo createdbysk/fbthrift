@@ -28,6 +28,7 @@ fizz
 fmt
 folly
 googletest
+libevent
 libsodium
 proxygen
 wangle
