@@ -555,7 +555,9 @@ thrift_library(
 # Create symlinks for test namespaces
 # gen-python/<namespace>/ -> cybld/<namespace>/
 #####
-set(_cybld "${CMAKE_BINARY_DIR}/thrift/lib/cybld/build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+# Note: Cython/setuptools uses "lib.linux-<arch>-<version>" format (e.g., lib.linux-x86_64-3.10)
+# NOT "lib.linux-<arch>-cpython-<version>" format (cpython-310 is used in .so filenames only)
+set(_cybld "${CMAKE_BINARY_DIR}/thrift/lib/cybld/build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
 set(_gen_python "${CMAKE_CURRENT_BINARY_DIR}/gen-python")
 set(_gen_py "${CMAKE_CURRENT_BINARY_DIR}/gen-py")
 
