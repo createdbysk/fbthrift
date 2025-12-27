@@ -129,9 +129,8 @@ elseif(EXISTS "${_folly_dist_packages}/folly")
   set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_dist_packages}")
   message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES} (dist-packages)")
 else()
-  # Fallback to site-packages and hope it gets created later
-  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
-  message(WARNING "Neither folly site-packages nor dist-packages found. Using default: ${FOLLY_PYTHON_SITE_PACKAGES}")
+  message(FATAL_ERROR "Neither folly site-packages nor dist-packages found. "
+    "Checked: ${_folly_site_packages}/folly, ${_folly_dist_packages}/folly")
 endif()
 
 # Create folly/__init__.py if missing (folly build doesn't create it, but Python requires it)
@@ -193,9 +192,11 @@ if(thriftpy3)
   set(DEPENDENCY_LIB_DIRS "")
 
   # Add folly lib dir
-  if(DEFINED FOLLY_LIB_DIR AND EXISTS "${FOLLY_LIB_DIR}")
-    list(APPEND DEPENDENCY_LIB_DIRS "${FOLLY_LIB_DIR}")
+  if(NOT DEFINED FOLLY_LIB_DIR OR NOT EXISTS "${FOLLY_LIB_DIR}")
+    message(FATAL_ERROR "FOLLY_LIB_DIR is not set or does not exist. "
+      "Got: FOLLY_LIB_DIR='${FOLLY_LIB_DIR}'")
   endif()
+  list(APPEND DEPENDENCY_LIB_DIRS "${FOLLY_LIB_DIR}")
 
   # Add glog lib dir (extract from library path)
   if(DEFINED GLOG_LIBRARY_RELEASE AND EXISTS "${GLOG_LIBRARY_RELEASE}")
@@ -204,21 +205,28 @@ if(thriftpy3)
   elseif(DEFINED GLOG_LIBRARY AND EXISTS "${GLOG_LIBRARY}")
     get_filename_component(_glog_lib_dir "${GLOG_LIBRARY}" DIRECTORY)
     list(APPEND DEPENDENCY_LIB_DIRS "${_glog_lib_dir}")
+  else()
+    message(FATAL_ERROR "Neither GLOG_LIBRARY_RELEASE nor GLOG_LIBRARY is set or exists. "
+      "Got: GLOG_LIBRARY_RELEASE='${GLOG_LIBRARY_RELEASE}', GLOG_LIBRARY='${GLOG_LIBRARY}'")
   endif()
 
   # Add gflags lib dir (extract from CMake config dir: lib/cmake/gflags -> lib)
-  if(DEFINED gflags_DIR AND EXISTS "${gflags_DIR}")
-    get_filename_component(_gflags_cmake_parent "${gflags_DIR}" DIRECTORY)  # cmake/gflags -> cmake
-    get_filename_component(_gflags_lib_dir "${_gflags_cmake_parent}" DIRECTORY)  # cmake -> lib
-    list(APPEND DEPENDENCY_LIB_DIRS "${_gflags_lib_dir}")
+  if(NOT DEFINED gflags_DIR OR NOT EXISTS "${gflags_DIR}")
+    message(FATAL_ERROR "gflags_DIR is not set or does not exist. "
+      "Got: gflags_DIR='${gflags_DIR}'")
   endif()
+  get_filename_component(_gflags_cmake_parent "${gflags_DIR}" DIRECTORY)  # cmake/gflags -> cmake
+  get_filename_component(_gflags_lib_dir "${_gflags_cmake_parent}" DIRECTORY)  # cmake -> lib
+  list(APPEND DEPENDENCY_LIB_DIRS "${_gflags_lib_dir}")
 
   # Add fmt lib dir (lib64/cmake/fmt -> lib64)
-  if(DEFINED fmt_DIR AND EXISTS "${fmt_DIR}")
-    get_filename_component(_fmt_cmake_parent "${fmt_DIR}" DIRECTORY)
-    get_filename_component(_fmt_lib_dir "${_fmt_cmake_parent}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_fmt_lib_dir}")
+  if(NOT DEFINED fmt_DIR OR NOT EXISTS "${fmt_DIR}")
+    message(FATAL_ERROR "fmt_DIR is not set or does not exist. "
+      "Got: fmt_DIR='${fmt_DIR}'")
   endif()
+  get_filename_component(_fmt_cmake_parent "${fmt_DIR}" DIRECTORY)
+  get_filename_component(_fmt_lib_dir "${_fmt_cmake_parent}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_fmt_lib_dir}")
 
   # Add libevent lib dir (lib/cmake/libevent -> lib)
   # Both getdeps and conda use config mode, so Libevent_DIR must be set
@@ -232,63 +240,91 @@ if(thriftpy3)
   list(APPEND DEPENDENCY_LIB_DIRS "${_libevent_lib_dir}")
 
   # Add libunwind lib dir
-  if(DEFINED LIBUNWIND_LIBRARY AND EXISTS "${LIBUNWIND_LIBRARY}")
-    get_filename_component(_libunwind_lib_dir "${LIBUNWIND_LIBRARY}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_libunwind_lib_dir}")
+  if(NOT DEFINED LIBUNWIND_LIBRARY OR NOT EXISTS "${LIBUNWIND_LIBRARY}")
+    message(FATAL_ERROR "LIBUNWIND_LIBRARY is not set or does not exist. "
+      "Got: LIBUNWIND_LIBRARY='${LIBUNWIND_LIBRARY}'")
   endif()
+  get_filename_component(_libunwind_lib_dir "${LIBUNWIND_LIBRARY}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_libunwind_lib_dir}")
 
   # Add fizz, wangle, mvfst lib dirs (lib/cmake/pkg -> lib)
-  if(DEFINED fizz_DIR AND EXISTS "${fizz_DIR}")
-    get_filename_component(_fizz_cmake_parent "${fizz_DIR}" DIRECTORY)
-    get_filename_component(_fizz_lib_dir "${_fizz_cmake_parent}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_fizz_lib_dir}")
+  if(NOT DEFINED fizz_DIR OR NOT EXISTS "${fizz_DIR}")
+    message(FATAL_ERROR "fizz_DIR is not set or does not exist. "
+      "Got: fizz_DIR='${fizz_DIR}'")
   endif()
-  if(DEFINED wangle_DIR AND EXISTS "${wangle_DIR}")
-    get_filename_component(_wangle_cmake_parent "${wangle_DIR}" DIRECTORY)
-    get_filename_component(_wangle_lib_dir "${_wangle_cmake_parent}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_wangle_lib_dir}")
+  get_filename_component(_fizz_cmake_parent "${fizz_DIR}" DIRECTORY)
+  get_filename_component(_fizz_lib_dir "${_fizz_cmake_parent}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_fizz_lib_dir}")
+
+  if(NOT DEFINED wangle_DIR OR NOT EXISTS "${wangle_DIR}")
+    message(FATAL_ERROR "wangle_DIR is not set or does not exist. "
+      "Got: wangle_DIR='${wangle_DIR}'")
   endif()
-  if(DEFINED mvfst_DIR AND EXISTS "${mvfst_DIR}")
-    get_filename_component(_mvfst_cmake_parent "${mvfst_DIR}" DIRECTORY)
-    get_filename_component(_mvfst_lib_dir "${_mvfst_cmake_parent}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_mvfst_lib_dir}")
+  get_filename_component(_wangle_cmake_parent "${wangle_DIR}" DIRECTORY)
+  get_filename_component(_wangle_lib_dir "${_wangle_cmake_parent}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_wangle_lib_dir}")
+
+  if(NOT DEFINED mvfst_DIR OR NOT EXISTS "${mvfst_DIR}")
+    message(FATAL_ERROR "mvfst_DIR is not set or does not exist. "
+      "Got: mvfst_DIR='${mvfst_DIR}'")
   endif()
+  get_filename_component(_mvfst_cmake_parent "${mvfst_DIR}" DIRECTORY)
+  get_filename_component(_mvfst_lib_dir "${_mvfst_cmake_parent}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_mvfst_lib_dir}")
 
   # Add double-conversion lib dir
-  if(DEFINED double-conversion_DIR AND EXISTS "${double-conversion_DIR}")
-    get_filename_component(_dc_cmake_parent "${double-conversion_DIR}" DIRECTORY)
-    get_filename_component(_dc_lib_dir "${_dc_cmake_parent}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_dc_lib_dir}")
+  if(NOT DEFINED double-conversion_DIR OR NOT EXISTS "${double-conversion_DIR}")
+    message(FATAL_ERROR "double-conversion_DIR is not set or does not exist. "
+      "Got: double-conversion_DIR='${double-conversion_DIR}'")
   endif()
+  get_filename_component(_dc_cmake_parent "${double-conversion_DIR}" DIRECTORY)
+  get_filename_component(_dc_lib_dir "${_dc_cmake_parent}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_dc_lib_dir}")
 
   # Add boost lib dirs
-  if(DEFINED Boost_LIBRARY_DIRS)
-    list(APPEND DEPENDENCY_LIB_DIRS ${Boost_LIBRARY_DIRS})
+  if(NOT DEFINED Boost_LIBRARY_DIRS)
+    message(FATAL_ERROR "Boost_LIBRARY_DIRS is not set. "
+      "Got: Boost_LIBRARY_DIRS='${Boost_LIBRARY_DIRS}'")
   endif()
+  list(APPEND DEPENDENCY_LIB_DIRS ${Boost_LIBRARY_DIRS})
 
   # Add libsodium lib dir (extract from sodium_LIBRARY_RELEASE set by FindSodium.cmake)
+  if(NOT DEFINED sodium_LIBRARY_RELEASE OR NOT EXISTS "${sodium_LIBRARY_RELEASE}")
+    message(FATAL_ERROR "sodium_LIBRARY_RELEASE is not set or does not exist. "
+      "Got: sodium_LIBRARY_RELEASE='${sodium_LIBRARY_RELEASE}'")
+  endif()
   get_filename_component(_sodium_lib_dir "${sodium_LIBRARY_RELEASE}" DIRECTORY)
   list(APPEND DEPENDENCY_LIB_DIRS "${_sodium_lib_dir}")
 
   # Add zstd, lz4, snappy lib dirs
-  if(DEFINED ZSTD_LIBRARY AND EXISTS "${ZSTD_LIBRARY}")
-    get_filename_component(_zstd_lib_dir "${ZSTD_LIBRARY}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_zstd_lib_dir}")
+  if(NOT DEFINED ZSTD_LIBRARY OR NOT EXISTS "${ZSTD_LIBRARY}")
+    message(FATAL_ERROR "ZSTD_LIBRARY is not set or does not exist. "
+      "Got: ZSTD_LIBRARY='${ZSTD_LIBRARY}'")
   endif()
-  if(DEFINED LZ4_LIBRARY AND EXISTS "${LZ4_LIBRARY}")
-    get_filename_component(_lz4_lib_dir "${LZ4_LIBRARY}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_lz4_lib_dir}")
+  get_filename_component(_zstd_lib_dir "${ZSTD_LIBRARY}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_zstd_lib_dir}")
+
+  if(NOT DEFINED LZ4_LIBRARY OR NOT EXISTS "${LZ4_LIBRARY}")
+    message(FATAL_ERROR "LZ4_LIBRARY is not set or does not exist. "
+      "Got: LZ4_LIBRARY='${LZ4_LIBRARY}'")
   endif()
-  if(DEFINED SNAPPY_LIBRARY AND EXISTS "${SNAPPY_LIBRARY}")
-    get_filename_component(_snappy_lib_dir "${SNAPPY_LIBRARY}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_snappy_lib_dir}")
+  get_filename_component(_lz4_lib_dir "${LZ4_LIBRARY}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_lz4_lib_dir}")
+
+  if(NOT DEFINED SNAPPY_LIBRARY OR NOT EXISTS "${SNAPPY_LIBRARY}")
+    message(FATAL_ERROR "SNAPPY_LIBRARY is not set or does not exist. "
+      "Got: SNAPPY_LIBRARY='${SNAPPY_LIBRARY}'")
   endif()
+  get_filename_component(_snappy_lib_dir "${SNAPPY_LIBRARY}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_snappy_lib_dir}")
 
   # Add xz/lzma lib dir
-  if(DEFINED LIBLZMA_LIBRARY AND EXISTS "${LIBLZMA_LIBRARY}")
-    get_filename_component(_lzma_lib_dir "${LIBLZMA_LIBRARY}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_lzma_lib_dir}")
+  if(NOT DEFINED LIBLZMA_LIBRARY OR NOT EXISTS "${LIBLZMA_LIBRARY}")
+    message(FATAL_ERROR "LIBLZMA_LIBRARY is not set or does not exist. "
+      "Got: LIBLZMA_LIBRARY='${LIBLZMA_LIBRARY}'")
   endif()
+  get_filename_component(_lzma_lib_dir "${LIBLZMA_LIBRARY}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_lzma_lib_dir}")
 
   # Remove duplicates and convert to colon-separated path
   list(REMOVE_DUPLICATES DEPENDENCY_LIB_DIRS)
