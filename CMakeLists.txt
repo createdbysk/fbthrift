@@ -259,14 +259,9 @@ if(thriftpy3)
     list(APPEND DEPENDENCY_LIB_DIRS ${Boost_LIBRARY_DIRS})
   endif()
 
-  # Add libsodium lib dir
-  if(DEFINED sodium_LIBRARY AND EXISTS "${sodium_LIBRARY}")
-    get_filename_component(_sodium_lib_dir "${sodium_LIBRARY}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_sodium_lib_dir}")
-  elseif(DEFINED SODIUM_LIBRARY AND EXISTS "${SODIUM_LIBRARY}")
-    get_filename_component(_sodium_lib_dir "${SODIUM_LIBRARY}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_sodium_lib_dir}")
-  endif()
+  # Add libsodium lib dir (extract from sodium_LIBRARY_RELEASE set by FindSodium.cmake)
+  get_filename_component(_sodium_lib_dir "${sodium_LIBRARY_RELEASE}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_sodium_lib_dir}")
 
   # Add zstd, lz4, snappy lib dirs
   if(DEFINED ZSTD_LIBRARY AND EXISTS "${ZSTD_LIBRARY}")
