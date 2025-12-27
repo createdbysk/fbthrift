@@ -220,12 +220,9 @@ if(thriftpy3)
     list(APPEND DEPENDENCY_LIB_DIRS "${_fmt_lib_dir}")
   endif()
 
-  # Add libevent lib dir (lib/cmake/libevent -> lib)
-  if(DEFINED Libevent_DIR AND EXISTS "${Libevent_DIR}")
-    get_filename_component(_libevent_cmake_parent "${Libevent_DIR}" DIRECTORY)
-    get_filename_component(_libevent_lib_dir "${_libevent_cmake_parent}" DIRECTORY)
-    list(APPEND DEPENDENCY_LIB_DIRS "${_libevent_lib_dir}")
-  endif()
+  # Add libevent lib dir (extract from LIBEVENT_LIB set by FindLibEvent.cmake)
+  get_filename_component(_libevent_lib_dir "${LIBEVENT_LIB}" DIRECTORY)
+  list(APPEND DEPENDENCY_LIB_DIRS "${_libevent_lib_dir}")
 
   # Add libunwind lib dir
   if(DEFINED LIBUNWIND_LIBRARY AND EXISTS "${LIBUNWIND_LIBRARY}")
