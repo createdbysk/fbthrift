@@ -786,6 +786,21 @@ add_custom_target(thrift_util_symlink ALL
   COMMENT "Creating symlink for thrift.util and __init__.py in gen-python/thrift/"
 )
 
+# Symlink thrift.lib and thrift.py3 from _cybld_base to gen-python/thrift/
+# Problem: gen-python/thrift/ shadows cybld/thrift/ in PYTHONPATH
+# Tests import thrift.lib.python.* and thrift.py3.* which exist in cybld but not gen-python
+# Solution: symlink entire lib/ and py3/ directories
+add_custom_target(thrift_lib_py3_symlinks ALL
+  DEPENDS thrift_python_and_py3_bindings
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld_base}/thrift/lib"
+    "${_gen_python}/thrift/lib"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld_base}/thrift/py3"
+    "${_gen_python}/thrift/py3"
+  COMMENT "Creating symlinks for thrift.lib and thrift.py3 in gen-python/thrift/"
+)
+
 # Symlink thrift.python runtime files from _cybld to gen-python/thrift/python/
 # Problem: gen-python/thrift/python/ only has generated packages (bidi_service, leaf, etc.)
 # thrift.python.abstract_types and other runtime modules are in _cybld build
