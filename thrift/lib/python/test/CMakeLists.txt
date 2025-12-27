@@ -839,9 +839,11 @@ add_custom_target(thrift_py3_symlinks ALL
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/types.pxd" "${_gen_python}/thrift/py3/types.pxd"
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/types.pyx" "${_gen_python}/thrift/py3/types.pyx"
   # .so files from _cybld (built extensions)
+  # NOTE: common.so is excluded - Python prioritizes .so over .py, but common.py
+  # provides the runtime exports (from thrift.python.common import *) while
+  # common.pyx only has cimport (compile-time only, no runtime exports)
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/builder${_python_so_suffix}" "${_gen_python}/thrift/py3/builder${_python_so_suffix}"
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/client${_python_so_suffix}" "${_gen_python}/thrift/py3/client${_python_so_suffix}"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/common${_python_so_suffix}" "${_gen_python}/thrift/py3/common${_python_so_suffix}"
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/converter${_python_so_suffix}" "${_gen_python}/thrift/py3/converter${_python_so_suffix}"
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/exceptions${_python_so_suffix}" "${_gen_python}/thrift/py3/exceptions${_python_so_suffix}"
   COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/metadata${_python_so_suffix}" "${_gen_python}/thrift/py3/metadata${_python_so_suffix}"
