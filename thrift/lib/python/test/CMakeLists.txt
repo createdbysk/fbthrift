@@ -916,6 +916,55 @@ add_custom_target(thrift_python_runtime_symlinks ALL
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/server${_python_so_suffix}"
     "${_gen_python}/thrift/python/server${_python_so_suffix}"
+  # Create server_impl/ directory and symlink all files
+  # Note: server_impl contains async_processor, request_context, etc.
+  # These are required by thrift.python.test.request_context_extractor
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/server_impl"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/server_impl/__init__.py"
+    "${_gen_python}/thrift/python/server_impl/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/server_impl/async_processor${_python_so_suffix}"
+    "${_gen_python}/thrift/python/server_impl/async_processor${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/server_impl/python_async_processor${_python_so_suffix}"
+    "${_gen_python}/thrift/python/server_impl/python_async_processor${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/server_impl/request_context${_python_so_suffix}"
+    "${_gen_python}/thrift/python/server_impl/request_context${_python_so_suffix}"
+  # Create server_impl/interceptor/ subdirectory
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/server_impl/interceptor"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/server_impl/interceptor/__init__.py"
+    "${_gen_python}/thrift/python/server_impl/interceptor/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/server_impl/interceptor/server_module${_python_so_suffix}"
+    "${_gen_python}/thrift/python/server_impl/interceptor/server_module${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/server_impl/interceptor/service_interceptor${_python_so_suffix}"
+    "${_gen_python}/thrift/python/server_impl/interceptor/service_interceptor${_python_so_suffix}"
+  # Create streaming/ directory and symlink all files
+  # Note: streaming contains bidistream, sink, stream, etc.
+  # These are required by streaming tests (bidi_service, sink_service)
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/streaming"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld_base}/thrift/python/streaming/__init__.py"
+    "${_gen_python}/thrift/python/streaming/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/streaming/bidistream${_python_so_suffix}"
+    "${_gen_python}/thrift/python/streaming/bidistream${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/streaming/py_promise${_python_so_suffix}"
+    "${_gen_python}/thrift/python/streaming/py_promise${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/streaming/python_user_exception${_python_so_suffix}"
+    "${_gen_python}/thrift/python/streaming/python_user_exception${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/streaming/sink${_python_so_suffix}"
+    "${_gen_python}/thrift/python/streaming/sink${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/streaming/stream${_python_so_suffix}"
+    "${_gen_python}/thrift/python/streaming/stream${_python_so_suffix}"
   # Create client/ directory and symlink all files
   # Note: Use _cybld_base for .py files, _cybld for .so files
   COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/client"
