@@ -866,12 +866,13 @@ add_custom_target(thrift_python_runtime_symlinks ALL
     "${_cybld}/thrift/python/server${_python_so_suffix}"
     "${_gen_python}/thrift/python/server${_python_so_suffix}"
   # Create client/ directory and symlink all files
+  # Note: Use _cybld_base for .py files, _cybld for .so files
   COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/client"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/client/__init__.py"
+    "${_cybld_base}/thrift/python/client/__init__.py"
     "${_gen_python}/thrift/python/client/__init__.py"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/client/client_wrapper.py"
+    "${_cybld_base}/thrift/python/client/client_wrapper.py"
     "${_gen_python}/thrift/python/client/client_wrapper.py"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld}/thrift/python/client/async_client${_python_so_suffix}"
@@ -898,19 +899,38 @@ add_custom_target(thrift_python_runtime_symlinks ALL
     "${_cybld}/thrift/python/client/sync_channel_factory${_python_so_suffix}"
     "${_gen_python}/thrift/python/client/sync_channel_factory${_python_so_suffix}"
   # Create test/adapters/ directory and symlink all files
+  # Note: Use _cybld_base (not _cybld) - the .py files are in the base cybld directory
   COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/test/adapters"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/test/adapters/__init__.py"
+    "${_cybld_base}/thrift/python/test/adapters/__init__.py"
     "${_gen_python}/thrift/python/test/adapters/__init__.py"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/test/adapters/atoi.py"
+    "${_cybld_base}/thrift/python/test/adapters/atoi.py"
     "${_gen_python}/thrift/python/test/adapters/atoi.py"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/test/adapters/datetime.py"
+    "${_cybld_base}/thrift/python/test/adapters/atoi_test.py"
+    "${_gen_python}/thrift/python/test/adapters/atoi_test.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld_base}/thrift/python/test/adapters/datetime.py"
     "${_gen_python}/thrift/python/test/adapters/datetime.py"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/test/adapters/noop.py"
+    "${_cybld_base}/thrift/python/test/adapters/datetime_test.py"
+    "${_gen_python}/thrift/python/test/adapters/datetime_test.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld_base}/thrift/python/test/adapters/noop.py"
     "${_gen_python}/thrift/python/test/adapters/noop.py"
+  # Create test/request_context_extractor/ directory and symlink all files
+  # Note: Use _cybld_base for .py files, _cybld for .so files
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/python/test/request_context_extractor"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld_base}/thrift/python/test/request_context_extractor/__init__.py"
+    "${_gen_python}/thrift/python/test/request_context_extractor/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld}/thrift/python/test/request_context_extractor/request_context_extractor${_python_so_suffix}"
+    "${_gen_python}/thrift/python/test/request_context_extractor/request_context_extractor${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_cybld_base}/thrift/python/test/request_context_extractor/request_context_extractor_test.py"
+    "${_gen_python}/thrift/python/test/request_context_extractor/request_context_extractor_test.py"
   COMMENT "Creating symlinks for thrift.python runtime in gen-python/thrift/python/"
 )
 
