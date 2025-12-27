@@ -786,19 +786,71 @@ add_custom_target(thrift_util_symlink ALL
   COMMENT "Creating symlink for thrift.util and __init__.py in gen-python/thrift/"
 )
 
-# Symlink thrift.lib and thrift.py3 from _cybld_base to gen-python/thrift/
+# Symlink thrift.lib from _cybld_base to gen-python/thrift/
 # Problem: gen-python/thrift/ shadows cybld/thrift/ in PYTHONPATH
-# Tests import thrift.lib.python.* and thrift.py3.* which exist in cybld but not gen-python
-# Solution: symlink entire lib/ and py3/ directories
-add_custom_target(thrift_lib_py3_symlinks ALL
+# Tests import thrift.lib.python.* which exist in cybld but not gen-python
+# Solution: symlink entire lib/ directory
+add_custom_target(thrift_lib_symlinks ALL
   DEPENDS thrift_python_and_py3_bindings
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_cybld_base}/thrift/lib"
     "${_gen_python}/thrift/lib"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld_base}/thrift/py3"
-    "${_gen_python}/thrift/py3"
-  COMMENT "Creating symlinks for thrift.lib and thrift.py3 in gen-python/thrift/"
+  COMMENT "Creating symlink for thrift.lib in gen-python/thrift/"
+)
+
+# Build the .so suffix dynamically based on Python version and platform
+# Note: This is used by both thrift_py3_symlinks and thrift_python_runtime_symlinks
+set(_python_so_suffix ".cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu.so")
+
+# Symlink thrift.py3 files from both _cybld_base (source) and _cybld (built .so)
+# Problem: gen-python/thrift/ shadows cybld/thrift/ in PYTHONPATH
+# Tests import thrift.py3.* which exist in cybld but not gen-python
+# Solution: Create directory with individual symlinks for source AND .so files
+# Note: Directory symlink won't work because _cybld_base has sources but _cybld has .so files
+add_custom_target(thrift_py3_symlinks ALL
+  DEPENDS thrift_python_and_py3_bindings
+  # Create the py3 directory
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_python}/thrift/py3"
+  # Source files from _cybld_base
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/__init__.py" "${_gen_python}/thrift/py3/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/__init__.pxd" "${_gen_python}/thrift/py3/__init__.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/builder.pxd" "${_gen_python}/thrift/py3/builder.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/builder.pyx" "${_gen_python}/thrift/py3/builder.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/client.pxd" "${_gen_python}/thrift/py3/client.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/client.pyx" "${_gen_python}/thrift/py3/client.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/common.pxd" "${_gen_python}/thrift/py3/common.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/common.pyx" "${_gen_python}/thrift/py3/common.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/converter.pxd" "${_gen_python}/thrift/py3/converter.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/converter.pyx" "${_gen_python}/thrift/py3/converter.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/exceptions.pxd" "${_gen_python}/thrift/py3/exceptions.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/exceptions.pyx" "${_gen_python}/thrift/py3/exceptions.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/metadata.pyx" "${_gen_python}/thrift/py3/metadata.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/reflection.pxd" "${_gen_python}/thrift/py3/reflection.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/reflection.pyx" "${_gen_python}/thrift/py3/reflection.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/serializer.pxd" "${_gen_python}/thrift/py3/serializer.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/serializer.pyx" "${_gen_python}/thrift/py3/serializer.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/server.pxd" "${_gen_python}/thrift/py3/server.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/server.pyx" "${_gen_python}/thrift/py3/server.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/std_libcpp.pxd" "${_gen_python}/thrift/py3/std_libcpp.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/stream.pxd" "${_gen_python}/thrift/py3/stream.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/stream.pyx" "${_gen_python}/thrift/py3/stream.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/_stream.pxd" "${_gen_python}/thrift/py3/_stream.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/_stream.pyx" "${_gen_python}/thrift/py3/_stream.pyx"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/types.pxd" "${_gen_python}/thrift/py3/types.pxd"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld_base}/thrift/py3/types.pyx" "${_gen_python}/thrift/py3/types.pyx"
+  # .so files from _cybld (built extensions)
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/builder${_python_so_suffix}" "${_gen_python}/thrift/py3/builder${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/client${_python_so_suffix}" "${_gen_python}/thrift/py3/client${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/common${_python_so_suffix}" "${_gen_python}/thrift/py3/common${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/converter${_python_so_suffix}" "${_gen_python}/thrift/py3/converter${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/exceptions${_python_so_suffix}" "${_gen_python}/thrift/py3/exceptions${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/metadata${_python_so_suffix}" "${_gen_python}/thrift/py3/metadata${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/reflection${_python_so_suffix}" "${_gen_python}/thrift/py3/reflection${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/serializer${_python_so_suffix}" "${_gen_python}/thrift/py3/serializer${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/server${_python_so_suffix}" "${_gen_python}/thrift/py3/server${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/stream${_python_so_suffix}" "${_gen_python}/thrift/py3/stream${_python_so_suffix}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/py3/types${_python_so_suffix}" "${_gen_python}/thrift/py3/types${_python_so_suffix}"
+  COMMENT "Creating symlinks for thrift.py3 source and .so files in gen-python/thrift/py3/"
 )
 
 # Symlink thrift.python runtime files from _cybld to gen-python/thrift/python/
@@ -806,9 +858,6 @@ add_custom_target(thrift_lib_py3_symlinks ALL
 # thrift.python.abstract_types and other runtime modules are in _cybld build
 # Solution: symlink .py files and Cython .so files from _cybld to gen-python/thrift/python/
 # Note: _cybld already includes the build/lib.linux-arch-cpython-ver path
-
-# Build the .so suffix dynamically based on Python version and platform
-set(_python_so_suffix ".cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu.so")
 
 add_custom_target(thrift_python_runtime_symlinks ALL
   DEPENDS thrift_python_and_py3_bindings
