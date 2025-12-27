@@ -247,9 +247,11 @@ if(thriftpy3)
   endif()
 
   # Add libsodium lib dir
-  if(DEFINED sodium_DIR AND EXISTS "${sodium_DIR}")
-    get_filename_component(_sodium_cmake_parent "${sodium_DIR}" DIRECTORY)
-    get_filename_component(_sodium_lib_dir "${_sodium_cmake_parent}" DIRECTORY)
+  if(DEFINED sodium_LIBRARY AND EXISTS "${sodium_LIBRARY}")
+    get_filename_component(_sodium_lib_dir "${sodium_LIBRARY}" DIRECTORY)
+    list(APPEND DEPENDENCY_LIB_DIRS "${_sodium_lib_dir}")
+  elseif(DEFINED SODIUM_LIBRARY AND EXISTS "${SODIUM_LIBRARY}")
+    get_filename_component(_sodium_lib_dir "${SODIUM_LIBRARY}" DIRECTORY)
     list(APPEND DEPENDENCY_LIB_DIRS "${_sodium_lib_dir}")
   endif()
 
