@@ -220,8 +220,15 @@ if(thriftpy3)
     list(APPEND DEPENDENCY_LIB_DIRS "${_fmt_lib_dir}")
   endif()
 
-  # Add libevent lib dir (extract from LIBEVENT_LIB set by FindLibEvent.cmake)
-  get_filename_component(_libevent_lib_dir "${LIBEVENT_LIB}" DIRECTORY)
+  # Add libevent lib dir (lib/cmake/libevent -> lib)
+  # Both getdeps and conda use config mode, so Libevent_DIR must be set
+  if(NOT DEFINED Libevent_DIR OR NOT EXISTS "${Libevent_DIR}")
+    message(FATAL_ERROR "Libevent_DIR is not set or does not exist. "
+      "Libevent must be built with cmake config files. "
+      "Got: Libevent_DIR='${Libevent_DIR}'")
+  endif()
+  get_filename_component(_libevent_cmake_parent "${Libevent_DIR}" DIRECTORY)
+  get_filename_component(_libevent_lib_dir "${_libevent_cmake_parent}" DIRECTORY)
   list(APPEND DEPENDENCY_LIB_DIRS "${_libevent_lib_dir}")
 
   # Add libunwind lib dir
