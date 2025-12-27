@@ -555,9 +555,9 @@ thrift_library(
 # Create symlinks for test namespaces
 # gen-python/<namespace>/ -> cybld/<namespace>/
 #####
-# Note: Cython/setuptools uses "lib.linux-<arch>-<version>" format (e.g., lib.linux-x86_64-3.10)
-# NOT "lib.linux-<arch>-cpython-<version>" format (cpython-310 is used in .so filenames only)
-set(_cybld "${CMAKE_BINARY_DIR}/thrift/lib/cybld/build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
+# Note: Cython/setuptools uses "lib.linux-<arch>-cpython-<version>" format (e.g., lib.linux-x86_64-cpython-310)
+set(_cybld_base "${CMAKE_BINARY_DIR}/thrift/lib/cybld")
+set(_cybld "${_cybld_base}/build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
 set(_gen_python "${CMAKE_CURRENT_BINARY_DIR}/gen-python")
 set(_gen_py "${CMAKE_CURRENT_BINARY_DIR}/gen-py")
 
@@ -709,9 +709,10 @@ add_test_namespace_symlink(apache_thrift_test
 # 10. apache.thrift.metadata namespace -> cybld/apache/thrift/metadata
 # The metadata module is built by the main thrift library, we need to link it into gen-python
 # so tests can import apache.thrift.metadata.thrift_types
+# Note: metadata is in _cybld_base (cybld/), not _cybld (cybld/build/lib.../)
 add_custom_target(apache_thrift_metadata_symlink ALL
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/apache/thrift/metadata"
+    "${_cybld_base}/apache/thrift/metadata"
     "${_gen_python}/apache/thrift/metadata"
   DEPENDS terse_write-python-target
   COMMENT "Creating symlink for apache.thrift.metadata"
@@ -766,8 +767,9 @@ add_custom_command(
 
 # Build PYTHONPATH for tests
 # Include thrift_py library for py-deprecated runtime (thrift.Thrift, thrift.transport, etc.)
+# Include both _cybld_base (generated Python code) and _cybld (Cython .so files)
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
-set(TEST_PYTHONPATH "${_gen_python}:${_cybld}:${_gen_py}:${_thrift_py}")
+set(TEST_PYTHONPATH "${_gen_python}:${_cybld_base}:${_cybld}:${_gen_py}:${_thrift_py}")
 
 # Symlink thrift.util from thrift_py to gen-python/thrift/util
 # Problem: gen-python/thrift/ shadows thrift_py/thrift/ in PYTHONPATH
@@ -795,15 +797,15 @@ set(_python_so_suffix ".cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}
 
 add_custom_target(thrift_python_runtime_symlinks ALL
   DEPENDS thrift_python_and_py3_bindings
-  # Python files
+  # Python files - these are in _cybld_base (not _cybld which has the build subdirectory)
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/abstract_types.py"
+    "${_cybld_base}/thrift/python/abstract_types.py"
     "${_gen_python}/thrift/python/abstract_types.py"
   # Create __init__.py (not a symlink - the source doesn't exist in cybld)
   COMMAND ${CMAKE_COMMAND} -E touch
     "${_gen_python}/thrift/python/__init__.py"
   COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld}/thrift/python/metadata.py"
+    "${_cybld_base}/thrift/python/metadata.py"
     "${_gen_python}/thrift/python/metadata.py"
   # Cython .so files - these are required for thrift.python.exceptions, thrift.python.types, etc.
   COMMAND ${CMAKE_COMMAND} -E create_symlink
@@ -1022,19 +1024,6 @@ add_dependencies(thrift_python_test_package thrift_python_runtime_symlinks)
 
 # Register each test file with ctest
 # Run as module to avoid sys.path[0] = test_dir shadowing
-
-# Debug: Print full TEST_PYTHONPATH
-message(STATUS "TEST_PYTHONPATH for Python tests: ${TEST_PYTHONPATH}")
-
-# Debug test to check PYTHONPATH
-add_test(
-  NAME thrift_python_debug_env
-  COMMAND ${Python3_EXECUTABLE} -c "import os; print('PYTHONPATH=' + os.environ.get('PYTHONPATH', 'NOT_SET')); print('sys.path:', __import__('sys').path)"
-  WORKING_DIRECTORY ${_gen_python}
-)
-set_tests_properties(thrift_python_debug_env PROPERTIES
-  ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
-)
 
 foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
