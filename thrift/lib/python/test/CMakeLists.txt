@@ -1022,6 +1022,20 @@ add_dependencies(thrift_python_test_package thrift_python_runtime_symlinks)
 
 # Register each test file with ctest
 # Run as module to avoid sys.path[0] = test_dir shadowing
+
+# Debug: Print full TEST_PYTHONPATH
+message(STATUS "TEST_PYTHONPATH for Python tests: ${TEST_PYTHONPATH}")
+
+# Debug test to check PYTHONPATH
+add_test(
+  NAME thrift_python_debug_env
+  COMMAND ${Python3_EXECUTABLE} -c "import os; print('PYTHONPATH=' + os.environ.get('PYTHONPATH', 'NOT_SET')); print('sys.path:', __import__('sys').path)"
+  WORKING_DIRECTORY ${_gen_python}
+)
+set_tests_properties(thrift_python_debug_env PROPERTIES
+  ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+)
+
 foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
