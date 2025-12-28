@@ -779,8 +779,9 @@ add_custom_command(
 # ==========================================================================
 
 # Install thrift wheel before running tests
-# The wheel is built by thrift_python_and_py3_bindings target
-set(_thrift_wheel_dir "${CMAKE_CURRENT_BINARY_DIR}/../cybld/dist")
+# The wheel is built by thrift_python_and_py3_bindings target in thrift/lib/CMakeLists.txt
+# Use CMAKE_BINARY_DIR (top-level build dir) for absolute path to avoid fragile relative paths
+set(_thrift_wheel_dir "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist")
 set(_wheel_suffix "cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-linux_${CMAKE_HOST_SYSTEM_PROCESSOR}")
 add_custom_target(install_thrift_wheel ALL
   DEPENDS thrift_python_and_py3_bindings
