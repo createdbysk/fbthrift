@@ -91,18 +91,62 @@ if(thriftpy3)
     endif()
   endfunction()
 
+  # Helper function: symlink all source files from a directory to build directory
+  # Non-recursive - only files directly in the directory (subdirs handled separately)
+  # Ensures __init__.py exists for Python package importability
+  function(symlink_dir_contents src_reldir dest_dir)
+    file(MAKE_DIRECTORY "${dest_dir}")
+    file(GLOB _all_items "${CMAKE_CURRENT_SOURCE_DIR}/${src_reldir}/*")
+
+    set(_has_init_py FALSE)
+
+    foreach(_src ${_all_items})
+      if(IS_DIRECTORY "${_src}")
+        continue()
+      endif()
+
+      get_filename_component(_filename "${_src}" NAME)
+      set(_dest "${dest_dir}/${_filename}")
+
+      if(_filename STREQUAL "__init__.py")
+        set(_has_init_py TRUE)
+      endif()
+
+      message(STATUS "Symlinking ${_src} -> ${_dest}")
+      file(CREATE_LINK "${_src}" "${_dest}" SYMBOLIC)
+    endforeach()
+
+    # Ensure __init__.py exists for Python package importability
+    if(NOT _has_init_py)
+      message(STATUS "Creating empty __init__.py at ${dest_dir}/__init__.py")
+      file(CREATE_LINK "${_empty_init_template}" "${dest_dir}/__init__.py" SYMBOLIC)
+    endif()
+  endfunction()
+
+  # Helper function: recursively symlink all files from a source tree to build directory
+  # Calls symlink_dir_contents for each directory, ensuring __init__.py in all
+  function(symlink_dir_recursive src_reldir dest_base_dir)
+    # Handle the root directory
+    symlink_dir_contents("${src_reldir}" "${dest_base_dir}")
+
+    # Find all subdirectories and call symlink_dir_contents for each
+    file(GLOB_RECURSE _all_subdirs LIST_DIRECTORIES true
+      "${CMAKE_CURRENT_SOURCE_DIR}/${src_reldir}/*")
+
+    foreach(_src_dir ${_all_subdirs})
+      if(IS_DIRECTORY "${_src_dir}")
+        file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}/${src_reldir}" "${_src_dir}")
+        symlink_dir_contents("${src_reldir}/${_rel}" "${dest_base_dir}/${_rel}")
+      endif()
+    endforeach()
+  endfunction()
+
+  # Create thrift/__init__.py (top-level package)
   create_init_py_symlink("${_cybld}/thrift/__init__.py" "thrift/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/__init__.py" "python/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/any/__init__.py" "python/any/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/conformance/__init__.py" "python/conformance/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/streaming/__init__.py" "python/streaming/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/test/__init__.py" "python/test/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/test/adapters/__init__.py" "python/test/adapters/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/test/request_context_extractor/__init__.py" "python/test/request_context_extractor/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/client/__init__.py" "python/client/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/client/test/__init__.py" "python/client/test/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/python/server/__init__.py" "python/server/__init__.py")
-  create_init_py_symlink("${_cybld}/thrift/py3/__init__.py" "py3/__init__.py")
+
+  # Symlink all python/ and py3/ source files recursively
+  symlink_dir_recursive("python" "${_cybld}/thrift/python")
+  symlink_dir_recursive("py3" "${_cybld}/thrift/py3")
 
   #####################################################################
   # Include Path Setup (must be done early, before API header generation)
@@ -298,158 +342,14 @@ if(thriftpy3)
       ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/server.pyx" "${_cybld}/thrift/python/server.pyx"
   )
 
-  # Helper function to create a symlink with a different name than source
-  function(create_renamed_binding_symlink src_file dest_name)
-    message(STATUS "Linking ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} to ${_cybld}/thrift/${src_file} as ${dest_name}")
-    get_filename_component(_dest_dir "${CMAKE_CURRENT_SOURCE_DIR}/${src_file}" DIRECTORY)
-    file(RELATIVE_PATH _dest_reldir ${CMAKE_CURRENT_SOURCE_DIR} ${_dest_dir})
-    add_custom_command(
-      TARGET create_binding_symlink_python
-      PRE_BUILD
-      COMMAND
-        ${CMAKE_COMMAND} -E create_symlink
-        "${CMAKE_CURRENT_SOURCE_DIR}/${src_file}"
-        "${_cybld}/thrift/${_dest_reldir}/${dest_name}"
-    )
-  endfunction()
-
-  add_custom_target(create_binding_symlink_python ALL)
-  file(GLOB BindingFiles
-    "python/abstract_types.py"
-    "python/client/client_wrapper.py"
-    "python/client/__init__.py"
-    "python/metadata.py"
-    "python/client/async_client_factory.pxd"
-    "python/client/async_client.pxd"
-    "python/client/omni_client.pxd"
-    "python/client/request_channel.pxd"
-    "python/client/ssl.pxd"
-    "python/client/sync_channel_factory.pxd"
-    "python/client/sync_client.pxd"
-    "python/common.pxd"
-    "python/exceptions.pxd"
-    "python/mutable_containers.pxd"
-    "python/mutable_exceptions.pxd"
-    "python/mutable_serializer.pxd"
-    "python/mutable_typeinfos.pxd"
-    "python/mutable_types.pxd"
-    "python/protocol.pxd"
-    "python/serializer.pxd"
-    "python/any/serializer.pxd"
-    "python/conformance/universal_name.pxd"
-    "python/server/async_processor.pxd"
-    "python/server/event_handler.pxd"
-    "python/server/interceptor/server_module.pxd"
-    "python/server/interceptor/service_interceptor.pxd"
-    "python/server/python_async_processor.pxd"
-    "python/server/request_context.pxd"
-    "python/server/server.pxd"
-    "python/std_libcpp.pxd"
-    "python/streaming/stream.pxd"
-    "python/streaming/py_promise.pxd"
-    "python/streaming/python_user_exception.pxd"
-    "python/streaming/sink.pxd"
-    "python/streaming/bidistream.pxd"
-    "python/types.pxd"
-    "python/adapter.pyx"
-    "python/client/async_client_factory.pyx"
-    "python/client/async_client.pyx"
-    "python/client/omni_client.pyx"
-    "python/client/request_channel.pyx"
-    "python/client/ssl.pyx"
-    "python/client/sync_channel_factory.pyx"
-    "python/client/sync_client_factory.pyx"
-    "python/client/sync_client.pyx"
-    "python/common.pyx"
-    "python/converter.pyx"
-    "python/exceptions.pyx"
-    "python/mutable_containers.pyx"
-    "python/mutable_converter.pyx"
-    "python/mutable_exceptions.pyx"
-    "python/mutable_serializer.pyx"
-    "python/mutable_typeinfos.pyx"
-    "python/mutable_types.pyx"
-    "python/protocol.pyx"
-    "python/serializer.pyx"
-    "python/streaming/stream.pyx"
-    "python/streaming/py_promise.pyx"
-    "python/streaming/python_user_exception.pyx"
-    "python/streaming/PythonUserException.cpp"
-    "python/streaming/PythonUserException.h"
-    "python/streaming/sink.pyx"
-    "python/streaming/Sink.cpp"
-    "python/streaming/Sink.h"
-    "python/streaming/bidistream.pyx"
-    "python/streaming/bidistream.h"
-    "python/streaming/StreamElementEncoder.cpp"
-    "python/streaming/StreamElementEncoder.h"
-    "python/streaming/SinkElementDecoder.h"
-    "python/any/serializer.pyx"
-    "python/conformance/universal_name.pyx"
-    "python/server/async_processor.pyx"
-    "python/server/interceptor/server_module.pyx"
-    "python/server/interceptor/service_interceptor.pyx"
-    "python/server/python_async_processor.pyx"
-    "python/server/request_context.pyx"
-    "python/server/server.pyx"
-    "python/types.h"
-    "python/Serializer.h"
-    "python/server/PythonAsyncProcessor.cpp"
-    "python/server/PythonAsyncProcessorFactory.cpp"
-    "python/std_libcpp.cpp"
-    "python/std_libcpp.h"
-    "python/server/event_handler.cpp"
-    "python/server/event_handler.h"
-    "python/server/interceptor/PythonServiceInterceptor.cpp"
-    "python/server/interceptor/PythonServiceInterceptor.h"
-  )
-
-  foreach(_src ${BindingFiles})
-    file(RELATIVE_PATH _filerelpath ${CMAKE_CURRENT_SOURCE_DIR} ${_src})
-    get_filename_component(_target_file "${_src}" NAME)
-
-    message(
-      STATUS
-      "Linking ${_src} to ${_cybld}/thrift/${_filerelpath}"
-    )
-
-    add_custom_command(
-      TARGET
-      create_binding_symlink_python
-      PRE_BUILD
-        COMMAND
-        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/${_filerelpath}"
-    )
-  endforeach()
-
   # Special case: bidistream.cpp needs to be symlinked with capital B to avoid
   # Cython conflict (bidistream.pyx would generate bidistream.cpp, conflicting
   # with handwritten bidistream.cpp). Sink.cpp and PythonUserException.cpp work
   # fine because their capital letters differ from lowercase .pyx names.
-  create_renamed_binding_symlink("python/streaming/bidistream.cpp" "Bidistream.cpp")
-
-  add_custom_target(create_binding_symlink_py3 ALL)
-  file(GLOB BindingFiles
-    "${CMAKE_CURRENT_SOURCE_DIR}/py3/*.pxd"
-    "${CMAKE_CURRENT_SOURCE_DIR}/py3/*.pyx"
-  )
-
-  foreach(_src ${BindingFiles})
-    get_filename_component(_target_file "${_src}" NAME)
-
-    message(
-      STATUS
-      "Linking ${_src} to ${_cybld}/thrift/py3/${_target_file}"
-    )
-
-    add_custom_command(
-      TARGET
-      create_binding_symlink_py3
-      PRE_BUILD
-        COMMAND
-        ${CMAKE_COMMAND} -E create_symlink "${_src}" "${_cybld}/thrift/py3/${_target_file}"
-    )
-  endforeach()
+  file(CREATE_LINK
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/streaming/bidistream.cpp"
+    "${_cybld}/thrift/python/streaming/Bidistream.cpp"
+    SYMBOLIC)
 
   #####
   # Compile a few *_api.h headers first.
