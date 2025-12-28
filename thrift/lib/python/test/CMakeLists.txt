@@ -943,9 +943,6 @@ add_dependencies(thrift_python_test_package convertible_py_deprecated_symlink)
 # Add dependency on thrift.util symlink to fix namespace shadowing
 add_dependencies(thrift_python_test_package thrift_util_symlink)
 
-# Add dependency on thrift.python runtime symlinks
-add_dependencies(thrift_python_test_package thrift_python_runtime_symlinks)
-
 # Use DEPENDENCY_LIB_PATH from top-level CMakeLists.txt for LD_LIBRARY_PATH
 # This contains all dependency library paths (glog, gflags, fmt, etc.)
 
