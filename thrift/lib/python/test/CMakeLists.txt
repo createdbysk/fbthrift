@@ -811,19 +811,20 @@ message(STATUS "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: ${FOLLY_PY
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
 set(TEST_PYTHONPATH "${_thrift_wheel_install_dir}:${_gen_python}:${_gen_py}:${_thrift_py}:${FOLLY_PYTHON_SITE_PACKAGES}")
 
-# Symlink thrift.util from thrift_py to gen-python/thrift/util
-# Problem: gen-python/thrift/ shadows thrift_py/thrift/ in PYTHONPATH
-# py-deprecated imports like `from thrift.util.Recursive import ...` fail
-# because Python finds gen-python/thrift/ first, doesn't find util/ there
-# Solution: symlink thrift_py/thrift/util/ into gen-python/thrift/util/
-# Also need __init__.py for Python to recognize gen-python/thrift/ as a package
+# Symlink thrift.util from thrift_py INTO the wheel directory
+# Problem: py-deprecated imports like `from thrift.util.Recursive import ...` fail
+# because the thrift wheel doesn't include thrift.util (it's a py-deprecated module)
+# Solution: symlink thrift_py/thrift/util/ into the wheel's thrift/ directory
+# This way thrift.util is found when Python imports from the wheel's thrift package
+#
+# IMPORTANT: Do NOT create gen-python/thrift/__init__.py - that would shadow
+# the wheel's thrift package, breaking imports like thrift.python.abstract_types
 add_custom_target(thrift_util_symlink ALL
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_thrift_py}/thrift/util"
-    "${_gen_python}/thrift/util"
-  COMMAND ${CMAKE_COMMAND} -E touch
-    "${_gen_python}/thrift/__init__.py"
-  COMMENT "Creating symlink for thrift.util and __init__.py in gen-python/thrift/"
+    "${_thrift_wheel_install_dir}/thrift/util"
+  COMMENT "Creating symlink for thrift.util in wheel directory"
+  DEPENDS install_thrift_wheel
 )
 
 # ==========================================================================
