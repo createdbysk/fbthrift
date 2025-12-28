@@ -94,9 +94,13 @@ if(thriftpy3)
   # Helper function: symlink all source files from a directory to build directory
   # Non-recursive - only files directly in the directory (subdirs handled separately)
   # Ensures __init__.py exists for Python package importability
+  # Optional ARGN: list of filenames to exclude from symlinking
   function(symlink_dir_contents src_reldir dest_dir)
     file(MAKE_DIRECTORY "${dest_dir}")
     file(GLOB _all_items "${CMAKE_CURRENT_SOURCE_DIR}/${src_reldir}/*")
+
+    # Collect exclusion list from optional arguments
+    set(_exclude_list ${ARGN})
 
     set(_has_init_py FALSE)
 
@@ -106,6 +110,13 @@ if(thriftpy3)
       endif()
 
       get_filename_component(_filename "${_src}" NAME)
+
+      # Skip files in exclusion list
+      if(_filename IN_LIST _exclude_list)
+        message(STATUS "Skipping excluded file: ${_src}")
+        continue()
+      endif()
+
       set(_dest "${dest_dir}/${_filename}")
 
       if(_filename STREQUAL "__init__.py")
@@ -123,11 +134,32 @@ if(thriftpy3)
     endif()
   endfunction()
 
+  # Helper function: filter exclusion list for a specific subdirectory
+  # Given a list of "relpath/filename" exclusions and a target relpath,
+  # returns filenames that should be excluded for that directory
+  # Result is stored in variable named by out_var
+  function(get_exclusions_for_dir out_var target_relpath)
+    set(_result "")
+    foreach(_excl ${ARGN})
+      get_filename_component(_excl_dir "${_excl}" DIRECTORY)
+      get_filename_component(_excl_filename "${_excl}" NAME)
+      if("${_excl_dir}" STREQUAL "${target_relpath}")
+        list(APPEND _result "${_excl_filename}")
+      endif()
+    endforeach()
+    set(${out_var} ${_result} PARENT_SCOPE)
+  endfunction()
+
   # Helper function: recursively symlink all files from a source tree to build directory
   # Calls symlink_dir_contents for each directory, ensuring __init__.py in all
+  # Optional ARGN: list of "relpath/filename" exclusions (e.g., "streaming/bidistream.cpp")
   function(symlink_dir_recursive src_reldir dest_base_dir)
-    # Handle the root directory
-    symlink_dir_contents("${src_reldir}" "${dest_base_dir}")
+    # Parse exclusion list from optional arguments
+    set(_exclusion_list ${ARGN})
+
+    # Handle the root directory (root = empty relpath)
+    get_exclusions_for_dir(_root_exclusions "" ${_exclusion_list})
+    symlink_dir_contents("${src_reldir}" "${dest_base_dir}" ${_root_exclusions})
 
     # Find all subdirectories and call symlink_dir_contents for each
     file(GLOB_RECURSE _all_subdirs LIST_DIRECTORIES true
@@ -136,7 +168,8 @@ if(thriftpy3)
     foreach(_src_dir ${_all_subdirs})
       if(IS_DIRECTORY "${_src_dir}")
         file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}/${src_reldir}" "${_src_dir}")
-        symlink_dir_contents("${src_reldir}/${_rel}" "${dest_base_dir}/${_rel}")
+        get_exclusions_for_dir(_subdir_exclusions "${_rel}" ${_exclusion_list})
+        symlink_dir_contents("${src_reldir}/${_rel}" "${dest_base_dir}/${_rel}" ${_subdir_exclusions})
       endif()
     endforeach()
   endfunction()
@@ -145,7 +178,9 @@ if(thriftpy3)
   create_init_py_symlink("${_cybld}/thrift/__init__.py" "thrift/__init__.py")
 
   # Symlink all python/ and py3/ source files recursively
-  symlink_dir_recursive("python" "${_cybld}/thrift/python")
+  # Exclude streaming/bidistream.cpp - it's symlinked separately as Bidistream.cpp
+  # to avoid Cython conflict (bidistream.pyx generates bidistream.cpp)
+  symlink_dir_recursive("python" "${_cybld}/thrift/python" "streaming/bidistream.cpp")
   symlink_dir_recursive("py3" "${_cybld}/thrift/py3")
 
   #####################################################################
