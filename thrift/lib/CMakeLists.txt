@@ -183,6 +183,12 @@ if(thriftpy3)
   symlink_dir_recursive("python" "${_cybld}/thrift/python" "streaming/bidistream.cpp")
   symlink_dir_recursive("py3" "${_cybld}/thrift/py3")
 
+  # Placeholder targets for build dependency tracking
+  # Symlinks are created at configure time by symlink_dir_recursive above,
+  # but other parts of the build depend on these targets for ordering.
+  add_custom_target(create_binding_symlink_python ALL)
+  add_custom_target(create_binding_symlink_py3 ALL)
+
   #####################################################################
   # Include Path Setup (must be done early, before API header generation)
   #####################################################################
