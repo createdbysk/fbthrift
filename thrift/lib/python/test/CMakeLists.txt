@@ -781,11 +781,14 @@ add_custom_command(
 # Install thrift wheel before running tests
 # The wheel is built by thrift_python_and_py3_bindings target in thrift/lib/CMakeLists.txt
 # Use CMAKE_BINARY_DIR (top-level build dir) for absolute path to avoid fragile relative paths
+# Use --target to install to a known directory that we add to TEST_PYTHONPATH
 set(_thrift_wheel_dir "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist")
+set(_thrift_wheel_install_dir "${CMAKE_BINARY_DIR}/thrift/lib/thrift_wheel_pythonpath")
 set(_wheel_suffix "cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-linux_${CMAKE_HOST_SYSTEM_PROCESSOR}")
 add_custom_target(install_thrift_wheel ALL
   DEPENDS thrift_python_and_py3_bindings
   COMMAND ${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps
+    --target "${_thrift_wheel_install_dir}"
     "${_thrift_wheel_dir}/thrift-0.0.1-${_wheel_suffix}.whl"
   COMMENT "Installing thrift wheel for tests"
 )
@@ -801,11 +804,12 @@ message(STATUS "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: ${FOLLY_PY
 
 # Build PYTHONPATH for tests
 # With wheel-based approach for thrift, we need paths for:
+# - Thrift wheel install directory (thrift.python.*, thrift.py3.*, etc.)
 # - Generated test thrift code (testing.thrift_types, etc.)
 # - py-deprecated runtime and generated code
 # - Folly Python bindings (pre-installed by getdeps)
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
-set(TEST_PYTHONPATH "${_gen_python}:${_gen_py}:${_thrift_py}:${FOLLY_PYTHON_SITE_PACKAGES}")
+set(TEST_PYTHONPATH "${_thrift_wheel_install_dir}:${_gen_python}:${_gen_py}:${_thrift_py}:${FOLLY_PYTHON_SITE_PACKAGES}")
 
 # Symlink thrift.util from thrift_py to gen-python/thrift/util
 # Problem: gen-python/thrift/ shadows thrift_py/thrift/ in PYTHONPATH
