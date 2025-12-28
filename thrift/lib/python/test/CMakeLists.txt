@@ -789,31 +789,22 @@ add_custom_target(install_thrift_wheel ALL
   COMMENT "Installing thrift wheel for tests"
 )
 
-# Install folly wheel before running tests
-# Look for folly wheel in its build directory (getdeps structure)
-# Path: ${FOLLY_PREFIX}/../../../build/folly/folly/cybld/dist/
-get_filename_component(_folly_build_root "${FOLLY_LIB_DIR}/../../../build/folly" ABSOLUTE)
-set(_folly_wheel_dir "${_folly_build_root}/folly/cybld/dist")
-set(_folly_wheel "${_folly_wheel_dir}/folly-0.0.1-${_wheel_suffix}.whl")
-
-if(NOT EXISTS "${_folly_wheel}")
-  message(FATAL_ERROR "Folly wheel not found at ${_folly_wheel}. "
+# Folly Python bindings are pre-installed by getdeps into FOLLY_PYTHON_SITE_PACKAGES
+# (located at installed/folly/local/lib/python3.10/dist-packages/)
+# We add this to PYTHONPATH below - no need to pip install a wheel.
+if(NOT DEFINED FOLLY_PYTHON_SITE_PACKAGES OR NOT EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}")
+  message(FATAL_ERROR "FOLLY_PYTHON_SITE_PACKAGES not found: ${FOLLY_PYTHON_SITE_PACKAGES}. "
     "Ensure folly is built with Python bindings before building fbthrift tests.")
 endif()
-
-message(STATUS "Found folly wheel: ${_folly_wheel}")
-add_custom_target(install_folly_wheel ALL
-  COMMAND ${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps "${_folly_wheel}"
-  COMMENT "Installing folly wheel for tests"
-)
-add_dependencies(install_thrift_wheel install_folly_wheel)
+message(STATUS "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: ${FOLLY_PYTHON_SITE_PACKAGES}")
 
 # Build PYTHONPATH for tests
-# With wheel-based approach, we only need paths for:
+# With wheel-based approach for thrift, we need paths for:
 # - Generated test thrift code (testing.thrift_types, etc.)
 # - py-deprecated runtime and generated code
+# - Folly Python bindings (pre-installed by getdeps)
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
-set(TEST_PYTHONPATH "${_gen_python}:${_gen_py}:${_thrift_py}")
+set(TEST_PYTHONPATH "${_gen_python}:${_gen_py}:${_thrift_py}:${FOLLY_PYTHON_SITE_PACKAGES}")
 
 # Symlink thrift.util from thrift_py to gen-python/thrift/util
 # Problem: gen-python/thrift/ shadows thrift_py/thrift/ in PYTHONPATH
@@ -837,7 +828,6 @@ add_custom_target(thrift_util_symlink ALL
 # - thrift_lib_symlinks
 # - thrift_py3_symlinks
 # - thrift_python_runtime_symlinks
-# - FOLLY_PYTHON_SITE_PACKAGES addition to TEST_PYTHONPATH
 # - CMAKE_INSTALL_PREFIX site-packages addition to TEST_PYTHONPATH
 #
 # The thrift wheel (installed by install_thrift_wheel target above) provides:
@@ -846,7 +836,8 @@ add_custom_target(thrift_util_symlink ALL
 # - thrift.lib.python.*
 # - apache.thrift.metadata
 #
-# Folly wheel is expected to be pre-installed by getdeps (provides folly.iobuf, etc.)
+# Folly Python bindings are provided via FOLLY_PYTHON_SITE_PACKAGES in PYTHONPATH
+# (pre-installed by getdeps into installed/folly/local/lib/python3.10/dist-packages/)
 # ==========================================================================
 
 #####
