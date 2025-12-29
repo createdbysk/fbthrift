@@ -303,9 +303,10 @@ if(thriftpy3)
       thrift1 -I ${CMAKE_SOURCE_DIR} --out . --gen "mstch_python:include_prefix=thrift"
       ${CMAKE_CURRENT_SOURCE_DIR}/thrift/metadata.thrift
     COMMAND ${CMAKE_COMMAND} -E make_directory ${_cybld}/apache/thrift/metadata
-    COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/__init__.py
-    COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/thrift/__init__.py
-    COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/thrift/metadata/__init__.py
+    # DISABLED: __init__.py blocks namespace package merging
+    # COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/__init__.py
+    # COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/thrift/__init__.py
+    # COMMAND ${CMAKE_COMMAND} -E touch ${_cybld}/apache/thrift/metadata/__init__.py
     WORKING_DIRECTORY ${_cybld}
     BYPRODUCTS
       ${_cybld}/apache/thrift/metadata/thrift_abstract_types.py
@@ -615,23 +616,25 @@ if(thriftpy3)
     )
   endforeach()
 
-  # Create server_impl/__init__.py (simple package marker)
-  # Extensions are built directly under server_impl, no import hook needed
-  file(WRITE "${_cybld}/thrift/python/server_impl/__init__.py" [=[
-"""
-thrift.python.server_impl - Server implementation submodules
+  # DISABLED: __init__.py blocks namespace package merging
+  # # Create server_impl/__init__.py (simple package marker)
+  # # Extensions are built directly under server_impl, no import hook needed
+  # file(WRITE "${_cybld}/thrift/python/server_impl/__init__.py" [=[
+  # """
+  # thrift.python.server_impl - Server implementation submodules
+  #
+  # This package contains the server implementation modules that are imported
+  # by thrift.python.server and thrift.py3.server. The modules here avoid
+  # naming conflicts with the thrift.python.server extension module (.so).
+  #
+  # In Buck/internal builds, package remapping achieves this.
+  # In OSS/CMake builds, extensions are built directly under server_impl.
+  # """
+  # ]=])
 
-This package contains the server implementation modules that are imported
-by thrift.python.server and thrift.py3.server. The modules here avoid
-naming conflicts with the thrift.python.server extension module (.so).
-
-In Buck/internal builds, package remapping achieves this.
-In OSS/CMake builds, extensions are built directly under server_impl.
-"""
-]=])
-
-  # Create empty __init__.py for interceptor subpackage
-  file(WRITE "${_cybld}/thrift/python/server_impl/interceptor/__init__.py" "")
+  # DISABLED: __init__.py blocks namespace package merging
+  # # Create empty __init__.py for interceptor subpackage
+  # file(WRITE "${_cybld}/thrift/python/server_impl/interceptor/__init__.py" "")
 
   #####
   # Create test package symlinks for thrift.python.test and thrift.python.test.adapters
@@ -743,19 +746,20 @@ In OSS/CMake builds, extensions are built directly under server_impl.
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test")
   file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test/event_handlers")
 
-  add_custom_command(
-    TARGET create_binding_symlink_lib_test
-    PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/__init__.py"
-    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/__init__.py"
-    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/__init__.py"
-    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/event_handlers/__init__.py"
-    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/metadata_response/__init__.py"
-    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/__init__.py"
-    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/test/__init__.py"
-    COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/test/client_event_handler/__init__.py"
-    COMMENT "Creating __init__.py files for thrift.lib.python packages"
-  )
+  # DISABLED: __init__.py blocks namespace package merging
+  # add_custom_command(
+  #   TARGET create_binding_symlink_lib_test
+  #   PRE_BUILD
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/__init__.py"
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/__init__.py"
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/__init__.py"
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/event_handlers/__init__.py"
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/test/metadata_response/__init__.py"
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/__init__.py"
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/test/__init__.py"
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${_cybld}/thrift/lib/python/client/test/client_event_handler/__init__.py"
+  #   COMMENT "Creating __init__.py files for thrift.lib.python packages"
+  # )
 
   foreach(_src ${TestFiles})
     get_filename_component(_target_file "${_src}" NAME)
