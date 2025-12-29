@@ -366,11 +366,6 @@ else:
         ),
         # thrift.py3 extension modules
         Extension(
-            "thrift.py3.common",
-            sources=["thrift/py3/common.pyx"],
-            **common_options,
-        ),
-        Extension(
             "thrift.py3.exceptions",
             sources=["thrift/py3/exceptions.pyx"],
             **common_options,
