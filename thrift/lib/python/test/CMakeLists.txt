@@ -809,7 +809,7 @@ message(STATUS "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: ${FOLLY_PY
 # - py-deprecated runtime and generated code
 # - Folly Python bindings (pre-installed by getdeps)
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
-set(TEST_PYTHONPATH "${_thrift_wheel_install_dir}:${_gen_python}:${_gen_py}:${_thrift_py}:${FOLLY_PYTHON_SITE_PACKAGES}")
+set(TEST_PYTHONPATH "${_thrift_wheel_install_dir}:${_gen_python}:${_gen_py}:${FOLLY_PYTHON_SITE_PACKAGES}")
 
 # Symlink thrift.util from thrift_py INTO the wheel directory
 # Problem: py-deprecated imports like `from thrift.util.Recursive import ...` fail
