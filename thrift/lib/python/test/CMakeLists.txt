@@ -748,18 +748,23 @@ add_custom_target(python_package_apache ALL
 make_python_package(python_package_apache "${_gen_python}/apache")
 make_python_package(python_package_apache "${_gen_python}/apache/thrift")
 
-# py-deprecated testing namespace package (for gen-py/testing/)
-# Required for imports like testing.py_deprecated_asyncio_test.ttypes
-add_custom_target(python_package_testing_py_deprecated ALL
-  DEPENDS py_deprecated_asyncio_test_py-py-target py_deprecated_asyncio_fallback_test_py-py-target
-)
-add_custom_command(
-  TARGET python_package_testing_py_deprecated
-  PRE_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_py}/testing"
-  COMMAND ${CMAKE_COMMAND} -E touch "${_gen_py}/testing/__init__.py"
-  COMMENT "Creating gen-py/testing/__init__.py for py-deprecated imports"
-)
+# DISABLED: py-deprecated testing namespace shadows gen-python/testing namespace package
+# The converter.py test is SKIPPED so this __init__.py creation is not needed.
+# Keeping it causes gen-py/testing/ (regular package) to shadow gen-python/testing/
+# (namespace package), breaking imports like testing.thrift_types.
+#
+# # py-deprecated testing namespace package (for gen-py/testing/)
+# # Required for imports like testing.py_deprecated_asyncio_test.ttypes
+# add_custom_target(python_package_testing_py_deprecated ALL
+#   DEPENDS py_deprecated_asyncio_test_py-py-target py_deprecated_asyncio_fallback_test_py-py-target
+# )
+# add_custom_command(
+#   TARGET python_package_testing_py_deprecated
+#   PRE_BUILD
+#   COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_py}/testing"
+#   COMMAND ${CMAKE_COMMAND} -E touch "${_gen_py}/testing/__init__.py"
+#   COMMENT "Creating gen-py/testing/__init__.py for py-deprecated imports"
+# )
 
 #####
 # Python Test Definitions
