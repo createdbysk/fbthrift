@@ -189,20 +189,24 @@ thrift_library(
   NAMESPACE "testing"
 )
 
+# DISABLED: py-deprecated targets create gen-py/testing/__init__.py which shadows
+# gen-python/testing/ namespace package, breaking 14 tests that import testing.thrift_types, etc.
+# converter.py test (the only consumer) is SKIPPED anyway.
+#
 # py_deprecated_asyncio_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
 # namespace py.asyncio testing.py_deprecated_asyncio_test
-thrift_library(
-  "py_deprecated_asyncio_test"
-  ""
-  "py"
-  "asyncio"
-  "${TEST_THRIFT_DIR}"
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  ""
-  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE "testing.py_deprecated_asyncio_test"
-  TARGET_NAME_BASE "py_deprecated_asyncio_test_py"
-)
+# thrift_library(
+#   "py_deprecated_asyncio_test"
+#   ""
+#   "py"
+#   "asyncio"
+#   "${TEST_THRIFT_DIR}"
+#   "${CMAKE_CURRENT_BINARY_DIR}"
+#   ""
+#   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+#   NAMESPACE "testing.py_deprecated_asyncio_test"
+#   TARGET_NAME_BASE "py_deprecated_asyncio_test_py"
+# )
 
 thrift_library(
   "py_deprecated_asyncio_fallback_test"
@@ -218,18 +222,18 @@ thrift_library(
 
 # py_deprecated_asyncio_fallback_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
 # namespace py testing.py_deprecated_asyncio_fallback_test
-thrift_library(
-  "py_deprecated_asyncio_fallback_test"
-  ""
-  "py"
-  ""
-  "${TEST_THRIFT_DIR}"
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  ""
-  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE "testing.py_deprecated_asyncio_fallback_test"
-  TARGET_NAME_BASE "py_deprecated_asyncio_fallback_test_py"
-)
+# thrift_library(
+#   "py_deprecated_asyncio_fallback_test"
+#   ""
+#   "py"
+#   ""
+#   "${TEST_THRIFT_DIR}"
+#   "${CMAKE_CURRENT_BINARY_DIR}"
+#   ""
+#   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+#   NAMESPACE "testing.py_deprecated_asyncio_fallback_test"
+#   TARGET_NAME_BASE "py_deprecated_asyncio_fallback_test_py"
+# )
 
 thrift_library(
   "test_inject_metadata_fields"
