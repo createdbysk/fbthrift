@@ -87,7 +87,7 @@ if(thriftpy3)
       file(CREATE_LINK "${src_path}" "${dest_path}" SYMBOLIC)
     else()
       message(STATUS "Symlinking ${dest_path} -> ${_empty_init_template} (empty template)")
-      file(CREATE_LINK "${_empty_init_template}" "${dest_path}" SYMBOLIC)
+      # file(CREATE_LINK "${_empty_init_template}" "${dest_path}" SYMBOLIC)
     endif()
   endfunction()
 
@@ -127,10 +127,10 @@ if(thriftpy3)
       file(CREATE_LINK "${_src}" "${_dest}" SYMBOLIC)
     endforeach()
 
-    # Ensure __init__.py exists for Python package importability
+    # DISABLED: empty __init__.py blocks namespace package merging
     if(NOT _has_init_py)
       message(STATUS "Creating empty __init__.py at ${dest_dir}/__init__.py")
-      file(CREATE_LINK "${_empty_init_template}" "${dest_dir}/__init__.py" SYMBOLIC)
+      # file(CREATE_LINK "${_empty_init_template}" "${dest_dir}/__init__.py" SYMBOLIC)
     endif()
   endfunction()
 
