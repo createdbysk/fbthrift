@@ -305,7 +305,7 @@ macro(thrift_generate
       # No namespace means output directly to gen-python/<file_name>/
       set(_python_output_subdir "${source_file_name}")
     endif()
-    file(WRITE "${output_path}/gen-${language}/${_python_output_subdir}/__init__.py")
+    # file(WRITE "${output_path}/gen-${language}/${_python_output_subdir}/__init__.py")
     # Override the C++ file lists with Python file lists
     set("${target_file_name}-${language}-HEADERS" "")
     set("${target_file_name}-${language}-SOURCES"
