@@ -430,6 +430,11 @@ else:
             sources=["thrift/python/test/python_async_processor_factory_test.pyx"],
             **common_options,
         ),
+        Extension(
+            "thrift.python.test.typeinfo_test",
+            sources=["thrift/python/test/typeinfo_test.pyx"],
+            **common_options,
+        ),
         # client/test Cython helpers (thrift.python.* namespace for internal use)
         Extension(
             "thrift.python.client.test.event_handler_helper",
