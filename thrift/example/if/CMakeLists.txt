@@ -36,7 +36,7 @@ target_link_libraries(
 )
 
 # Generate thrift-python code for the Echo example
-if(thriftpy3)
+if(thrift_python)
   thrift_library(
     "chatroom"
     "ChatRoomService;Echo"

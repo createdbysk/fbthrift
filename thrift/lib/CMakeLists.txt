@@ -25,7 +25,7 @@ if(thriftpy)
   add_subdirectory(py)
 endif()
 
-if(thriftpy3)
+if(thrift_python)
   # Debug option for build troubleshooting
   option(DEBUG_BUILD "Enable debug messages" OFF)
 

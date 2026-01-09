@@ -92,8 +92,8 @@ set(
   "Install the thrift/lib/py library as an FB Python archive manifest"
 )
 set_property(CACHE thriftpy PROPERTY STRINGS ON OFF AUTO)
-option(thriftpy3
-  "Include thrift-py3 library and extensions in the build, requires Cython"
+option(thrift_python
+  "Include thrift-python library and extensions in the build, requires Cython"
   OFF
 )
 option(PYTHON_EXTENSIONS
@@ -189,7 +189,7 @@ if (THRIFT_LIB_ONLY OR build_all)
 
 endif ()
 
-if(thriftpy3)
+if(thrift_python)
   # Compatibility shims for code expecting old variable names
   set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
   set(PYTHON_LIBRARY ${Python3_LIBRARIES})

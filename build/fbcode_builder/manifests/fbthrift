@@ -54,4 +54,4 @@ xplat/thrift = thrift
 
 [cmake.defines.os=linux]
 PYTHON_EXTENSIONS=ON
-thriftpy3=ON
+thrift_python=ON
