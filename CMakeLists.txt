@@ -101,6 +101,18 @@ option(PYTHON_EXTENSIONS
   OFF
 )
 
+# Backwards compatibility: thriftpy3 was renamed to thrift_python
+# Support users who may have used the old name
+option(thriftpy3
+  "DEPRECATED: Use thrift_python instead. Kept for backwards compatibility."
+  OFF
+)
+if (thriftpy3)
+  message(STATUS "thriftpy3 is deprecated, use thrift_python instead")
+  set(thrift_python ON CACHE BOOL
+    "Forced ON because thriftpy3 was set (backwards compatibility)" FORCE)
+endif()
+
 # thrift_python requires PYTHON_EXTENSIONS
 if (thrift_python)
   set(PYTHON_EXTENSIONS ON CACHE BOOL
