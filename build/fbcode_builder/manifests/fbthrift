@@ -51,6 +51,3 @@ xplat/thrift = thrift
 ^xplat/thrift/perf/canary.py$
 ^xplat/thrift/perf/loadtest.py$
 ^xplat/thrift/.castle/.*
-
-[cmake.defines.os=linux]
-thrift_python=ON
