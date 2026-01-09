@@ -897,6 +897,9 @@ if(thriftpy3)
       "CFLAGS=${CMAKE_C_FLAGS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CXX=${CMAKE_CXX_COMPILER}"
+      "LDFLAGS=${SETUP_LDFLAGS}"
+      "CYTHON_INCLUDE_PATH=${cython_include_path}"
+      "LIBRARY_DIRS=${library_dirs_str}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
       bdist_wheel --libpython ${python_libname}
     WORKING_DIRECTORY ${_cybld}
