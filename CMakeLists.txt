@@ -119,18 +119,9 @@ if (thrift_python)
     "Forced ON because thrift_python requires Python extensions" FORCE)
 endif()
 
-# Python extensions require position-independent code for static libs to be linked
-# into the extension .so files. BUILD_SHARED_LIBS is NOT required - Python extensions
-# themselves are .so files, but their dependencies can be static libs with -fPIC.
-#
-# NOTE: BUILD_SHARED_LIBS was originally forced ON here (incorrect assumption), but
-# this also exposed a circular dependency between thrifttype and thriftanyrep in
-# thrift/lib/cpp2/CMakeLists.txt. With static libs, symbols resolve at final link.
-# With shared libs, each .so must be self-contained, exposing the missing link.
-# TODO: Fix the circular dependency (separate issue from Python extensions).
+# Python extensions require position-independent code so static libs can be
+# linked into the extension .so files.
 if (PYTHON_EXTENSIONS)
-  # set(BUILD_SHARED_LIBS ON CACHE BOOL
-  #   "Forced ON because PYTHON_EXTENSIONS requires shared libraries" FORCE)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL
     "Forced ON because PYTHON_EXTENSIONS requires position-independent code" FORCE)
 endif()
