@@ -53,5 +53,4 @@ xplat/thrift = thrift
 ^xplat/thrift/.castle/.*
 
 [cmake.defines.os=linux]
-PYTHON_EXTENSIONS=ON
 thrift_python=ON
