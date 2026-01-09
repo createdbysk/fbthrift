@@ -96,6 +96,18 @@ option(thriftpy3
   "Include thrift-py3 library and extensions in the build, requires Cython"
   OFF
 )
+option(PYTHON_EXTENSIONS
+  "Build Python extensions for thrift-python, requires Cython"
+  OFF
+)
+
+# Python extensions require shared libraries and position-independent code
+if (PYTHON_EXTENSIONS)
+  set(BUILD_SHARED_LIBS ON CACHE BOOL
+    "Forced ON because PYTHON_EXTENSIONS requires shared libraries" FORCE)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL
+    "Forced ON because PYTHON_EXTENSIONS requires position-independent code" FORCE)
+endif()
 
 find_package(folly CONFIG REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
