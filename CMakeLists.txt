@@ -101,6 +101,12 @@ option(PYTHON_EXTENSIONS
   OFF
 )
 
+# thrift_python requires PYTHON_EXTENSIONS
+if (thrift_python)
+  set(PYTHON_EXTENSIONS ON CACHE BOOL
+    "Forced ON because thrift_python requires Python extensions" FORCE)
+endif()
+
 # Python extensions require shared libraries and position-independent code
 if (PYTHON_EXTENSIONS)
   set(BUILD_SHARED_LIBS ON CACHE BOOL
