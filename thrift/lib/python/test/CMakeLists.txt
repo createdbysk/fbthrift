@@ -781,18 +781,14 @@ make_python_package(python_package_apache "${_gen_python}/apache/thrift")
 # Use CMAKE_BINARY_DIR (top-level build dir) for absolute path
 # to avoid fragile relative paths
 # Use --target to install to a known directory that we add to TEST_PYTHONPATH
-set(_thrift_wheel_dir "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist")
+set(_thrift_wheel_dir "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist_self_contained")
 set(_thrift_wheel_install_dir
   "${CMAKE_BINARY_DIR}/thrift/lib/thrift_wheel_pythonpath")
-string(CONCAT _wheel_suffix
-  "cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}"
-  "-cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}"
-  "-linux_${CMAKE_HOST_SYSTEM_PROCESSOR}")
+# Note: auditwheel changes the wheel platform tag from linux_x86_64 to
+# manylinux_2_17_x86_64.manylinux2014_x86_64, so we use a shell glob
 add_custom_target(install_thrift_wheel ALL
   DEPENDS thrift_python_and_py3_bindings
-  COMMAND ${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps
-    --target "${_thrift_wheel_install_dir}"
-    "${_thrift_wheel_dir}/thrift-0.0.1-${_wheel_suffix}.whl"
+  COMMAND bash -c "${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps --target '${_thrift_wheel_install_dir}' '${_thrift_wheel_dir}'/thrift-0.0.1-*.whl"
   COMMENT "Installing thrift wheel for tests"
 )
 
