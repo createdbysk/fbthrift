@@ -1377,8 +1377,9 @@ jobs:
                 )
 
             # If we have dep from same repo, we already built it and don't want to rebuild it again
+            # Also skip deps if we built them with custom cmake defines to avoid rebuilding without those defines
             no_deps_arg = ""
-            if has_same_repo_dep:
+            if has_same_repo_dep or dep_cmake_defines:
                 no_deps_arg = "--no-deps "
 
             out.write(
