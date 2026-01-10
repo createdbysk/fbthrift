@@ -185,12 +185,32 @@ file(TOUCH "${_cybld}/thrift/__init__.pxd")
 file(TOUCH "${_cybld}/thrift/python/__init__.pxd")
 file(TOUCH "${_cybld}/thrift/py3/__init__.pxd")
 
+# Helper function: filter exclusion list for a specific subdirectory
+# Given a list of "relpath/filename" exclusions and a target relpath,
+# returns filenames that should be excluded for that directory
+# Result is stored in variable named by out_var
+function(get_exclusions_for_dir out_var target_relpath)
+  set(_result "")
+  foreach(_excl ${ARGN})
+    get_filename_component(_excl_dir "${_excl}" DIRECTORY)
+    get_filename_component(_excl_filename "${_excl}" NAME)
+    if("${_excl_dir}" STREQUAL "${target_relpath}")
+      list(APPEND _result "${_excl_filename}")
+    endif()
+  endforeach()
+  set(${out_var} ${_result} PARENT_SCOPE)
+endfunction()
+
 # Helper function: symlink all source files from a directory to build dir
 # Non-recursive - only files directly in the directory
 # (subdirs handled separately)
+# Optional ARGN: list of filenames to exclude from symlinking
 function(symlink_dir_contents src_dir dest_dir)
   file(MAKE_DIRECTORY "${dest_dir}")
   file(GLOB _all_items "${src_dir}/*")
+
+  # Collect exclusion list from optional arguments
+  set(_exclude_list ${ARGN})
 
   foreach(_src ${_all_items})
     if(IS_DIRECTORY "${_src}")
@@ -198,6 +218,13 @@ function(symlink_dir_contents src_dir dest_dir)
     endif()
 
     get_filename_component(_filename "${_src}" NAME)
+
+    # Skip files in exclusion list
+    if(_filename IN_LIST _exclude_list)
+      message(STATUS "Skipping excluded file: ${_src}")
+      continue()
+    endif()
+
     set(_dest "${dest_dir}/${_filename}")
 
     message(STATUS "Symlinking ${_src} -> ${_dest}")
@@ -207,9 +234,14 @@ endfunction()
 
 # Helper function: recursively symlink all files from a source tree
 # to build directory. Calls symlink_dir_contents for each directory.
+# Optional ARGN: list of "relpath/filename" exclusions (e.g., "streaming/bidistream.cpp")
 function(symlink_dir_recursive src_dir dest_base_dir)
-  # Handle the root directory
-  symlink_dir_contents("${src_dir}" "${dest_base_dir}")
+  # Parse exclusion list from optional arguments
+  set(_exclusion_list ${ARGN})
+
+  # Handle the root directory (root = empty relpath)
+  get_exclusions_for_dir(_root_exclusions "" ${_exclusion_list})
+  symlink_dir_contents("${src_dir}" "${dest_base_dir}" ${_root_exclusions})
 
   # Find all subdirectories and call symlink_dir_contents for each
   file(GLOB_RECURSE _all_subdirs LIST_DIRECTORIES true
@@ -217,16 +249,27 @@ function(symlink_dir_recursive src_dir dest_base_dir)
 
   foreach(_src_dir ${_all_subdirs})
     if(IS_DIRECTORY "${_src_dir}")
-      file(RELATIVE_PATH _rel
-        "${src_dir}" "${_src_dir}")
-      symlink_dir_contents("${src_dir}/${_rel}" "${dest_base_dir}/${_rel}")
+      file(RELATIVE_PATH _rel "${src_dir}" "${_src_dir}")
+      get_exclusions_for_dir(_subdir_exclusions "${_rel}" ${_exclusion_list})
+      symlink_dir_contents("${src_dir}/${_rel}" "${dest_base_dir}/${_rel}" ${_subdir_exclusions})
     endif()
   endforeach()
 endfunction()
 
 # Symlink all python/ and py3/ source files recursively
-symlink_dir_recursive("${CMAKE_CURRENT_SOURCE_DIR}" "${_cybld}/thrift/python")
+# Exclude streaming/bidistream.cpp - it's symlinked separately as Bidistream.cpp
+# to avoid Cython conflict (bidistream.pyx generates bidistream.cpp)
+symlink_dir_recursive("${CMAKE_CURRENT_SOURCE_DIR}" "${_cybld}/thrift/python" "streaming/bidistream.cpp")
 symlink_dir_recursive("${_lib_dir}/py3" "${_cybld}/thrift/py3")
+
+# Special case: bidistream.cpp needs to be symlinked with capital B to avoid
+# Cython conflict (bidistream.pyx would generate bidistream.cpp, conflicting
+# with handwritten bidistream.cpp). Sink.cpp and PythonUserException.cpp work
+# fine because their capital letters differ from lowercase .pyx names.
+file(CREATE_LINK
+  "${CMAKE_CURRENT_SOURCE_DIR}/streaming/bidistream.cpp"
+  "${_cybld}/thrift/python/streaming/Bidistream.cpp"
+  SYMBOLIC)
 
 # Placeholder targets for build dependency tracking
 # Symlinks are created at configure time by symlink_dir_recursive above,
@@ -573,7 +616,7 @@ add_library(
     server/PythonAsyncProcessorFactory.cpp
     server/RequestContextExtractor.cpp
     std_libcpp.cpp
-    streaming/BiDiStream.cpp
+    streaming/bidistream.cpp
     streaming/PythonUserException.cpp
     streaming/Sink.cpp
     streaming/StreamElementEncoder.cpp
