@@ -841,7 +841,7 @@ add_custom_command(TARGET thrift_python_and_py3_bindings
 add_custom_command(TARGET thrift_python_and_py3_bindings
   COMMAND ${CMAKE_COMMAND} -E make_directory "${_cybld}/dist_self_contained"
   COMMAND python3 -m auditwheel repair
-    --plat manylinux_2_17_x86_64
+    --plat linux_x86_64
     --wheel-dir "${_cybld}/dist_self_contained"
     "${_cybld}/dist/*.whl"
   WORKING_DIRECTORY ${_cybld}
