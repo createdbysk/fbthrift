@@ -178,9 +178,7 @@ if(thrift_python)
   create_init_py_symlink("${_cybld}/thrift/__init__.py" "thrift/__init__.py")
 
   # Symlink all python/ and py3/ source files recursively
-  # Exclude streaming/bidistream.cpp - it's symlinked separately as Bidistream.cpp
-  # to avoid Cython conflict (bidistream.pyx generates bidistream.cpp)
-  symlink_dir_recursive("python" "${_cybld}/thrift/python" "streaming/bidistream.cpp")
+  symlink_dir_recursive("python" "${_cybld}/thrift/python")
   symlink_dir_recursive("py3" "${_cybld}/thrift/py3")
 
   # Placeholder targets for build dependency tracking
@@ -384,15 +382,6 @@ if(thrift_python)
       ${CMAKE_COMMAND} -E create_symlink "${_cybld}/thrift/python/server/server.pyx" "${_cybld}/thrift/python/server.pyx"
   )
 
-  # Special case: bidistream.cpp needs to be symlinked with capital B to avoid
-  # Cython conflict (bidistream.pyx would generate bidistream.cpp, conflicting
-  # with handwritten bidistream.cpp). Sink.cpp and PythonUserException.cpp work
-  # fine because their capital letters differ from lowercase .pyx names.
-  file(CREATE_LINK
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/streaming/bidistream.cpp"
-    "${_cybld}/thrift/python/streaming/Bidistream.cpp"
-    SYMBOLIC)
-
   #####
   # Compile a few *_api.h headers first.
   #####
@@ -510,7 +499,7 @@ if(thrift_python)
       python/server/PythonAsyncProcessorFactory.cpp
       python/server/RequestContextExtractor.cpp
       python/std_libcpp.cpp
-      python/streaming/bidistream.cpp
+      python/streaming/BiDiStream.cpp
       python/streaming/PythonUserException.cpp
       python/streaming/Sink.cpp
       python/streaming/StreamElementEncoder.cpp
