@@ -1,0 +1,881 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+include(FindFolly)
+include(FindPackageHandleStandardArgs)
+find_package(Boost MODULE REQUIRED)
+
+set(LIB_HOME ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_subdirectory(thrift)
+add_subdirectory(cpp)
+add_subdirectory(cpp2)
+if(thriftpy)
+  add_subdirectory(py)
+endif()
+
+if(thrift_python)
+  # Debug option for build troubleshooting
+  option(DEBUG_BUILD "Enable debug messages" OFF)
+
+  # Find libevent for Python bindings (needed for folly Python extensions)
+  # Force static linking to embed symbols into libthrift_python_cpp.so
+  # From LibeventConfig.cmake: "To find the static ones instead, you must set
+  # the LIBEVENT_STATIC_LINK variable to TRUE before calling find_package"
+  set(LIBEVENT_STATIC_LINK TRUE)
+  find_package(Libevent REQUIRED CONFIG)
+
+  # Find libiberty (provides cplus_demangle_v3_callback needed by folly)
+  find_package(Libiberty REQUIRED)
+
+  # NOTE: Do NOT add gflags here. glog::glog (shared) depends on
+  # gflags (shared). If we embed gflags_static AND glog loads
+  # gflags_shared at runtime = conflict.
+  # Let glog's dependency chain provide gflags at runtime.
+
+  # Debug logging function
+  function(log_debug msg)
+    if(DEBUG_BUILD)
+      message(STATUS "[DEBUG] ${msg}")
+    endif()
+  endfunction()
+
+  set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/flagged/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/interceptor/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/any/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/conformance/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/streaming/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/py3/")
+
+  # So that cython includes work correctly
+  file(TOUCH "${_cybld}/thrift/__init__.pxd")
+  file(TOUCH "${_cybld}/thrift/python/__init__.pxd")
+  file(TOUCH "${_cybld}/thrift/py3/__init__.pxd")
+
+  # Helper function: symlink all source files from a directory to build dir
+  # Non-recursive - only files directly in the directory
+  # (subdirs handled separately)
+  function(symlink_dir_contents src_reldir dest_dir)
+    file(MAKE_DIRECTORY "${dest_dir}")
+    file(GLOB _all_items "${CMAKE_CURRENT_SOURCE_DIR}/${src_reldir}/*")
+
+    foreach(_src ${_all_items})
+      if(IS_DIRECTORY "${_src}")
+        continue()
+      endif()
+
+      get_filename_component(_filename "${_src}" NAME)
+      set(_dest "${dest_dir}/${_filename}")
+
+      message(STATUS "Symlinking ${_src} -> ${_dest}")
+      file(CREATE_LINK "${_src}" "${_dest}" SYMBOLIC)
+    endforeach()
+  endfunction()
+
+  # Helper function: recursively symlink all files from a source tree
+  # to build directory. Calls symlink_dir_contents for each directory.
+  function(symlink_dir_recursive src_reldir dest_base_dir)
+    # Handle the root directory
+    symlink_dir_contents("${src_reldir}" "${dest_base_dir}")
+
+    # Find all subdirectories and call symlink_dir_contents for each
+    file(GLOB_RECURSE _all_subdirs LIST_DIRECTORIES true
+      "${CMAKE_CURRENT_SOURCE_DIR}/${src_reldir}/*")
+
+    foreach(_src_dir ${_all_subdirs})
+      if(IS_DIRECTORY "${_src_dir}")
+        file(RELATIVE_PATH _rel
+          "${CMAKE_CURRENT_SOURCE_DIR}/${src_reldir}" "${_src_dir}")
+        symlink_dir_contents("${src_reldir}/${_rel}" "${dest_base_dir}/${_rel}")
+      endif()
+    endforeach()
+  endfunction()
+
+  # Symlink all python/ and py3/ source files recursively
+  symlink_dir_recursive("python" "${_cybld}/thrift/python")
+  symlink_dir_recursive("py3" "${_cybld}/thrift/py3")
+
+  # Placeholder targets for build dependency tracking
+  # Symlinks are created at configure time by symlink_dir_recursive above,
+  # but other parts of the build depend on these targets for ordering.
+  add_custom_target(create_binding_symlink_python ALL)
+  add_custom_target(create_binding_symlink_py3 ALL)
+
+  #####################################################################
+  # Include Path Setup (must be done early, before API header generation)
+  #####################################################################
+  # Get include directories from dependencies
+  get_target_property(thrift_include_dirs thrift INCLUDE_DIRECTORIES)
+  get_target_property(fmt_include_dirs fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(
+    glog_include_dirs glog::glog INTERFACE_INCLUDE_DIRECTORIES)
+
+  # For setup.py build_ext -I flags
+  set(inc_dirs "$<TARGET_PROPERTY:thrift,INCLUDE_DIRECTORIES>")
+  list(JOIN wangle_incs ":" wangle_include_dirs)
+  string(CONCAT incs
+    "-I$<JOIN:${inc_dirs},:>"
+    ":${FOLLY_INCLUDE_DIR}"
+    ":${Boost_INCLUDE_DIRS}"
+    ":${fmt_include_dirs}"
+    ":${wangle_include_dirs}"
+    ":${CMAKE_BINARY_DIR}/thrift/lib"
+    ":${CMAKE_BINARY_DIR}/thrift/lib/cybld"
+  )
+  get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
+
+  # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
+  # Proxygen and mvfst include directories (for http2_helper in client tests)
+  # Use GETDEPS_INSTALL_DIR env var if set
+  # (same fix as library path discovery above)
+  if(DEFINED ENV{GETDEPS_INSTALL_DIR})
+    set(GETDEPS_INSTALL_ROOT_INC "$ENV{GETDEPS_INSTALL_DIR}")
+  else()
+    get_filename_component(
+      GETDEPS_INSTALL_ROOT_INC "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  endif()
+  set(proxygen_include_dir "${GETDEPS_INSTALL_ROOT_INC}/proxygen/include")
+  set(mvfst_include_dir "${GETDEPS_INSTALL_ROOT_INC}/mvfst/include")
+
+  set(_all_cython_includes
+    # Thrift includes
+    ${thrift_include_dirs}
+    ${CMAKE_BINARY_DIR}/thrift/lib
+    ${CMAKE_BINARY_DIR}/thrift/lib/cybld
+    # Folly includes (including .pxd files)
+    ${FOLLY_INCLUDE_DIR}
+    ${FOLLY_PYTHON_SITE_PACKAGES}
+    # Boost
+    ${Boost_INCLUDE_DIRS}
+    # Other dependencies
+    ${fmt_include_dirs}
+    ${wangle_incs}
+    ${glog_include_dirs}
+    # Proxygen and mvfst (for http2_helper.pyx client tests)
+    ${proxygen_include_dir}
+    ${mvfst_include_dir}
+  )
+  list(JOIN _all_cython_includes ":" cython_include_path)
+  log_debug("cython_include_path='${cython_include_path}'")
+
+  #####################################################################
+  # Library Path Setup
+  #####################################################################
+  # Auto-discover all library directories from getdeps installed packages
+  # This ensures setup.py's find_static_lib() can find ALL libraries
+  # in static_lib_names. Use GETDEPS_INSTALL_DIR env var if set (getdeps
+  # always sets this), otherwise fall back to deriving from
+  # CMAKE_INSTALL_PREFIX (works when CMAKE_INSTALL_PREFIX is in the
+  # getdeps installed directory, but NOT when --project-install-prefix
+  # overrides it)
+  if(DEFINED ENV{GETDEPS_INSTALL_DIR})
+    set(GETDEPS_INSTALL_ROOT "$ENV{GETDEPS_INSTALL_DIR}")
+  else()
+    get_filename_component(
+      GETDEPS_INSTALL_ROOT "${CMAKE_INSTALL_PREFIX}/.." ABSOLUTE)
+  endif()
+  file(GLOB installed_packages "${GETDEPS_INSTALL_ROOT}/*")
+  set(all_lib_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+  foreach(pkg ${installed_packages})
+    if(EXISTS "${pkg}/lib")
+      list(APPEND all_lib_dirs "${pkg}/lib")
+    endif()
+    if(EXISTS "${pkg}/lib64")
+      list(APPEND all_lib_dirs "${pkg}/lib64")
+    endif()
+  endforeach()
+  # Add system library paths
+  list(APPEND all_lib_dirs "/usr/lib64")
+  # Add python library directory
+  get_filename_component(python_lib ${PYTHON_LIBRARY} DIRECTORY)
+  list(APPEND all_lib_dirs "${python_lib}")
+
+  # Join all library directories with colons for -L flags and LIBRARY_DIRS
+  list(JOIN all_lib_dirs ":" library_dirs_str)
+  set(libs "-L${library_dirs_str}")
+
+  #####################################################################
+  # Install Directory
+  #####################################################################
+  set(py_install_dir ${CMAKE_INSTALL_PREFIX})
+  if (NOT ${PYTHON_PACKAGE_INSTALL_DIR} STREQUAL "")
+    set(py_install_dir ${PYTHON_PACKAGE_INSTALL_DIR})
+  endif()
+
+  #####################################################################
+  # Linker Flags
+  #####################################################################
+  # Set default LDFLAGS for setup.py to fix undefined symbol issues
+  # --no-as-needed ensures libfolly.so is in NEEDED list even if linker
+  # thinks it's not needed
+  set(DEFAULT_SETUP_LDFLAGS "-Wl,--no-as-needed")
+
+  # Allow users to override via environment variable (e.g., for custom RPATH)
+  if(DEFINED ENV{LDFLAGS})
+    set(SETUP_LDFLAGS "$ENV{LDFLAGS}")
+    message(STATUS "Using user-provided LDFLAGS: ${SETUP_LDFLAGS}")
+  else()
+    set(SETUP_LDFLAGS "${DEFAULT_SETUP_LDFLAGS}")
+    message(STATUS "Using default LDFLAGS: ${SETUP_LDFLAGS}")
+  endif()
+
+  ###
+  # First, run Thrift compiler on metadata.thrift. thrift-python runtime
+  # depends on apache.thrift.metadata package, which is created and
+  # installed later in setup.py.
+  ###
+  add_custom_target(
+    generate_apache_thrift_metadata_python
+    COMMAND
+      thrift1 -I ${CMAKE_SOURCE_DIR} --out .
+      --gen "mstch_python:include_prefix=thrift"
+      ${CMAKE_CURRENT_SOURCE_DIR}/thrift/metadata.thrift
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${_cybld}/apache/thrift/metadata
+    WORKING_DIRECTORY ${_cybld}
+    BYPRODUCTS
+      ${_cybld}/apache/thrift/metadata/thrift_abstract_types.py
+      ${_cybld}/apache/thrift/metadata/thrift_clients.py
+      ${_cybld}/apache/thrift/metadata/thrift_enums.py
+      ${_cybld}/apache/thrift/metadata/thrift_metadata.py
+      ${_cybld}/apache/thrift/metadata/thrift_mutable_clients.py
+      ${_cybld}/apache/thrift/metadata/thrift_mutable_services.py
+      ${_cybld}/apache/thrift/metadata/thrift_mutable_types.py
+      ${_cybld}/apache/thrift/metadata/thrift_mutable_types.pyi
+      ${_cybld}/apache/thrift/metadata/thrift_services.py
+      ${_cybld}/apache/thrift/metadata/thrift_types.py
+      ${_cybld}/apache/thrift/metadata/thrift_types.pyi
+  )
+
+  ###
+  # Also generate py3 version for apache.thrift.metadata
+  # (required by py3/metadata.pyx)
+  ###
+  add_custom_target(
+    generate_apache_thrift_metadata_py3
+    COMMAND
+      thrift1 -I ${CMAKE_SOURCE_DIR} --out .
+      --gen "mstch_py3:include_prefix=thrift"
+      ${CMAKE_CURRENT_SOURCE_DIR}/thrift/metadata.thrift
+    WORKING_DIRECTORY ${_cybld}
+    BYPRODUCTS
+      ${_cybld}/apache/thrift/metadata/cbindings.pxd
+      ${_cybld}/apache/thrift/metadata/cbindings.pyx
+      ${_cybld}/apache/thrift/metadata/metadata.pxd
+      ${_cybld}/apache/thrift/metadata/metadata.pyx
+  )
+
+  ####
+  # Next, prepare for building cython extensions by creating the necessary
+  # symlinks in the cybld directory
+  ####
+  add_custom_target(create_binding_symlink_python_types ALL)
+  foreach(
+    _filerelpath
+      "python/types.pxd"
+      "python/types.pyx"
+      "py3/stream.pxd"
+      "py3/stream.pyx"
+  )
+    set(_src "${CMAKE_CURRENT_SOURCE_DIR}/${_filerelpath}")
+    get_filename_component(_src_dir "${_src}" DIRECTORY)
+    file(RELATIVE_PATH _filereldir ${CMAKE_CURRENT_SOURCE_DIR} ${_src_dir})
+    get_filename_component(_target_file "${_src}" NAME)
+
+
+    message(
+      STATUS
+      "Linking ${_src} to ${_cybld}/thrift/${_filereldir}/_${_target_file}"
+    )
+
+    add_custom_command(
+      TARGET
+      create_binding_symlink_python_types
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}" "${_cybld}/thrift/${_filereldir}/_${_target_file}"
+    )
+  endforeach()
+  # Below symlinks simplify cythonize logic in setup.py
+  add_custom_command(
+    TARGET
+    create_binding_symlink_python_types
+    PRE_BUILD
+      COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      "${_cybld}/thrift/python/server/server.pxd"
+      "${_cybld}/thrift/python/server.pxd"
+  )
+  add_custom_command(
+    TARGET
+    create_binding_symlink_python_types
+    PRE_BUILD
+      COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      "${_cybld}/thrift/python/server/server.pyx"
+      "${_cybld}/thrift/python/server.pyx"
+  )
+
+  #####
+  # Compile a few *_api.h headers first.
+  #####
+  # List all headers generated by setup.py --api-only
+  set(CYTHON_GENERATED_API_HEADERS
+    ${_cybld}/thrift/python/_types_api.h
+    ${_cybld}/thrift/python/server/python_async_processor_api.h
+    ${_cybld}/thrift/python/server/request_context_api.h
+    ${_cybld}/thrift/python/server/interceptor/service_interceptor_api.h
+    ${_cybld}/thrift/python/server_impl/python_async_processor_api.h
+    ${_cybld}/thrift/python/server_impl/request_context_api.h
+    ${_cybld}/thrift/python/server_impl/interceptor/service_interceptor_api.h
+    ${_cybld}/thrift/py3/_stream_api.h
+    ${_cybld}/thrift/python/streaming/sink_api.h
+    ${_cybld}/thrift/python/streaming/bidistream_api.h
+    ${_cybld}/thrift/python/streaming/py_promise_api.h
+  )
+
+  log_debug(
+    "At API header generation: cython_include_path='${cython_include_path}'")
+
+  add_custom_command(
+    OUTPUT ${CYTHON_GENERATED_API_HEADERS}
+    COMMAND ${CMAKE_COMMAND} -E env
+      "CFLAGS=${CMAKE_C_FLAGS}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+      "CXX=${CMAKE_CXX_COMPILER}"
+      "CYTHON_INCLUDE_PATH=${cython_include_path}"
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v --api-only
+    DEPENDS
+      create_binding_symlink_python_types
+      create_binding_symlink_python
+      create_binding_symlink_py3
+      create_binding_symlink_server_impl
+      thriftcpp2
+    WORKING_DIRECTORY ${_cybld}
+    COMMENT "Generating Cython API headers"
+  )
+
+  add_custom_target(
+    thrift_python_types_bindings ALL
+    DEPENDS ${CYTHON_GENERATED_API_HEADERS}
+  )
+
+  #####################################################################
+  # API Header Symlinks
+  #####################################################################
+  # WHY: C++ code includes headers as "thrift/lib/python/types_api.h"
+  #      but setup.py generates them at "thrift/python/_types_api.h"
+  #      Symlinks bridge this path difference.
+  #
+  # NOTE: server_impl in source paths (not server) because:
+  #       - C++ code expects
+  #         import_thrift__python__server_impl__python_async_processor
+  #       - Buck uses package = "thrift.python.server_impl"
+  #       - Must match the import function names in generated API headers
+
+  # Define all API header symlink mappings (source|destination)
+  set(CYTHON_API_SYMLINK_MAPPINGS
+    "${_cybld}/thrift/python/_types_api.h|\
+${_cybld}/thrift/lib/python/types_api.h"
+    "${_cybld}/thrift/python/_types.h|${_cybld}/thrift/lib/python/_types.h"
+    "${_cybld}/thrift/python/server_impl/python_async_processor_api.h|\
+${_cybld}/thrift/lib/python/server/python_async_processor_api.h"
+    "${_cybld}/thrift/python/server_impl/request_context_api.h|\
+${_cybld}/thrift/lib/python/server/request_context_api.h"
+    "${_cybld}/thrift/python/server_impl/interceptor/service_interceptor_api.h|\
+${_cybld}/thrift/lib/python/server/interceptor/service_interceptor_api.h"
+    "${_cybld}/thrift/py3/_stream_api.h|${_cybld}/thrift/lib/py3/stream_api.h"
+    "${_cybld}/thrift/py3/_stream.h|${_cybld}/thrift/lib/py3/_stream.h"
+    "${_cybld}/thrift/python/streaming/sink_api.h|\
+${_cybld}/thrift/lib/python/streaming/sink_api.h"
+    "${_cybld}/thrift/python/streaming/bidistream_api.h|\
+${_cybld}/thrift/lib/python/streaming/bidistream_api.h"
+    "${_cybld}/thrift/python/streaming/py_promise_api.h|\
+${_cybld}/thrift/lib/python/streaming/py_promise_api.h"
+  )
+
+  # Generate symlink commands from mappings
+  set(CYTHON_API_SYMLINKS "")
+  set(SYMLINK_COMMANDS "")
+  foreach(mapping IN LISTS CYTHON_API_SYMLINK_MAPPINGS)
+    string(REPLACE "|" ";" pair ${mapping})
+    list(GET pair 0 source)
+    list(GET pair 1 dest)
+    list(APPEND CYTHON_API_SYMLINKS ${dest})
+    list(APPEND SYMLINK_COMMANDS
+      COMMAND ${CMAKE_COMMAND} -E create_symlink ${source} ${dest})
+  endforeach()
+
+  # Create destination directories
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server/interceptor")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/streaming")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/py3/")
+
+  # Create all symlinks
+  # (OUTPUT ensures files exist before dependent targets build)
+  add_custom_command(
+    OUTPUT ${CYTHON_API_SYMLINKS}
+    ${SYMLINK_COMMANDS}
+    DEPENDS ${CYTHON_GENERATED_API_HEADERS}
+    COMMENT "Creating symlinks to Cython API headers"
+  )
+
+  # Target for dependency tracking
+  add_custom_target(
+    create_cython_types_api_symlink ALL
+    DEPENDS ${CYTHON_API_SYMLINKS}
+  )
+  # Explicit target-level dependency: symlinks wait for API headers
+  add_dependencies(create_cython_types_api_symlink thrift_python_types_bindings)
+
+  # SHARED to reduce build time, disk space, and runtime memory
+  add_library(
+    thrift_python_cpp SHARED
+      python/client/OmniClient.cpp
+      python/client/RequestChannel.cpp
+      python/client/ssl.cpp
+      python/Serializer.cpp
+      python/server/event_handler.cpp
+      python/server/flagged/RcAwareTaskPatch.cpp
+      python/server/interceptor/PythonServiceInterceptor.cpp
+      python/server/PythonAsyncProcessor.cpp
+      python/server/PythonAsyncProcessorFactory.cpp
+      python/server/RequestContextExtractor.cpp
+      python/std_libcpp.cpp
+      python/streaming/BiDiStream.cpp
+      python/streaming/PythonUserException.cpp
+      python/streaming/Sink.cpp
+      python/streaming/StreamElementEncoder.cpp
+      python/types.cpp
+      py3/stream.cpp
+  )
+  add_dependencies(thrift_python_cpp create_cython_types_api_symlink)
+  set_property(TARGET thrift_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
+  target_compile_definitions(thrift_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
+  target_compile_definitions(
+    thrift_python_cpp PRIVATE THRIFT_NO_HTTP_CLIENT_CHANNEL)
+  target_include_directories(
+    thrift_python_cpp PRIVATE "${_cybld}" ${PYTHON_INCLUDE_DIRS})
+  # Link strategy:
+  # - STATIC libs (thrift + deps): embed with --whole-archive to consolidate
+  #   into single .so
+  # - SHARED libs (folly, fmt, glog): link normally, become runtime deps
+  # --allow-multiple-definition handles duplicate symbols across static libs
+  # (e.g., librpcmetadata.a and libthriftprotocol.a both compile
+  # TJSONProtocol.cpp)
+  # libevent/libiberty: needed for undefined symbols,
+  # --allow-multiple-definition handles duplicates
+  target_link_libraries(
+    thrift_python_cpp
+    PUBLIC
+      # Static libs - embed all symbols
+      "-Wl,--whole-archive"
+      "-Wl,--allow-multiple-definition"
+      thriftcpp2
+      rpcmetadata
+      thriftannotation
+      thriftmetadata
+      thriftfrozen2
+      thriftprotocol
+      thrifttyperep
+      thrifttype
+      thriftanyrep
+      serverdbginfo
+      libevent::core
+      libevent::extra
+      ${LIBIBERTY_LIBRARIES}
+      "-Wl,--no-whole-archive"
+      # Shared libs - runtime deps (see manifests/folly, manifests/fmt)
+      Folly::folly
+      Folly::folly_python_cpp
+      fmt::fmt
+      glog::glog
+    )
+  install(
+    TARGETS thrift_python_cpp
+    EXPORT thrift
+  )
+  install(
+    TARGETS thrift_python_cpp
+    DESTINATION ${py_install_dir}
+  )
+
+  #####
+  # Create server_impl alias for OSS builds
+  # Buck internal builds use package = "thrift.python.server_impl" remapping.
+  # OSS CMake builds need this alias created manually.
+  #####
+  add_custom_target(create_binding_symlink_server_impl ALL)
+
+  # Create server_impl directory structure
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/server_impl")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/server_impl/interceptor")
+
+  # Create symlinks for server_impl/*.pxd -> server/*.pxd (compile-time cimport)
+  file(GLOB ServerImplFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/*.pyx"
+  )
+
+  foreach(_src ${ServerImplFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    message(
+      STATUS
+      "Creating server_impl symlink: \
+${_cybld}/thrift/python/server_impl/${_target_file} -> ${_src}"
+    )
+    add_custom_command(
+      TARGET
+      create_binding_symlink_server_impl
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}" "${_cybld}/thrift/python/server_impl/${_target_file}"
+    )
+  endforeach()
+
+  # Create symlinks for server_impl/interceptor/*.pxd
+  file(GLOB ServerImplInterceptorFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/interceptor/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/interceptor/*.pyx"
+  )
+
+  foreach(_src ${ServerImplInterceptorFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    message(
+      STATUS
+      "Creating server_impl/interceptor symlink: \
+${_cybld}/thrift/python/server_impl/interceptor/${_target_file} -> ${_src}"
+    )
+    add_custom_command(
+      TARGET
+      create_binding_symlink_server_impl
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}"
+        "${_cybld}/thrift/python/server_impl/interceptor/${_target_file}"
+    )
+  endforeach()
+
+  #####
+  # Create test package symlinks for thrift.python.test and
+  # thrift.python.test.adapters
+  #####
+  add_custom_target(create_binding_symlink_test ALL)
+
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/test")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/test/adapters")
+
+  file(GLOB TestFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/*.py"
+  )
+
+  foreach(_src ${TestFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}" "${_cybld}/thrift/python/test/${_target_file}"
+    )
+  endforeach()
+
+  file(GLOB TestAdapterFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/adapters/*.py"
+  )
+
+  foreach(_src ${TestAdapterFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}" "${_cybld}/thrift/python/test/adapters/${_target_file}"
+    )
+  endforeach()
+
+  # Create request_context_extractor subpackage symlinks
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/test/request_context_extractor")
+
+  file(GLOB TestRequestContextExtractorFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/request_context_extractor/*.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/request_context_extractor/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/request_context_extractor/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/request_context_extractor/*.pyi"
+  )
+
+  foreach(_src ${TestRequestContextExtractorFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}"
+        "${_cybld}/thrift/python/test/request_context_extractor/${_target_file}"
+    )
+  endforeach()
+
+  # Create server/test Cython module symlinks in thrift/python/test/
+  # Note: The Cython module needs to be at
+  # thrift.python.test.python_async_processor_factory_test
+  # because thrift.python.server is an extension module (.so), not a package
+  file(GLOB ServerTestCythonFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/test/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/test/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/server/test/*.pyi"
+  )
+
+  foreach(_src ${ServerTestCythonFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}" "${_cybld}/thrift/python/test/${_target_file}"
+    )
+  endforeach()
+
+  # Create client/test Cython module symlinks in thrift/python/client/test/
+  file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/test")
+  file(GLOB ClientTestCythonFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.h"
+  )
+
+  foreach(_src ${ClientTestCythonFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink "${_src}"
+        "${_cybld}/thrift/python/client/test/${_target_file}"
+    )
+  endforeach()
+
+  #####
+  # Create thrift.lib.python.test package symlinks (fbcode import path shim)
+  # This mirrors thrift.python.test to thrift.lib.python.test for fbcode
+  # compatibility
+  #####
+  add_custom_target(create_binding_symlink_lib_test ALL)
+
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test/event_handlers")
+
+  foreach(_src ${TestFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}" "${_cybld}/thrift/lib/python/test/${_target_file}"
+    )
+  endforeach()
+
+  file(GLOB TestEventHandlerFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/event_handlers/*.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/event_handlers/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/event_handlers/*.pxd"
+  )
+
+  foreach(_src ${TestEventHandlerFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}"
+        "${_cybld}/thrift/lib/python/test/event_handlers/${_target_file}"
+    )
+  endforeach()
+
+  # Create thrift/lib/python/test/metadata_response/ symlinks
+  # for metadata_response Cython module
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test/metadata_response")
+
+  file(GLOB TestMetadataResponseFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/test/metadata_response/*.h"
+  )
+
+  foreach(_src ${TestMetadataResponseFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}"
+        "${_cybld}/thrift/lib/python/test/metadata_response/${_target_file}"
+    )
+  endforeach()
+
+  # Create thrift/lib/python/client/test/ symlinks
+  # for client test Cython modules
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client")
+  file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client/test")
+  file(MAKE_DIRECTORY
+    "${_cybld}/thrift/lib/python/client/test/client_event_handler")
+
+  file(GLOB LibClientTestCythonFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/*.py"
+  )
+
+  foreach(_src ${LibClientTestCythonFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}" "${_cybld}/thrift/lib/python/client/test/${_target_file}"
+    )
+  endforeach()
+
+  file(GLOB LibClientEventHandlerFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/client_event_handlers/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/client_event_handlers/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/client_event_handlers/*.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/client/test/client_event_handlers/*.h"
+  )
+
+  foreach(_src ${LibClientEventHandlerFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET
+      create_binding_symlink_lib_test
+      PRE_BUILD
+      COMMAND ${CMAKE_COMMAND} -E create_symlink
+      "${_src}"
+  "${_cybld}/thrift/lib/python/client/test/client_event_handler/${_target_file}"
+    )
+  endforeach()
+
+  #####
+  # Generate thrift-python test types
+  #####
+  add_subdirectory(python/test)
+
+  #####
+  # Now build everything else in lib/python, including all remaining Cython
+  # modules that depend on types_api.h and thrift_python_cpp.
+  #####
+  add_custom_target(
+    thrift_python_and_py3_bindings ALL
+    DEPENDS
+      generate_apache_thrift_metadata_python
+      generate_apache_thrift_metadata_py3
+      create_binding_symlink_python
+      create_binding_symlink_py3
+      create_binding_symlink_server_impl
+      create_binding_symlink_lib_test
+      thriftcpp2
+      thrift_python_cpp
+      thrift_python_types_bindings
+    WORKING_DIRECTORY ${_cybld}
+  )
+
+  # Pass include paths to Cython via environment variable for build_ext phase
+  # (needed for cythonize to find folly .pxd files)
+  add_custom_command(TARGET thrift_python_and_py3_bindings
+    COMMAND ${CMAKE_COMMAND} -E env
+      "CFLAGS=${CMAKE_C_FLAGS}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+      "CXX=${CMAKE_CXX_COMPILER}"
+      "LDFLAGS=${SETUP_LDFLAGS}"
+      "CYTHON_INCLUDE_PATH=${cython_include_path}"
+      "LIBRARY_DIRS=${library_dirs_str}"
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
+      build_ext -f ${incs} ${libs} --libpython ${python_libname}
+    WORKING_DIRECTORY ${_cybld}
+  )
+  add_custom_command(TARGET thrift_python_and_py3_bindings
+    COMMAND ${CMAKE_COMMAND} -E env
+      "CFLAGS=${CMAKE_C_FLAGS}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+      "CXX=${CMAKE_CXX_COMPILER}"
+      "LDFLAGS=${SETUP_LDFLAGS}"
+      "CYTHON_INCLUDE_PATH=${cython_include_path}"
+      "LIBRARY_DIRS=${library_dirs_str}"
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v
+      bdist_wheel --libpython ${python_libname}
+    WORKING_DIRECTORY ${_cybld}
+  )
+
+  # getdeps.py does not allow sufficient control of CMAKE_INSTALL_PREFIX,
+  # so PYTHON_PACKAGE_INSTALL_DIR can be used to control the installation
+  # location of Python packages.
+  set(ENV{CXX} ${CMAKE_CXX_COMPILER})
+  install(CODE "
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E env
+        \"CFLAGS=${CMAKE_C_FLAGS}\"
+        \"CXXFLAGS=${CMAKE_CXX_FLAGS}\"
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py install -v
+        --prefix ${py_install_dir} --libpython ${python_libname}
+      COMMAND_ECHO STDOUT
+      WORKING_DIRECTORY ${_cybld}
+    )
+  ")
+endif()
+
+set(LIB_DIRS
+  thrift
+  cpp
+  cpp2
+  python
+  py3
+)
+foreach(dir ${LIB_DIRS})
+  install(DIRECTORY ${dir} "${CMAKE_CURRENT_BINARY_DIR}/${dir}"
+        DESTINATION include/thrift/lib
+        FILES_MATCHING
+          PATTERN "*.h"
+          PATTERN "*.tcc"
+          PATTERN CMakeFiles EXCLUDE)
+endforeach()
