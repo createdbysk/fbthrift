@@ -1342,9 +1342,15 @@ jobs:
                     defines_json = json.dumps(dep_cmake_defines[m.name])
                     dep_defines_arg = f"--extra-cmake-defines '{defines_json}' "
 
-                out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{dep_defines_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
-                )
+                # Build the command
+                build_cmd = f"{getdepscmd}{allow_sys_arg} build {build_type_arg}{dep_defines_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}"
+
+                # Use block scalar if command contains quotes (for YAML safety)
+                if "'" in build_cmd or '"' in build_cmd:
+                    out.write("      run: |\n")
+                    out.write(f"        {build_cmd}\n")
+                else:
+                    out.write(f"      run: {build_cmd}\n")
 
                 if args.use_build_cache and not src_dir_arg:
                     out.write(f"    - name: Save {m.name} to cache\n")
