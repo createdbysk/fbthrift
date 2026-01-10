@@ -836,10 +836,21 @@ add_custom_command(TARGET thrift_python_and_py3_bindings
   WORKING_DIRECTORY ${_cybld}
 )
 
-# Install the wheel to the install prefix for users to pip install
-# The wheel is built to ${_cybld}/dist/ by thrift_python_and_py3_bindings
+# Run auditwheel repair to make the wheel self-contained
+# This bundles .so dependencies and rewrites RPATH to $ORIGIN
+add_custom_command(TARGET thrift_python_and_py3_bindings
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_cybld}/dist_self_contained"
+  COMMAND python3 -m auditwheel repair
+    --plat manylinux_2_17_x86_64
+    --wheel-dir "${_cybld}/dist_self_contained"
+    "${_cybld}/dist/*.whl"
+  WORKING_DIRECTORY ${_cybld}
+)
+
+# Install the self-contained wheel to the install prefix for users to pip install
+# The wheel is processed by auditwheel to ${_cybld}/dist_self_contained/
 install(
-  DIRECTORY "${_cybld}/dist/"
+  DIRECTORY "${_cybld}/dist_self_contained/"
   DESTINATION share/thrift/wheels
   FILES_MATCHING PATTERN "*.whl"
 )
