@@ -1309,6 +1309,13 @@ jobs:
                     src_dir_arg = "--src-dir=. "
                     has_same_repo_dep = True
 
+                # Compute cache key suffix for custom cmake defines
+                cache_key_suffix = ""
+                if m.name in dep_cmake_defines:
+                    import hashlib
+                    defines_str = json.dumps(dep_cmake_defines[m.name], sort_keys=True)
+                    cache_key_suffix = f"-{hashlib.md5(defines_str.encode()).hexdigest()[:8]}"
+
                 if args.use_build_cache and not src_dir_arg:
                     out.write(f"    - name: Restore {m.name} from cache\n")
                     out.write(f"      id: restore_{m.name}\n")
@@ -1322,7 +1329,7 @@ jobs:
                         f"       path: ${{{{ steps.paths.outputs.{m.name}_INSTALL }}}}\n"
                     )
                     out.write(
-                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}-install\n"
+                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}{cache_key_suffix}-install\n"
                     )
 
                 out.write("    - name: Build %s\n" % m.name)
@@ -1363,7 +1370,7 @@ jobs:
                         f"       path: ${{{{ steps.paths.outputs.{m.name}_INSTALL }}}}\n"
                     )
                     out.write(
-                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}-install\n"
+                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}{cache_key_suffix}-install\n"
                     )
 
             out.write("    - name: Build %s\n" % manifest.name)

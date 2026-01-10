@@ -572,7 +572,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
        path: ${{ steps.paths.outputs.folly_INSTALL }}
-       key: ${{ steps.paths.outputs.folly_CACHE_KEY }}-install
+       key: ${{ steps.paths.outputs.folly_CACHE_KEY }}-00533b8b-install
     - name: Build folly
       if: ${{ steps.paths.outputs.folly_SOURCE && ! steps.restore_folly.outputs.cache-hit }}
       run: |
@@ -582,7 +582,7 @@ jobs:
       if: ${{ steps.paths.outputs.folly_SOURCE && ! steps.restore_folly.outputs.cache-hit }}
       with:
        path: ${{ steps.paths.outputs.folly_INSTALL }}
-       key: ${{ steps.paths.outputs.folly_CACHE_KEY }}-install
+       key: ${{ steps.paths.outputs.folly_CACHE_KEY }}-00533b8b-install
     - name: Restore fizz from cache
       id: restore_fizz
       if: ${{ steps.paths.outputs.fizz_SOURCE }}
