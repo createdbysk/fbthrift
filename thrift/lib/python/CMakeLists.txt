@@ -836,18 +836,10 @@ add_custom_command(TARGET thrift_python_and_py3_bindings
   WORKING_DIRECTORY ${_cybld}
 )
 
-# getdeps.py does not allow sufficient control of CMAKE_INSTALL_PREFIX,
-# so PYTHON_PACKAGE_INSTALL_DIR can be used to control the installation
-# location of Python packages.
-set(ENV{CXX} ${CMAKE_CXX_COMPILER})
-install(CODE "
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E env
-      \"CFLAGS=${CMAKE_C_FLAGS}\"
-      \"CXXFLAGS=${CMAKE_CXX_FLAGS}\"
-      python3 ${_lib_dir}/setup.py install -v
-      --prefix ${py_install_dir} --libpython ${python_libname}
-    COMMAND_ECHO STDOUT
-    WORKING_DIRECTORY ${_cybld}
-  )
-")
+# Install the wheel to the install prefix for users to pip install
+# The wheel is built to ${_cybld}/dist/ by thrift_python_and_py3_bindings
+install(
+  DIRECTORY "${_cybld}/dist/"
+  DESTINATION share/thrift/wheels
+  FILES_MATCHING PATTERN "*.whl"
+)
