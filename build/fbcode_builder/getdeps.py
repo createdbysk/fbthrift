@@ -1067,6 +1067,18 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             manifest_ctx.set("test", "on")
         run_on = self.get_run_on(args)
 
+        # Parse per-dependency cmake defines
+        dep_cmake_defines = (
+            json.loads(args.dependency_cmake_defines)
+            if args.dependency_cmake_defines
+            else {}
+        )
+
+        # Parse custom pre-build steps
+        pre_build_steps = (
+            json.loads(args.pre_build_steps) if args.pre_build_steps else []
+        )
+
         tests_arg = "--no-tests "
         if run_tests:
             tests_arg = ""
@@ -1231,6 +1243,17 @@ jobs:
                         out.write(f"    - name: Ensure {loc} locale present\n")
                         out.write(f"      run: {sudo_arg}locale-gen {loc}\n")
 
+            # Insert custom pre-build steps
+            for step in pre_build_steps:
+                out.write(f"    - name: {step['name']}\n")
+                run_cmd = step["run"]
+                if "\n" in run_cmd:
+                    out.write("      run: |\n")
+                    for line in run_cmd.split("\n"):
+                        out.write(f"        {line}\n")
+                else:
+                    out.write(f"      run: {run_cmd}\n")
+
             out.write("    - id: paths\n")
             out.write("      name: Query paths\n")
             if build_opts.is_windows():
@@ -1312,8 +1335,15 @@ jobs:
                         out.write(
                             f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
                         )
+
+                # Add per-dependency cmake defines if specified
+                dep_defines_arg = ""
+                if m.name in dep_cmake_defines:
+                    defines_json = json.dumps(dep_cmake_defines[m.name])
+                    dep_defines_arg = f"--extra-cmake-defines '{defines_json}' "
+
                 out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
+                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{dep_defines_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
                 )
 
                 if args.use_build_cache and not src_dir_arg:
@@ -1458,6 +1488,25 @@ jobs:
             default=True,
             dest="use_build_cache",
             help="Do not attempt to use the build cache.",
+        )
+        parser.add_argument(
+            "--dependency-cmake-defines",
+            help=(
+                "JSON map of dependency name to cmake defines, e.g. "
+                '\'{"folly": {"PYTHON_EXTENSIONS": "ON"}}\'. '
+                "These defines are passed to the build command for each matching dependency."
+            ),
+            default=None,
+        )
+        parser.add_argument(
+            "--pre-build-steps",
+            help=(
+                "JSON array of custom workflow steps to insert before the build steps. "
+                "Each step should have 'name' and 'run' keys. "
+                "Use \\n for multiline commands. "
+                'E.g. \'[{"name": "Install deps", "run": "cmd1\\ncmd2"}]\''
+            ),
+            default=None,
         )
 
 
