@@ -17,7 +17,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from thrift.python.adapter import Adapter
@@ -33,7 +33,7 @@ class DatetimeAdapter(Adapter[int, datetime]):
         transitive_annotation: Optional[Struct] = None,
         constant_uri: Optional[str] = None,
     ) -> datetime:
-        return datetime.fromtimestamp(original, tz=timezone.utc).replace(tzinfo=None)
+        return datetime.fromtimestamp(original)
 
     @classmethod
     def to_thrift(
