@@ -279,7 +279,7 @@ else:
         ),
         # thrift.python.streaming extension modules
         # Each .pyx file generates to generated/*.cpp (via build_dir="generated")
-        # Handwritten .cpp files (e.g., Sink.cpp, BiDiStream.cpp) are also compiled
+        # Handwritten .cpp files (e.g., Sink.cpp, Bidistream.cpp) are also compiled
         Extension(
             "thrift.python.streaming.stream",
             sources=["thrift/python/streaming/stream.pyx"],
@@ -310,7 +310,7 @@ else:
             "thrift.python.streaming.bidistream",
             sources=[
                 "thrift/python/streaming/bidistream.pyx",
-                "thrift/python/streaming/BiDiStream.cpp",
+                "thrift/python/streaming/Bidistream.cpp",  # Capital B to avoid Cython conflict
             ],
             **common_options,
         ),
@@ -519,6 +519,9 @@ else:
         package_data={"": ["*.pxd", "*.h"]},
         setup_requires=["cython"],
         zip_safe=False,
+        # build_dir separates Cython-generated .cpp files from handwritten .cpp files
+        # (e.g., bidistream.pyx -> generated/bidistream.cpp). The handwritten
+        # bidistream.cpp is symlinked as Bidistream.cpp (capital B) to avoid conflict.
         ext_modules=cythonize(
             exts,
             compiler_directives={"language_level": 3},
