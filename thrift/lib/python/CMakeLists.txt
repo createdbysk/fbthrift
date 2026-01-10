@@ -43,7 +43,9 @@ function(log_debug msg)
   endif()
 endfunction()
 
-set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
+# Use parent binary dir so _cybld stays at <build>/thrift/lib/cybld
+# (consistent with include paths like thrift/lib/python/server/*.h)
+get_filename_component(_cybld "${CMAKE_CURRENT_BINARY_DIR}/../cybld" ABSOLUTE)
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/")
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/")
