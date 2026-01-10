@@ -575,7 +575,8 @@ jobs:
        key: ${{ steps.paths.outputs.folly_CACHE_KEY }}-install
     - name: Build folly
       if: ${{ steps.paths.outputs.folly_SOURCE && ! steps.restore_folly.outputs.cache-hit }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --extra-cmake-defines '{"PYTHON_EXTENSIONS": "ON"}' --free-up-disk --no-tests folly
+      run: |
+        python3 build/fbcode_builder/getdeps.py --allow-system-packages build --extra-cmake-defines '{"PYTHON_EXTENSIONS": "ON"}' --free-up-disk --no-tests folly
     - name: Save folly to cache
       uses: actions/cache/save@v4
       if: ${{ steps.paths.outputs.folly_SOURCE && ! steps.restore_folly.outputs.cache-hit }}
