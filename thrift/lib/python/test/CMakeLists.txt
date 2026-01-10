@@ -14,13 +14,15 @@
 
 # Generate thrift-python test types
 
-# Include ThriftLibrary macros (for standalone builds, CMAKE_MODULE_PATH must be set)
+# Include ThriftLibrary macros
+# (for standalone builds, CMAKE_MODULE_PATH must be set)
 include(ThriftLibrary OPTIONAL)
 
 set(TEST_THRIFT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PY3_TEST_THRIFT_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test)
 
-# Files from py3/test needed by thrift-python tests (no namespace in thrift file)
+# Files from py3/test needed by thrift-python tests
+# (no namespace in thrift file)
 # Output goes to gen-python/binary/, gen-python/iobuf/ etc.
 thrift_library(
   "binary"
@@ -117,9 +119,13 @@ thrift_library(
 )
 
 # testing.thrift has namespace py3 "" (empty) - uses filename as package
+# Build service list separately to avoid long lines
+set(_testing_services
+  "TestingService;TestingServiceChild;ExtendServiceWithNoTypes")
+string(APPEND _testing_services ";ClientMetadataTestingService")
 thrift_library(
   "testing"
-  "TestingService;TestingServiceChild;ExtendServiceWithNoTypes;ClientMetadataTestingService"
+  "${_testing_services}"
   "python"
   ""
   "${TEST_THRIFT_DIR}"
@@ -348,7 +354,8 @@ thrift_library(
   NAMESPACE "thrift.python.test"
 )
 
-# Files without namespace py3 - use empty namespace (output to gen-python/<file_name>/)
+# Files without namespace py3 - use empty namespace
+# (output to gen-python/<file_name>/)
 thrift_library(
   "abstract_types_flags"
   ""
@@ -424,7 +431,7 @@ thrift_library(
 )
 
 # transitive_deps thrift files - from py3/test/transitive_deps/
-# namespace py3 transitive_deps -> output to transitive_deps/a/, transitive_deps/b/, etc.
+# namespace py3 transitive_deps -> output to transitive_deps/a/, etc.
 set(TRANSITIVE_DEPS_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test/transitive_deps)
 
 thrift_library(
@@ -476,7 +483,8 @@ thrift_library(
 )
 
 # terse_write.thrift - from thrift/test/terse_write/
-# namespace py3 apache.thrift.test.terse_write -> output to apache/thrift/test/terse_write/terse_write/
+# namespace py3 apache.thrift.test.terse_write
+# -> output to apache/thrift/test/terse_write/terse_write/
 set(TERSE_WRITE_DIR ${CMAKE_SOURCE_DIR}/thrift/test/terse_write)
 
 thrift_library(
@@ -492,7 +500,8 @@ thrift_library(
 )
 
 # client/test thrift files (test.thrift, leaf.thrift)
-# Namespace py3 "thrift.python" means output goes to thrift/python/test/ and thrift/python/leaf/
+# Namespace py3 "thrift.python" means output goes to
+# thrift/python/test/ and thrift/python/leaf/
 set(CLIENT_TEST_THRIFT_DIR "${CMAKE_SOURCE_DIR}/thrift/lib/python/client/test")
 
 # test.thrift - defines TestService, EchoService
@@ -525,9 +534,13 @@ thrift_library(
 # Create symlinks for test namespaces
 # gen-python/<namespace>/ -> cybld/<namespace>/
 #####
-# Note: Cython/setuptools uses "lib.linux-<arch>-cpython-<version>" format (e.g., lib.linux-x86_64-cpython-310)
+# Note: Cython/setuptools uses "lib.linux-<arch>-cpython-<version>" format
+# (e.g., lib.linux-x86_64-cpython-310)
 set(_cybld_base "${CMAKE_BINARY_DIR}/thrift/lib/cybld")
-set(_cybld "${_cybld_base}/build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-cpython-${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+set(_py_ver "${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+set(_cybld_suffix
+  "build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-cpython-${_py_ver}")
+set(_cybld "${_cybld_base}/${_cybld_suffix}")
 set(_gen_python "${CMAKE_CURRENT_BINARY_DIR}/gen-python")
 set(_gen_py "${CMAKE_CURRENT_BINARY_DIR}/gen-py")
 
@@ -579,32 +592,53 @@ add_test_namespace_symlink(testing
 add_test_namespace_symlink(python_test
   "${_gen_python}/python_test" "${_cybld}/python_test"
   adapter-python-target containers-python-target enums-python-target
-  lists-python-target maps-python-target refs-python-target sets-python-target)
+  lists-python-target maps-python-target refs-python-target
+  sets-python-target)
 
 # 3. thrift.test.thrift_python -> cybld/thrift/test
 add_test_namespace_symlink(thrift_test
   "${_gen_python}/thrift/test" "${_cybld}/thrift/test"
-  struct_test-python-target union_test-python-target enum_test-python-target included-python-target)
+  struct_test-python-target union_test-python-target
+  enum_test-python-target included-python-target)
 
-# 4. thrift.python.{bidi_service,sink_service} -> cybld/thrift/python/{bidi_service,sink_service}
-add_test_namespace_symlinks(thrift_python_services bidi_service-python-target sink_service-python-target)
-add_symlink_command(thrift_python_services "${_gen_python}/thrift/python/bidi_service" "${_cybld}/thrift/python/bidi_service")
-add_symlink_command(thrift_python_services "${_gen_python}/thrift/python/sink_service" "${_cybld}/thrift/python/sink_service")
+# 4. thrift.python.{bidi_service,sink_service}
+#    -> cybld/thrift/python/{bidi_service,sink_service}
+add_test_namespace_symlinks(thrift_python_services
+  bidi_service-python-target sink_service-python-target)
+add_symlink_command(thrift_python_services
+  "${_gen_python}/thrift/python/bidi_service"
+  "${_cybld}/thrift/python/bidi_service")
+add_symlink_command(thrift_python_services
+  "${_gen_python}/thrift/python/sink_service"
+  "${_cybld}/thrift/python/sink_service")
 
 # 5. thrift.python.test.* -> cybld/thrift/python/test/*
-add_test_namespace_symlinks(thrift_python_test special_cases-python-target abstract_types_flags-python-target annotations-python-target)
-add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/special_cases" "${_cybld}/thrift/python/test/special_cases")
-add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/abstract_types_flags" "${_cybld}/thrift/python/test/abstract_types_flags")
-add_symlink_command(thrift_python_test "${_gen_python}/thrift/python/test/annotations" "${_cybld}/thrift/python/test/annotations")
+add_test_namespace_symlinks(thrift_python_test
+  special_cases-python-target abstract_types_flags-python-target
+  annotations-python-target)
+add_symlink_command(thrift_python_test
+  "${_gen_python}/thrift/python/test/special_cases"
+  "${_cybld}/thrift/python/test/special_cases")
+add_symlink_command(thrift_python_test
+  "${_gen_python}/thrift/python/test/abstract_types_flags"
+  "${_cybld}/thrift/python/test/abstract_types_flags")
+add_symlink_command(thrift_python_test
+  "${_gen_python}/thrift/python/test/annotations"
+  "${_cybld}/thrift/python/test/annotations")
 
-# 5a. client/test thrift files: thrift.python.{test,leaf} -> cybld/thrift/python/{test,leaf}
-# Note: These are test.thrift and leaf.thrift from python/client/test/ with namespace "thrift.python"
-# The thrift compiler outputs files to gen-python/thrift/python/test/ and gen-python/thrift/python/leaf/
-# The test/ directory already contains subdirectories (special_cases, etc.) so we symlink files, not the whole dir
+# 5a. client/test thrift files:
+#     thrift.python.{test,leaf} -> cybld/thrift/python/{test,leaf}
+# Note: These are test.thrift and leaf.thrift from python/client/test/
+# with namespace "thrift.python"
+# The thrift compiler outputs files to gen-python/thrift/python/test/
+# and gen-python/thrift/python/leaf/
+# The test/ directory already contains subdirectories (special_cases, etc.)
+# so we symlink files, not the whole dir
 # The leaf/ directory is new so we can symlink it directly
-add_test_namespace_symlinks(thrift_python_client_test test-python-target leaf-python-target)
+add_test_namespace_symlinks(thrift_python_client_test
+  test-python-target leaf-python-target)
 
-# For test/, symlink individual generated files (not the directory, since it has subdirs)
+# For test/, symlink individual generated files (not the directory)
 # These files are generated by client/test/test.thrift
 set(_client_test_gen_files
   __init__.py
@@ -637,7 +671,8 @@ foreach(_file ${_client_test_gen_files})
 endforeach()
 
 # For leaf/, symlink the whole directory (no conflicts)
-add_symlink_command(thrift_python_client_test "${_gen_python}/thrift/python/leaf" "${_cybld}/thrift/python/leaf")
+add_symlink_command(thrift_python_client_test
+  "${_gen_python}/thrift/python/leaf" "${_cybld}/thrift/python/leaf")
 
 # 6. binary and iobuf (no namespace) -> cybld/binary, cybld/iobuf
 add_test_namespace_symlink(binary_direct
@@ -671,13 +706,15 @@ add_test_namespace_symlink(transitive_deps
   a-python-target b-python-target c-python-target d-python-target)
 
 # 9. apache.thrift.test.terse_write namespace -> cybld/apache/thrift/test
-# Note: cybld/apache/thrift/ already exists (for metadata), so we symlink test/ subdirectory
+# Note: cybld/apache/thrift/ already exists (for metadata),
+# so we symlink test/ subdirectory
 add_test_namespace_symlink(apache_thrift_test
   "${_gen_python}/apache/thrift/test" "${_cybld}/apache/thrift/test"
   terse_write-python-target)
 
 # 10. apache.thrift.metadata namespace -> cybld/apache/thrift/metadata
-# The metadata module is built by the main thrift library, we need to link it into gen-python
+# The metadata module is built by the main thrift library,
+# we need to link it into gen-python
 # so tests can import apache.thrift.metadata.thrift_types
 # Note: metadata is in _cybld_base (cybld/), not _cybld (cybld/build/lib.../)
 add_custom_target(apache_thrift_metadata_symlink ALL
@@ -688,7 +725,8 @@ add_custom_target(apache_thrift_metadata_symlink ALL
   COMMENT "Creating symlink for apache.thrift.metadata"
 )
 
-# 11. Symlink py-deprecated files from gen-py to gen-python for converter.py test
+# 11. Symlink py-deprecated files from gen-py to gen-python
+# for converter.py test
 # Problem: gen-python/convertible/ shadows gen-py/convertible/ in PYTHONPATH
 # Solution: symlink ttypes.py and constants.py into gen-python/convertible/
 add_custom_target(convertible_py_deprecated_symlink ALL
@@ -709,7 +747,8 @@ add_custom_target(convertible_py_deprecated_symlink ALL
 include(${CMAKE_SOURCE_DIR}/PythonPackage.cmake)
 
 # transitive_deps package
-make_python_package(create_binding_symlink_transitive_deps "${_gen_python}/transitive_deps")
+make_python_package(create_binding_symlink_transitive_deps
+  "${_gen_python}/transitive_deps")
 
 # apache namespace packages
 add_custom_target(python_package_apache ALL
@@ -727,7 +766,8 @@ make_python_package(python_package_apache "${_gen_python}/apache/thrift")
 # ==========================================================================
 # Instead of complex PYTHONPATH + symlinks, we install wheels:
 # 1. thrift wheel - provides thrift.python.*, thrift.py3.*, thrift.lib.python.*
-# 2. folly wheel - assumed already installed by getdeps (provides folly.iobuf, etc.)
+# 2. folly wheel - assumed already installed by getdeps
+#    (provides folly.iobuf, etc.)
 #
 # TEST_PYTHONPATH only needs:
 # - _gen_python: generated test thrift code (testing.thrift_types, etc.)
@@ -736,12 +776,18 @@ make_python_package(python_package_apache "${_gen_python}/apache/thrift")
 # ==========================================================================
 
 # Install thrift wheel before running tests
-# The wheel is built by thrift_python_and_py3_bindings target in thrift/lib/CMakeLists.txt
-# Use CMAKE_BINARY_DIR (top-level build dir) for absolute path to avoid fragile relative paths
+# The wheel is built by thrift_python_and_py3_bindings target
+# in thrift/lib/CMakeLists.txt
+# Use CMAKE_BINARY_DIR (top-level build dir) for absolute path
+# to avoid fragile relative paths
 # Use --target to install to a known directory that we add to TEST_PYTHONPATH
 set(_thrift_wheel_dir "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist")
-set(_thrift_wheel_install_dir "${CMAKE_BINARY_DIR}/thrift/lib/thrift_wheel_pythonpath")
-set(_wheel_suffix "cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-linux_${CMAKE_HOST_SYSTEM_PROCESSOR}")
+set(_thrift_wheel_install_dir
+  "${CMAKE_BINARY_DIR}/thrift/lib/thrift_wheel_pythonpath")
+string(CONCAT _wheel_suffix
+  "cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}"
+  "-cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}"
+  "-linux_${CMAKE_HOST_SYSTEM_PROCESSOR}")
 add_custom_target(install_thrift_wheel ALL
   DEPENDS thrift_python_and_py3_bindings
   COMMAND ${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps
@@ -750,14 +796,19 @@ add_custom_target(install_thrift_wheel ALL
   COMMENT "Installing thrift wheel for tests"
 )
 
-# Folly Python bindings are pre-installed by getdeps into FOLLY_PYTHON_SITE_PACKAGES
+# Folly Python bindings are pre-installed by getdeps
+# into FOLLY_PYTHON_SITE_PACKAGES
 # (located at installed/folly/local/lib/python3.10/dist-packages/)
 # We add this to PYTHONPATH below - no need to pip install a wheel.
-if(NOT DEFINED FOLLY_PYTHON_SITE_PACKAGES OR NOT EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}")
-  message(FATAL_ERROR "FOLLY_PYTHON_SITE_PACKAGES not found: ${FOLLY_PYTHON_SITE_PACKAGES}. "
-    "Ensure folly is built with Python bindings before building fbthrift tests.")
+if(NOT DEFINED FOLLY_PYTHON_SITE_PACKAGES
+    OR NOT EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}")
+  message(FATAL_ERROR
+    "FOLLY_PYTHON_SITE_PACKAGES not found: ${FOLLY_PYTHON_SITE_PACKAGES}. "
+    "Ensure folly is built with Python bindings before building tests.")
 endif()
-message(STATUS "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: ${FOLLY_PYTHON_SITE_PACKAGES}")
+message(STATUS
+  "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: "
+  "${FOLLY_PYTHON_SITE_PACKAGES}")
 
 # Build PYTHONPATH for tests
 # With wheel-based approach for thrift, we need paths for:
@@ -766,16 +817,24 @@ message(STATUS "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: ${FOLLY_PY
 # - py-deprecated runtime and generated code
 # - Folly Python bindings (pre-installed by getdeps)
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
-set(TEST_PYTHONPATH "${_thrift_wheel_install_dir}:${_gen_python}:${_gen_py}:${FOLLY_PYTHON_SITE_PACKAGES}")
+string(CONCAT TEST_PYTHONPATH
+  "${_thrift_wheel_install_dir}"
+  ":${_gen_python}"
+  ":${_gen_py}"
+  ":${FOLLY_PYTHON_SITE_PACKAGES}")
 
 # Symlink thrift.util from thrift_py INTO the wheel directory
-# Problem: py-deprecated imports like `from thrift.util.Recursive import ...` fail
-# because the thrift wheel doesn't include thrift.util (it's a py-deprecated module)
+# Problem: py-deprecated imports like
+#   `from thrift.util.Recursive import ...` fail
+# because the thrift wheel doesn't include thrift.util
+# (it's a py-deprecated module)
 # Solution: symlink thrift_py/thrift/* into the wheel's thrift/ directory
-# This way py-deprecated modules are found when Python imports from the wheel's thrift package
+# This way py-deprecated modules are found when Python imports
+# from the wheel's thrift package
 #
-# IMPORTANT: Do NOT create gen-python/thrift/__init__.py - that would shadow
-# the wheel's thrift package, breaking imports like thrift.python.abstract_types
+# IMPORTANT: Do NOT create gen-python/thrift/__init__.py - that would
+# shadow the wheel's thrift package, breaking imports like
+# thrift.python.abstract_types
 add_custom_target(thrift_py_deprecated_symlinks ALL
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_thrift_py}/thrift/util"
@@ -808,17 +867,19 @@ add_custom_target(thrift_py_deprecated_symlinks ALL
 # - thrift.lib.python.*
 # - apache.thrift.metadata
 #
-# Folly Python bindings are provided via FOLLY_PYTHON_SITE_PACKAGES in PYTHONPATH
-# (pre-installed by getdeps into installed/folly/local/lib/python3.10/dist-packages/)
+# Folly Python bindings are provided via FOLLY_PYTHON_SITE_PACKAGES
+# in PYTHONPATH (pre-installed by getdeps into
+# installed/folly/local/lib/python3.10/dist-packages/)
 # ==========================================================================
 
 #####
 # Create fbthrift_test package to avoid module shadowing
 #####
-# Problem: Test files like binary.py, iobuf.py, transitive_deps.py have same names
-# as gen-python packages (binary/, iobuf/, transitive_deps/).
-# When running "python binary.py", Python adds the test directory to sys.path[0],
-# causing "import binary" to find the test file instead of the package.
+# Problem: Test files like binary.py, iobuf.py, transitive_deps.py have
+# same names as gen-python packages (binary/, iobuf/, transitive_deps/).
+# When running "python binary.py", Python adds the test directory to
+# sys.path[0], causing "import binary" to find the test file instead
+# of the package.
 #
 # Solution (same as Buck): Run tests as modules, not scripts.
 # Create a fbthrift_test/ package with symlinks to test files, then run:
@@ -836,18 +897,22 @@ add_custom_command(
   COMMENT "Creating fbthrift_test package directory"
 )
 
-# List of test files (excluding non-test files like testing_utils.py, test_server.py)
+# List of test files
+# (excluding non-test files like testing_utils.py, test_server.py)
 set(THRIFT_PYTHON_TEST_FILES
-  # abstract_types_flags_test.py - SKIPPED: test expects abstract types flag to be disabled, but OSS build enables it
+  # abstract_types_flags_test.py - SKIPPED: test expects abstract types
+  # flag to be disabled, but OSS build enables it
   adapter.py
   binary.py
   client_server.py
-  # converter.py - SKIPPED: requires convertible.types from py3 codegen (not built)
+  # converter.py - SKIPPED: requires convertible.types
+  # from py3 codegen (not built)
   enums.py
   exceptions.py
   exceptions_ft.py
   iobuf.py
-  # intercompatibility.py - SKIPPED: requires testing.types from py3 codegen (not built)
+  # intercompatibility.py - SKIPPED: requires testing.types
+  # from py3 codegen (not built)
   lists.py
   maps.py
   metadata.py
@@ -893,14 +958,19 @@ foreach(test_file ${THRIFT_PYTHON_TEST_FILES} ${THRIFT_PYTHON_TEST_HELPERS})
 endforeach()
 
 # Add server/test .py file to fbthrift_test package
-# This file is in python/server/test/ but needs to be accessible via fbthrift_test
-set(_server_test_src "${CMAKE_CURRENT_SOURCE_DIR}/../server/test/python_async_processor_factory_test.py")
-set(_server_test_dst "${_fbthrift_test_dir}/python_async_processor_factory_test.py")
+# This file is in python/server/test/ but needs to be accessible
+# via fbthrift_test
+string(CONCAT _server_test_src
+  "${CMAKE_CURRENT_SOURCE_DIR}/../server/test"
+  "/python_async_processor_factory_test.py")
+set(_server_test_dst
+  "${_fbthrift_test_dir}/python_async_processor_factory_test.py")
 add_custom_command(
   OUTPUT "${_server_test_dst}"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_server_test_src}" "${_server_test_dst}"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${_server_test_src}" "${_server_test_dst}"
   DEPENDS "${_server_test_src}" "${_fbthrift_test_dir}/__init__.py"
-  COMMENT "Symlinking python_async_processor_factory_test.py to fbthrift_test package"
+  COMMENT "Symlinking python_async_processor_factory_test.py"
 )
 list(APPEND TEST_SYMLINK_OUTPUTS "${_server_test_dst}")
 
@@ -921,6 +991,12 @@ add_dependencies(thrift_python_test_package thrift_py_deprecated_symlinks)
 # Register each test file with ctest
 # Run as module to avoid sys.path[0] = test_dir shadowing
 
+# Build the test environment string once (reused by all tests)
+string(CONCAT _test_env
+  "PYTHONPATH=${TEST_PYTHONPATH}"
+  ";LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
+  ";LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so")
+
 foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
@@ -929,17 +1005,20 @@ foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
     WORKING_DIRECTORY ${_gen_python}
   )
   set_tests_properties(thrift_python_${test_name} PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH};LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so"
+    ENVIRONMENT "${_test_env}"
   )
 endforeach()
 
 #####
 # thrift/test/thrift-python/ tests
 #####
-# These tests are in a separate directory and use namespace thrift.test.thrift_python
-# The thrift_library entries already exist above (struct_test, union_test, enum_test, included)
+# These tests are in a separate directory and use namespace
+# thrift.test.thrift_python
+# The thrift_library entries already exist above
+# (struct_test, union_test, enum_test, included)
 
-set(THRIFT_TEST_THRIFT_PYTHON_DIR "${CMAKE_SOURCE_DIR}/thrift/test/thrift-python")
+set(THRIFT_TEST_THRIFT_PYTHON_DIR
+  "${CMAKE_SOURCE_DIR}/thrift/test/thrift-python")
 
 # Create thrift_test_thrift_python_tests package for these tests
 set(_thrift_test_tests_dir "${_gen_python}/thrift_test_thrift_python_tests")
@@ -977,7 +1056,8 @@ endforeach()
 # Target to create all thrift/test/thrift-python/ test symlinks
 add_custom_target(thrift_test_thrift_python_test_package ALL
   DEPENDS "${_thrift_test_tests_dir}/__init__.py" ${THRIFT_TEST_SYMLINK_OUTPUTS}
-  struct_test-python-target union_test-python-target enum_test-python-target included-python-target
+  struct_test-python-target union_test-python-target
+  enum_test-python-target included-python-target
 )
 
 # Register thrift/test/thrift-python/ tests with ctest
@@ -985,11 +1065,12 @@ foreach(test_file ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
     NAME thrift_test_thrift_python_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest thrift_test_thrift_python_tests.${test_name} -v
+    COMMAND ${Python3_EXECUTABLE} -m unittest
+      thrift_test_thrift_python_tests.${test_name} -v
     WORKING_DIRECTORY ${_gen_python}
   )
   set_tests_properties(thrift_test_thrift_python_${test_name} PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH};LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so"
+    ENVIRONMENT "${_test_env}"
   )
 endforeach()
 
@@ -1005,11 +1086,12 @@ foreach(test_file ${ADAPTERS_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
     NAME thrift_python_adapters_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest thrift.python.test.adapters.${test_name} -v
+    COMMAND ${Python3_EXECUTABLE} -m unittest
+      thrift.python.test.adapters.${test_name} -v
     WORKING_DIRECTORY ${_gen_python}
   )
   set_tests_properties(thrift_python_adapters_${test_name} PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH};LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so"
+    ENVIRONMENT "${_test_env}"
   )
 endforeach()
 
@@ -1018,42 +1100,50 @@ endforeach()
 #####
 add_test(
   NAME thrift_python_request_context_extractor_test
-  COMMAND ${Python3_EXECUTABLE} -m unittest thrift.python.test.request_context_extractor.request_context_extractor_test -v
+  COMMAND ${Python3_EXECUTABLE} -m unittest
+    thrift.python.test.request_context_extractor.request_context_extractor_test
+    -v
   WORKING_DIRECTORY ${_gen_python}
 )
 set_tests_properties(thrift_python_request_context_extractor_test PROPERTIES
-  ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH};LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so"
+  ENVIRONMENT "${_test_env}"
 )
 
 #####
 # thrift/lib/python/server/test/ tests
-# Note: The .py test file imports from thrift.python.test.python_async_processor_factory_test
+# Note: The .py test file imports from
+#   thrift.python.test.python_async_processor_factory_test
 # We symlink the .py to fbthrift_test/ and run via fbthrift_test module
 #####
 add_test(
   NAME thrift_python_server_python_async_processor_factory_test
-  COMMAND ${Python3_EXECUTABLE} -m unittest fbthrift_test.python_async_processor_factory_test -v
+  COMMAND ${Python3_EXECUTABLE} -m unittest
+    fbthrift_test.python_async_processor_factory_test -v
   WORKING_DIRECTORY ${_gen_python}
 )
-set_tests_properties(thrift_python_server_python_async_processor_factory_test PROPERTIES
-  ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH};LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so"
+set_tests_properties(
+  thrift_python_server_python_async_processor_factory_test PROPERTIES
+  ENVIRONMENT "${_test_env}"
 )
 
 #####
 # thrift/lib/python/client/test/ tests
 #
 # These tests require proxygen library (for http2_helper.pyx).
-# The test_server.py imports http2_helper which depends on proxygen::httpserver.
+# The test_server.py imports http2_helper which depends on
+# proxygen::httpserver.
 #
 # Dependencies:
 # - proxygen (HTTPServerOptions) - added as fbthrift manifest dependency
 # - http2_helper.pyx - added to setup.py Cython extensions
-# - thrift.py3.server - for get_context, SocketAddress (built as part of py3 bindings)
+# - thrift.py3.server - for get_context, SocketAddress
+#   (built as part of py3 bindings)
 #####
 
 set(CLIENT_TEST_DIR "${CMAKE_SOURCE_DIR}/thrift/lib/python/client/test")
 
-# Create fbthrift_client_test package for client tests (same approach as fbthrift_test)
+# Create fbthrift_client_test package for client tests
+# (same approach as fbthrift_test)
 set(_fbthrift_client_test_dir "${_gen_python}/fbthrift_client_test")
 
 add_custom_command(
@@ -1064,13 +1154,17 @@ add_custom_command(
 )
 
 # Client test files
-# SKIPPED: async_client_test.py and sync_client_test.py require http2_helper.pyx
-# which has undefined symbol: apache::thrift::HTTP2RoutingHandler
+# SKIPPED: async_client_test.py and sync_client_test.py require
+# http2_helper.pyx which has undefined symbol:
+# apache::thrift::HTTP2RoutingHandler
 # The HTTP2RoutingHandler is not linked correctly in the OSS build.
-# To fix: Need to link http2_helper extension against the library containing HTTP2RoutingHandler
+# To fix: Need to link http2_helper extension against the library
+# containing HTTP2RoutingHandler
 set(CLIENT_TEST_FILES
-  # async_client_test.py  - SKIPPED: requires http2_helper (HTTP2RoutingHandler linking issue)
-  # sync_client_test.py   - SKIPPED: requires http2_helper (HTTP2RoutingHandler linking issue)
+  # async_client_test.py - SKIPPED: requires http2_helper
+  #   (HTTP2RoutingHandler linking issue)
+  # sync_client_test.py - SKIPPED: requires http2_helper
+  #   (HTTP2RoutingHandler linking issue)
 )
 
 # Helper files needed by client tests
@@ -1094,7 +1188,8 @@ endforeach()
 
 # Target to create all client test symlinks
 add_custom_target(thrift_python_client_test_package ALL
-  DEPENDS "${_fbthrift_client_test_dir}/__init__.py" ${CLIENT_TEST_SYMLINK_OUTPUTS}
+  DEPENDS "${_fbthrift_client_test_dir}/__init__.py"
+    ${CLIENT_TEST_SYMLINK_OUTPUTS}
   create_binding_symlink_thrift_python_client_test
   test-python-target leaf-python-target
 )
@@ -1104,11 +1199,12 @@ foreach(test_file ${CLIENT_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
     NAME thrift_python_client_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest fbthrift_client_test.${test_name} -v
+    COMMAND ${Python3_EXECUTABLE} -m unittest
+      fbthrift_client_test.${test_name} -v
     WORKING_DIRECTORY ${_gen_python}
   )
   set_tests_properties(thrift_python_client_${test_name} PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH};LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so"
+    ENVIRONMENT "${_test_env}"
   )
 endforeach()
 
@@ -1124,9 +1220,10 @@ endforeach()
 #####
 add_test(
   NAME thrift_python_metadata_response_test
-  COMMAND ${Python3_EXECUTABLE} -m unittest thrift.lib.python.test.metadata_response.metadata_response_test -v
+  COMMAND ${Python3_EXECUTABLE} -m unittest
+    thrift.lib.python.test.metadata_response.metadata_response_test -v
   WORKING_DIRECTORY ${_gen_python}
 )
 set_tests_properties(thrift_python_metadata_response_test PROPERTIES
-  ENVIRONMENT "PYTHONPATH=${TEST_PYTHONPATH};LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH};LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so"
+  ENVIRONMENT "${_test_env}"
 )
