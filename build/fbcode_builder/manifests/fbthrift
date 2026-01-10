@@ -28,9 +28,7 @@ fizz
 fmt
 folly
 googletest
-libevent
 libsodium
-proxygen
 wangle
 zstd
 mvfst
@@ -41,6 +39,8 @@ xxhash
 
 [dependencies.os=linux]
 libaio
+libevent
+proxygen
 
 [shipit.pathmap]
 xplat/thrift/public_tld = .
