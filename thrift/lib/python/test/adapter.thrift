@@ -106,8 +106,7 @@ union Bar {
 }
 
 @AsDatetime{signature = "DatetimeConstant"}
-// 441763200 = 1984-01-01 00:00:00 UTC
-const i32 NINETEEN_EIGHTY_FOUR = 441763200;
+const i32 NINETEEN_EIGHTY_FOUR = 441792000;
 
 union UnionMapWithAdaptedKeyAndValueTypes {
   1: map<AdaptedInt2, WrappedBool> field_1;
