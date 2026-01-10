@@ -20,7 +20,7 @@
 #include <folly/python/error.h>
 #include <folly/python/import.h>
 #include <thrift/lib/python/streaming/Sink.h>
-#include <thrift/lib/python/streaming/bidistream.h>
+#include <thrift/lib/python/streaming/BiDiStream.h>
 #include <thrift/lib/python/streaming/bidistream_api.h> // @manual
 #include <thrift/lib/python/streaming/py_promise_api.h> // @manual
 
