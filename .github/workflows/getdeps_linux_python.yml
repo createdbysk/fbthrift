@@ -13,6 +13,9 @@ on:
 permissions:
   contents: read  #  to fetch code (actions/checkout)
 
+env:
+  MANIFEST: fbthrift-python
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -27,7 +30,7 @@ jobs:
     - name: Update system package info
       run: sudo --preserve-env=http_proxy apt-get update
     - name: Install system deps
-      run: sudo --preserve-env=http_proxy python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive fbthrift && sudo --preserve-env=http_proxy python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf
+      run: sudo --preserve-env=http_proxy python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive ${{ env.MANIFEST }} && sudo --preserve-env=http_proxy python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf
     - name: Install Python build dependencies
       run: |
         sudo apt-get remove -y cython3 || true
@@ -35,7 +38,7 @@ jobs:
     - id: paths
       name: Query paths
       run: |
-        python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. --extra-cmake-defines '{"thrift_python": "ON"}' fbthrift >> "$GITHUB_OUTPUT"
+        python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. ${{ env.MANIFEST }} >> "$GITHUB_OUTPUT"
     - name: Fetch xxhash
       if: ${{ steps.paths.outputs.xxhash_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests xxhash
@@ -588,19 +591,19 @@ jobs:
       with:
        path: ${{ steps.paths.outputs.wangle_INSTALL }}
        key: ${{ steps.paths.outputs.wangle_CACHE_KEY }}-install
-    - name: Build fbthrift
+    - name: Build fbthrift-python
       run: |
-        python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. --project-install-prefix fbthrift:/usr/local --extra-cmake-defines '{"thrift_python": "ON"}' fbthrift
+        python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. --project-install-prefix fbthrift:/usr/local ${{ env.MANIFEST }}
     - name: Copy artifacts
       run: |
-        python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --strip --src-dir=. --project-install-prefix fbthrift:/usr/local --final-install-prefix /usr/local --extra-cmake-defines '{"thrift_python": "ON"}' fbthrift _artifacts/linux
+        python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --strip --src-dir=. --project-install-prefix fbthrift:/usr/local --final-install-prefix /usr/local ${{ env.MANIFEST }} _artifacts/linux
     - uses: actions/upload-artifact@v6
       with:
         name: fbthrift-python
         path: _artifacts
-    - name: Test fbthrift
+    - name: Test fbthrift-python
       run: |
-        python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. --project-install-prefix fbthrift:/usr/local --extra-cmake-defines '{"thrift_python": "ON"}' fbthrift
+        python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. --project-install-prefix fbthrift:/usr/local ${{ env.MANIFEST }}
     - name: Show disk space at end
       if: always()
       run: df -h
