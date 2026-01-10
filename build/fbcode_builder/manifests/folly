@@ -5,8 +5,7 @@ shipit_project = folly
 shipit_fbcode_builder = true
 
 [git]
-repo_url = https://github.com/createdbysk/folly.git
-rev = main
+repo_url = https://github.com/facebook/folly.git
 
 [build]
 builder = cmake
@@ -63,8 +62,8 @@ fbcode/folly = folly
 ^fbcode/folly/folly-config\.h$
 ^fbcode/folly/public_tld/build/facebook_.*
 
-[cmake.defines.os=linux]
-PYTHON_EXTENSIONS=ON
+[cmake.defines]
+BUILD_SHARED_LIBS=OFF
 
 [cmake.defines.not(os=windows)]
 BOOST_LINK_STATIC=ON
