@@ -321,12 +321,15 @@ class BuildOptions(object):
             env["FBSOURCE_DATE"] = hash_data.date
 
         # reverse as we are prepending to the PATHs
+        print(f"DEBUG: compute_env_for_install_dirs called with {len(dep_manifests)} dep_manifests")
         for m in reversed(dep_manifests):
             is_direct_dep = (
                 manifest is not None and m.name in manifest.get_dependencies(ctx)
             )
             d = loader.get_project_install_dir(m)
-            if os.path.exists(d):
+            exists = os.path.exists(d)
+            print(f"DEBUG: dep={m.name} install_dir={d} exists={exists}")
+            if exists:
                 self.add_prefix_to_env(
                     d,
                     env,
