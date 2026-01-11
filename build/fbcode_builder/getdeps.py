@@ -1387,9 +1387,12 @@ jobs:
                     prefix,
                 )
 
-            # If we have dep from same repo, we already built it and don't want to rebuild it again
+            # Use --no-deps for the main build if:
+            # 1. has_same_repo_dep: Deps from the same repo were built in separate steps
+            # 2. dep_cmake_defines: Deps have custom cmake defines that would be lost
+            #    if getdeps rebuilds them due to timestamp issues
             no_deps_arg = ""
-            if has_same_repo_dep:
+            if has_same_repo_dep or dep_cmake_defines:
                 no_deps_arg = "--no-deps "
 
             out.write(
