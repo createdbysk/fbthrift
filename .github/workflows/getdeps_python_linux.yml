@@ -34,7 +34,7 @@ jobs:
         pip3 install --upgrade cython parameterized auditwheel
     - id: paths
       name: Query paths
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. fbthrift-python  >> "$GITHUB_OUTPUT"
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --shared-libs --recursive --src-dir=. fbthrift-python  >> "$GITHUB_OUTPUT"
     - name: Fetch libaio
       if: ${{ steps.paths.outputs.libaio_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libaio
