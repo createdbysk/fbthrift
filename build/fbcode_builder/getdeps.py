@@ -1258,12 +1258,12 @@ jobs:
             out.write("      name: Query paths\n")
             if build_opts.is_windows():
                 out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} query-paths {tests_arg}--recursive --src-dir=. {manifest.name}  >> $env:GITHUB_OUTPUT\n"
+                    f"      run: {getdepscmd}{allow_sys_arg} query-paths {build_type_arg}{tests_arg}--recursive --src-dir=. {manifest.name}  >> $env:GITHUB_OUTPUT\n"
                 )
                 out.write("      shell: pwsh\n")
             else:
                 out.write(
-                    f'      run: {getdepscmd}{allow_sys_arg} query-paths {tests_arg}--recursive --src-dir=. {manifest.name}  >> "$GITHUB_OUTPUT"\n'
+                    f'      run: {getdepscmd}{allow_sys_arg} query-paths {build_type_arg}{tests_arg}--recursive --src-dir=. {manifest.name}  >> "$GITHUB_OUTPUT"\n'
                 )
 
             projects = loader.manifests_in_dependency_order()
