@@ -1350,7 +1350,11 @@ jobs:
                     dep_defines_arg = f"--extra-cmake-defines '{defines_json}' "
 
                 # Build the command
-                build_cmd = f"{getdepscmd}{allow_sys_arg} build {build_type_arg}{dep_defines_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}"
+                # Use --no-deps when dep_cmake_defines is specified to prevent deps from
+                # rebuilding their dependencies (which would use default defines instead
+                # of the custom ones we specified)
+                no_deps_for_dep = "--no-deps " if dep_cmake_defines else ""
+                build_cmd = f"{getdepscmd}{allow_sys_arg} build {build_type_arg}{dep_defines_arg}{src_dir_arg}{free_up_disk}{no_deps_for_dep}--no-tests {m.name}"
 
                 # Use block scalar if command contains quotes (for YAML safety)
                 if "'" in build_cmd or '"' in build_cmd:
