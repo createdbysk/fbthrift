@@ -29,6 +29,7 @@ enable_tests=OFF
 [cmake.defines.os=linux]
 thrift_python=ON
 enable_tests=ON
+BUILD_SHARED_LIBS=ON
 
 [dependencies]
 fizz-python
