@@ -1,0 +1,82 @@
+# Cache Inspector Workflow
+# Purpose: Restore -python cache entries and inspect their contents
+
+name: Cache Inspector
+
+on:
+  push:
+    branches:
+    - oss_thrift_python_with_python_manifests_duplicate_shared_and_static_problems
+  pull_request:
+    branches:
+    - oss_thrift_python_with_python_manifests_duplicate_shared_and_static_problems
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-cache:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Create install directory
+        run: |
+          mkdir -p /tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed
+
+      - name: Restore folly-python cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed/folly-python
+          key: folly-python-linux-ubuntu-22.04-Wzq8rTsvqcl-jlL8N31zS0uZG5LzB6VGQmD8WKRS1p8-install
+          fail-on-cache-miss: false
+
+      - name: Restore fizz-python cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed/fizz-python
+          key: fizz-python-linux-ubuntu-22.04-cirG8KpNKPkz8J6bfuwtF6PoCd2526EKqtyrQBun36w-install
+          fail-on-cache-miss: false
+
+      - name: Restore wangle-python cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed/wangle-python
+          key: wangle-python-linux-ubuntu-22.04-Ht7U8Csj0lvlE-CgdQLEyljz3LZisvtURg2n7KmNvTQ-install
+          fail-on-cache-miss: false
+
+      - name: Restore mvfst-python cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed/mvfst-python
+          key: mvfst-python-linux-ubuntu-22.04-G2HFLuqCryF6j11jVDYxVNq0tViidTat10VyEF4WCis-install
+          fail-on-cache-miss: false
+
+      - name: Restore proxygen-python cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed/proxygen-python
+          key: proxygen-python-linux-ubuntu-22.04-SFT5j8gJJFbwYrh5ulsvh0ghGGKQC3lQZPSYkLvx-XU-install
+          fail-on-cache-miss: false
+
+      - name: Inspect cache contents
+        run: |
+          echo "========== CACHE INSPECTION REPORT =========="
+          echo ""
+
+          BASE="/tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed"
+
+          for pkg in folly-python fizz-python wangle-python mvfst-python proxygen-python; do
+            echo "========== $pkg =========="
+            if [ -d "$BASE/$pkg" ]; then
+              echo "--- lib/ contents ---"
+              ls -la "$BASE/$pkg/lib/" 2>/dev/null || echo "No lib/ directory"
+              echo ""
+              echo "--- Library file types ---"
+              file "$BASE/$pkg/lib/"lib*.a "$BASE/$pkg/lib/"lib*.so* 2>/dev/null || echo "No lib files found"
+              echo ""
+            else
+              echo "CACHE MISS - directory not restored"
+            fi
+            echo ""
+          done
