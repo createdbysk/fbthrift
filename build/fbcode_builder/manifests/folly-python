@@ -11,6 +11,9 @@ repo_url = https://github.com/facebook/folly.git
 builder = cmake
 job_weight_mib = 1024
 
+[build.not(os=linux)]
+builder = nop
+
 [dependencies]
 gflags
 glog
@@ -61,9 +64,6 @@ fbcode/folly = folly
 [shipit.strip]
 ^fbcode/folly/folly-config\.h$
 ^fbcode/folly/public_tld/build/facebook_.*
-
-[cmake.defines]
-BUILD_SHARED_LIBS=OFF
 
 [cmake.defines.os=linux]
 PYTHON_EXTENSIONS=ON

@@ -17,6 +17,9 @@ fbthrift = thrift/lib/rust
 builder = cmake
 job_weight_mib = 2048
 
+[build.not(os=linux)]
+builder = nop
+
 [cmake.defines.all(not(os=windows),test=on)]
 enable_tests=ON
 
