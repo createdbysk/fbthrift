@@ -798,8 +798,13 @@ add_custom_target(install_thrift_wheel ALL
 # - py-deprecated runtime and generated code
 # Note: Folly Python bindings are now bundled into the thrift wheel
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
+# Note: Test modules are NOT in the wheel (removed by commit 1d87cfcfed).
+# - _cybld: Cython test extensions (.so files)
+# - _cybld_base: Pure Python test modules (adapters, etc.) - symlinked sources
 string(CONCAT TEST_PYTHONPATH
   "${_thrift_wheel_install_dir}"
+  ":${_cybld}"
+  ":${_cybld_base}"
   ":${_gen_python}"
   ":${_gen_py}")
 
