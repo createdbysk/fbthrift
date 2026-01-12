@@ -988,6 +988,15 @@ add_custom_command(TARGET thrift_python_and_py3_bindings
     build_ext -f ${incs} ${libs} --libpython ${python_libname}
   WORKING_DIRECTORY ${_cybld}
 )
+# Copy folly Python bindings into the build directory before wheel creation.
+# Folly doesn't build a wheel yet, so we bundle folly.iobuf, folly.executor,
+# etc. into the thrift wheel so users don't need to install folly separately.
+add_custom_command(TARGET thrift_python_and_py3_bindings
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${FOLLY_PYTHON_SITE_PACKAGES}/folly"
+    "${_cybld}/folly"
+  COMMENT "Copying folly Python bindings into wheel build directory"
+)
 add_custom_command(TARGET thrift_python_and_py3_bindings
   COMMAND ${CMAKE_COMMAND} -E env
     "CFLAGS=${CMAKE_C_FLAGS}"
