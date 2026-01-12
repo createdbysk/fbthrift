@@ -1012,9 +1012,12 @@ add_custom_command(TARGET thrift_python_and_py3_bindings
 
 # Run auditwheel repair to make the wheel self-contained
 # This bundles .so dependencies and rewrites RPATH to $ORIGIN
+# LD_LIBRARY_PATH tells auditwheel where to find the libraries to bundle
 add_custom_command(TARGET thrift_python_and_py3_bindings
   COMMAND ${CMAKE_COMMAND} -E make_directory "${_cybld}/dist_self_contained"
-  COMMAND python3 -m auditwheel repair
+  COMMAND ${CMAKE_COMMAND} -E env
+    "LD_LIBRARY_PATH=${library_dirs_str}"
+    python3 -m auditwheel repair
     --wheel-dir "${_cybld}/dist_self_contained"
     "${_cybld}/dist/*.whl"
   WORKING_DIRECTORY ${_cybld}
