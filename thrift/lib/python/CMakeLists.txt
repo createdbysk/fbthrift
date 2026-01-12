@@ -974,20 +974,6 @@ add_custom_target(
   WORKING_DIRECTORY ${_cybld}
 )
 
-# Pass include paths to Cython via environment variable for build_ext phase
-# (needed for cythonize to find folly .pxd files)
-add_custom_command(TARGET thrift_python_and_py3_bindings
-  COMMAND ${CMAKE_COMMAND} -E env
-    "CFLAGS=${CMAKE_C_FLAGS}"
-    "CXXFLAGS=${CMAKE_CXX_FLAGS}"
-    "CXX=${CMAKE_CXX_COMPILER}"
-    "LDFLAGS=${SETUP_LDFLAGS}"
-    "CYTHON_INCLUDE_PATH=${cython_include_path}"
-    "LIBRARY_DIRS=${library_dirs_str}"
-    python3 ${_lib_dir}/setup.py -v
-    build_ext -f ${incs} ${libs} --libpython ${python_libname}
-  WORKING_DIRECTORY ${_cybld}
-)
 # Copy folly Python bindings into the build directory before wheel creation.
 # Folly doesn't build a wheel yet, so we bundle folly.iobuf, folly.executor,
 # etc. into the thrift wheel so users don't need to install folly separately.
