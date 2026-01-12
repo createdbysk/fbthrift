@@ -26,6 +26,7 @@ BUILD_SAMPLES = OFF
 
 [cmake.defines.os=linux]
 CMAKE_POSITION_INDEPENDENT_CODE = ON
+BUILD_SHARED_LIBS = ON
 
 [dependencies]
 zlib
