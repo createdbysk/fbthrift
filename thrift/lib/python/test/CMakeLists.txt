@@ -791,32 +791,17 @@ add_custom_target(install_thrift_wheel ALL
   COMMENT "Installing thrift wheel for tests"
 )
 
-# Folly Python bindings are pre-installed by getdeps
-# into FOLLY_PYTHON_SITE_PACKAGES
-# (located at installed/folly/local/lib/python3.10/dist-packages/)
-# We add this to PYTHONPATH below - no need to pip install a wheel.
-if(NOT DEFINED FOLLY_PYTHON_SITE_PACKAGES
-    OR NOT EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}")
-  message(FATAL_ERROR
-    "FOLLY_PYTHON_SITE_PACKAGES not found: ${FOLLY_PYTHON_SITE_PACKAGES}. "
-    "Ensure folly is built with Python bindings before building tests.")
-endif()
-message(STATUS
-  "Adding FOLLY_PYTHON_SITE_PACKAGES to TEST_PYTHONPATH: "
-  "${FOLLY_PYTHON_SITE_PACKAGES}")
-
 # Build PYTHONPATH for tests
 # With wheel-based approach for thrift, we need paths for:
-# - Thrift wheel install directory (thrift.python.*, thrift.py3.*, etc.)
+# - Thrift wheel install directory (thrift.python.*, thrift.py3.*, folly.*, etc.)
 # - Generated test thrift code (testing.thrift_types, etc.)
 # - py-deprecated runtime and generated code
-# - Folly Python bindings (pre-installed by getdeps)
+# Note: Folly Python bindings are now bundled into the thrift wheel
 set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
 string(CONCAT TEST_PYTHONPATH
   "${_thrift_wheel_install_dir}"
   ":${_gen_python}"
-  ":${_gen_py}"
-  ":${FOLLY_PYTHON_SITE_PACKAGES}")
+  ":${_gen_py}")
 
 # Symlink thrift.util from thrift_py INTO the wheel directory
 # Problem: py-deprecated imports like
@@ -980,17 +965,14 @@ add_dependencies(thrift_python_test_package convertible_py_deprecated_symlink)
 # Add dependency on thrift.util symlink to fix namespace shadowing
 add_dependencies(thrift_python_test_package thrift_py_deprecated_symlinks)
 
-# Use DEPENDENCY_LIB_PATH from top-level CMakeLists.txt for LD_LIBRARY_PATH
-# This contains all dependency library paths (glog, gflags, fmt, etc.)
-
 # Register each test file with ctest
 # Run as module to avoid sys.path[0] = test_dir shadowing
 
 # Build the test environment string once (reused by all tests)
-string(CONCAT _test_env
-  "PYTHONPATH=${TEST_PYTHONPATH}"
-  ";LD_LIBRARY_PATH=${DEPENDENCY_LIB_PATH}"
-  ";LD_PRELOAD=${FOLLY_LIB_DIR}/libfolly_python_cpp.so")
+# NOTE: We do NOT set LD_LIBRARY_PATH or LD_PRELOAD.
+# The wheel must be self-contained: auditwheel bundles deps into .libs/,
+# and RPATH $ORIGIN/.libs finds them. If tests fail, the wheel isn't portable.
+set(_test_env "PYTHONPATH=${TEST_PYTHONPATH}")
 
 foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)

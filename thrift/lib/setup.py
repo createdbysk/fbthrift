@@ -509,8 +509,11 @@ else:
             "thrift.lib.python",
             "thrift.lib.python.client",
             "apache.thrift.metadata",
+            # Folly Python bindings bundled into thrift wheel
+            # (folly doesn't build a wheel yet)
+            "folly",
         ],
-        package_data={"": ["*.pxd", "*.h"]},
+        package_data={"": ["*.pxd", "*.h", "*.so"]},
         setup_requires=["cython"],
         zip_safe=False,
         # build_dir separates Cython-generated .cpp files from handwritten .cpp files
