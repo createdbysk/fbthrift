@@ -155,8 +155,11 @@ else:
         extra_link_args.extend(shlex.split(ldflags_str))
 
     # RPATH for runtime library resolution
-    for lib_path in lib_search_paths:
-        extra_link_args.append(f"-Wl,-rpath,{lib_path}")
+    # Use $ORIGIN so auditwheel can properly bundle libraries into the wheel.
+    # $ORIGIN/.libs is where auditwheel places bundled shared libraries.
+    # We also add $ORIGIN for libraries in the same directory as the extension.
+    extra_link_args.append("-Wl,-rpath,$ORIGIN/.libs")
+    extra_link_args.append("-Wl,-rpath,$ORIGIN")
 
     common_options = {
         "language": "c++",
