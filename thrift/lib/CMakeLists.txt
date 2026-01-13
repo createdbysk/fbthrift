@@ -416,3 +416,8 @@ foreach(dir ${LIB_DIRS})
           PATTERN "*.tcc"
           PATTERN CMakeFiles EXCLUDE)
 endforeach()
+
+if(thrift_python)
+  add_subdirectory(py3/test)
+  add_subdirectory(python/test_only)
+endif()
