@@ -32,7 +32,7 @@ jobs:
     - name: Install Python build dependencies
       run: |
         sudo apt-get remove -y cython3 || true
-        pip3 install --upgrade cython parameterized auditwheel
+        pip3 install --upgrade cython auditwheel
     - id: paths
       name: Query paths
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. fbthrift-python  >> "$GITHUB_OUTPUT"
