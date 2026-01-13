@@ -326,7 +326,7 @@ macro(thrift_generate
         ${output_path}/gen-${language}/${_python_output_subdir}/thrift_mutable_clients.py
       )
     endif()
-  elseif("${language}" STREQUAL "py")
+  elseif("${language}" STREQUAL "py" OR "${language}" STREQUAL "python")
     # py-deprecated generator (legacy Python, generates ttypes.py)
     # Use py:new_style for Python 3 compatibility
     # Options are comma-separated (e.g., "py:new_style,asyncio")

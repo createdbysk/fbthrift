@@ -14,7 +14,7 @@ include(FBThriftCppLibrary)
 # For example:
 #   add_fbthrift_library(
 #     foo foo.thrift
-#     LANGUAGES cpp py python
+#     LANGUAGES cpp py thrift_python
 #     SERVICES Foo
 #     DEPENDS bar)
 #
@@ -22,7 +22,7 @@ include(FBThriftCppLibrary)
 #
 # add_fbthrift_cpp_library(foo_cpp foo.thrift SERVICES Foo DEPENDS bar_cpp)
 # add_fbthrift_py_library(foo_py foo.thrift SERVICES Foo DEPENDS bar_py)
-# add_fbthrift_python_library(foo_python foo.thrift SERVICES Foo DEPENDS bar_python)
+# add_fbthrift_python_library(foo_thrift_python foo.thrift SERVICES Foo DEPENDS bar_thrift_python)
 #
 function(add_fbthrift_library LIB_NAME THRIFT_FILE)
   # Parse the arguments
@@ -43,11 +43,11 @@ function(add_fbthrift_library LIB_NAME THRIFT_FILE)
   # now we still want to support older versions of CMake.
   set(CPP_DEPENDS)
   set(PY_DEPENDS)
-  set(PYTHON_DEPENDS)
+  set(THRIFT_PYTHON_DEPENDS)
   foreach(dep IN LISTS ARG_DEPENDS)
     list(APPEND CPP_DEPENDS "${dep}_cpp")
     list(APPEND PY_DEPENDS "${dep}_py")
-    list(APPEND PYTHON_DEPENDS "${dep}_python")
+    list(APPEND THRIFT_PYTHON_DEPENDS "${dep}_thrift_python")
   endforeach()
 
   foreach(lang IN LISTS ARG_LANGUAGES)
@@ -60,7 +60,7 @@ function(add_fbthrift_library LIB_NAME THRIFT_FILE)
         INCLUDE_DIR "${ARG_INCLUDE_DIR}"
         THRIFT_INCLUDE_DIR "${ARG_THRIFT_INCLUDE_DIR}"
       )
-    elseif ("${lang}" STREQUAL "py")
+    elseif ("${lang}" STREQUAL "py" OR "${lang}" STREQUAL "python")
       if (DEFINED ARG_PY_NAMESPACE)
         set(namespace_args NAMESPACE "${ARG_PY_NAMESPACE}")
       endif()
@@ -72,15 +72,15 @@ function(add_fbthrift_library LIB_NAME THRIFT_FILE)
         OPTIONS ${ARG_PY_OPTIONS}
         THRIFT_INCLUDE_DIR "${ARG_THRIFT_INCLUDE_DIR}"
       )
-    elseif ("${lang}" STREQUAL "python")
+    elseif ("${lang}" STREQUAL "thrift_python")
       if (DEFINED ARG_PYTHON_NAMESPACE)
         set(python_namespace_args NAMESPACE "${ARG_PYTHON_NAMESPACE}")
       endif()
       add_fbthrift_python_library(
-        "${LIB_NAME}_python" "${THRIFT_FILE}"
+        "${LIB_NAME}_thrift_python" "${THRIFT_FILE}"
         SERVICES ${ARG_SERVICES}
         ${python_namespace_args}
-        DEPENDS ${PYTHON_DEPENDS}
+        DEPENDS ${THRIFT_PYTHON_DEPENDS}
         OPTIONS ${ARG_PYTHON_OPTIONS}
         THRIFT_INCLUDE_DIR "${ARG_THRIFT_INCLUDE_DIR}"
       )
