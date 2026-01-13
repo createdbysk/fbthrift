@@ -419,5 +419,5 @@ endforeach()
 
 if(thrift_python)
   add_subdirectory(py3/test)
-  add_subdirectory(python/test_only)
+  add_subdirectory(python/test)
 endif()

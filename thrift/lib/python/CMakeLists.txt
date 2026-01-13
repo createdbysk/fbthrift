@@ -951,11 +951,6 @@ foreach(_src ${LibClientEventHandlerFiles})
 endforeach()
 
 #####
-# Generate thrift-python test types
-#####
-add_subdirectory(test)
-
-#####
 # Now build everything else in lib/python, including all remaining Cython
 # modules that depend on types_api.h and thrift_python_cpp.
 #####

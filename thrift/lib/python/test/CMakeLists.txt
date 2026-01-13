@@ -1210,3 +1210,14 @@ add_test(
 set_tests_properties(thrift_python_metadata_response_test PROPERTIES
   ENVIRONMENT "${_test_env}"
 )
+
+#####
+# Test using add_fb_python_unittest (same pattern external users would use)
+#####
+if(thrift_python)
+  add_fb_python_unittest(
+    binary_unittest
+    SOURCES binary.py
+    DEPENDS binary_thrift_python
+  )
+endif()
