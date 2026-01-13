@@ -26,7 +26,7 @@ set(PY3_TEST_THRIFT_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test)
 thrift_library(
   "binary"
   "BinaryService"
-  "python"
+  "thrift_python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -38,7 +38,7 @@ thrift_library(
 thrift_library(
   "iobuf"
   "IobufTestService"
-  "python"
+  "thrift_python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -51,7 +51,7 @@ thrift_library(
 thrift_library(
   "derived"
   "DerivedTestingService"
-  "python"
+  "thrift_python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -64,7 +64,7 @@ thrift_library(
 thrift_library(
   "convertible"
   ""
-  "python"
+  "thrift_python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -95,7 +95,7 @@ thrift_library(
 thrift_library(
   "stack_args"
   "StackService"
-  "python"
+  "thrift_python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -108,7 +108,7 @@ set(THRIFT_TEST_DIR ${CMAKE_SOURCE_DIR}/thrift/test)
 thrift_library(
   "schema_evolution_test"
   ""
-  "python"
+  "thrift_python"
   ""
   "${THRIFT_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -125,7 +125,7 @@ string(APPEND _testing_services ";ClientMetadataTestingService")
 thrift_library(
   "testing"
   "${_testing_services}"
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -137,7 +137,7 @@ thrift_library(
 thrift_library(
   "base_service_only"
   "BaseService"
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -149,7 +149,7 @@ thrift_library(
 thrift_library(
   "dependency"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -161,7 +161,7 @@ thrift_library(
 thrift_library(
   "sub_dependency"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -173,7 +173,7 @@ thrift_library(
 thrift_library(
   "injected_field"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -185,7 +185,7 @@ thrift_library(
 thrift_library(
   "py_deprecated_asyncio_test"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -212,7 +212,7 @@ thrift_library(
 thrift_library(
   "py_deprecated_asyncio_fallback_test"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -239,7 +239,7 @@ thrift_library(
 thrift_library(
   "test_inject_metadata_fields"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -252,7 +252,7 @@ thrift_library(
 thrift_library(
   "adapter"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -264,7 +264,7 @@ thrift_library(
 thrift_library(
   "containers"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -276,7 +276,7 @@ thrift_library(
 thrift_library(
   "enums"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -288,7 +288,7 @@ thrift_library(
 thrift_library(
   "enums_typedef_only"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -300,7 +300,7 @@ thrift_library(
 thrift_library(
   "lists"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -312,7 +312,7 @@ thrift_library(
 thrift_library(
   "maps"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -324,7 +324,7 @@ thrift_library(
 thrift_library(
   "refs"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -336,7 +336,7 @@ thrift_library(
 thrift_library(
   "sets"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -349,7 +349,7 @@ thrift_library(
 thrift_library(
   "bidi_service"
   "TestBidiService"
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -361,7 +361,7 @@ thrift_library(
 thrift_library(
   "sink_service"
   "TestSinkService"
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -374,7 +374,7 @@ thrift_library(
 thrift_library(
   "special_cases"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -388,7 +388,7 @@ thrift_library(
 thrift_library(
   "abstract_types_flags"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -400,7 +400,7 @@ thrift_library(
 thrift_library(
   "annotations"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -414,7 +414,7 @@ set(THRIFT_PYTHON_TEST_DIR "${CMAKE_SOURCE_DIR}/thrift/test/thrift-python")
 thrift_library(
   "struct_test"
   ""
-  "python"
+  "thrift_python"
   ""
   "${THRIFT_PYTHON_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -426,7 +426,7 @@ thrift_library(
 thrift_library(
   "union_test"
   ""
-  "python"
+  "thrift_python"
   ""
   "${THRIFT_PYTHON_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -438,7 +438,7 @@ thrift_library(
 thrift_library(
   "enum_test"
   ""
-  "python"
+  "thrift_python"
   ""
   "${THRIFT_PYTHON_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -450,7 +450,7 @@ thrift_library(
 thrift_library(
   "included"
   ""
-  "python"
+  "thrift_python"
   ""
   "${THRIFT_PYTHON_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -466,7 +466,7 @@ set(TRANSITIVE_DEPS_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test/transitive_deps)
 thrift_library(
   "a"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TRANSITIVE_DEPS_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -478,7 +478,7 @@ thrift_library(
 thrift_library(
   "b"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TRANSITIVE_DEPS_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -490,7 +490,7 @@ thrift_library(
 thrift_library(
   "c"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TRANSITIVE_DEPS_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -502,7 +502,7 @@ thrift_library(
 thrift_library(
   "d"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TRANSITIVE_DEPS_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -519,7 +519,7 @@ set(TERSE_WRITE_DIR ${CMAKE_SOURCE_DIR}/thrift/test/terse_write)
 thrift_library(
   "terse_write"
   ""
-  "python"
+  "thrift_python"
   ""
   "${TERSE_WRITE_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -537,7 +537,7 @@ set(CLIENT_TEST_THRIFT_DIR "${CMAKE_SOURCE_DIR}/thrift/lib/python/client/test")
 thrift_library(
   "test"
   "TestService;EchoService"
-  "python"
+  "thrift_python"
   ""
   "${CLIENT_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -550,7 +550,7 @@ thrift_library(
 thrift_library(
   "leaf"
   "LeafService"
-  "python"
+  "thrift_python"
   ""
   "${CLIENT_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
