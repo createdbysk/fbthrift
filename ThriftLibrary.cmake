@@ -130,7 +130,7 @@ macro(thrift_library
   include_prefix
 )
   # For Python languages, just generate - no C++ library needed
-  if("${language}" STREQUAL "python" OR "${language}" STREQUAL "py")
+  if("${language}" STREQUAL "thrift_python" OR "${language}" STREQUAL "py")
     thrift_generate(
       "${file_name}"
       "${services}"
@@ -234,7 +234,14 @@ macro(thrift_generate
     set(target_file_name ${THRIFT_GENERATE_TARGET_NAME_BASE})
   endif()
 
-  set("${target_file_name}-${language}-HEADERS"
+  # Map thrift_python to python for target naming (internal compatibility)
+  if("${language}" STREQUAL "thrift_python")
+    set(target_language "python")
+  else()
+    set(target_language "${language}")
+  endif()
+
+  set("${target_file_name}-${target_language}-HEADERS"
     ${output_path}/gen-${language}/${source_file_name}_constants.h
     ${output_path}/gen-${language}/${source_file_name}_data.h
     ${output_path}/gen-${language}/${source_file_name}_metadata.h
@@ -242,7 +249,7 @@ macro(thrift_generate
     ${output_path}/gen-${language}/${source_file_name}_types.tcch
     ${output_path}/gen-${language}/${source_file_name}_types_custom_protocol.h
   )
-  set("${target_file_name}-${language}-SOURCES"
+  set("${target_file_name}-${target_language}-SOURCES"
     ${output_path}/gen-${language}/${source_file_name}_constants.cpp
     ${output_path}/gen-${language}/${source_file_name}_data.cpp
     ${output_path}/gen-${language}/${source_file_name}_types.cpp
@@ -251,27 +258,27 @@ macro(thrift_generate
     ${output_path}/gen-${language}/${source_file_name}_types_serialization.cpp
   )
   if("${options}" MATCHES "layouts")
-    set("${target_file_name}-${language}-SOURCES"
-      ${${target_file_name}-${language}-SOURCES}
+    set("${target_file_name}-${target_language}-SOURCES"
+      ${${target_file_name}-${target_language}-SOURCES}
       ${output_path}/gen-${language}/${source_file_name}_layouts.cpp
     )
   endif()
   if(NOT "${options}" MATCHES "no_metadata")
-    set("${target_file_name}-${language}-SOURCES"
-      ${${target_file_name}-${language}-SOURCES}
+    set("${target_file_name}-${target_language}-SOURCES"
+      ${${target_file_name}-${target_language}-SOURCES}
       ${output_path}/gen-${language}/${source_file_name}_metadata.cpp
     )
   endif()
   foreach(service ${services})
-    set("${target_file_name}-${language}-HEADERS"
-      ${${source_file_name}-${language}-HEADERS}
+    set("${target_file_name}-${target_language}-HEADERS"
+      ${${source_file_name}-${target_language}-HEADERS}
       ${output_path}/gen-${language}/${service}.h
       ${output_path}/gen-${language}/${service}.tcc
       ${output_path}/gen-${language}/${service}AsyncClient.h
       ${output_path}/gen-${language}/${service}_custom_protocol.h
     )
-    set("${target_file_name}-${language}-SOURCES"
-      ${${source_file_name}-${language}-SOURCES}
+    set("${target_file_name}-${target_language}-SOURCES"
+      ${${source_file_name}-${target_language}-SOURCES}
       ${output_path}/gen-${language}/${service}.cpp
       ${output_path}/gen-${language}/${service}AsyncClient.cpp
     )
@@ -307,8 +314,8 @@ macro(thrift_generate
     endif()
     # file(WRITE "${output_path}/gen-${language}/${_python_output_subdir}/__init__.py")
     # Override the C++ file lists with Python file lists
-    set("${target_file_name}-${language}-HEADERS" "")
-    set("${target_file_name}-${language}-SOURCES"
+    set("${target_file_name}-${target_language}-HEADERS" "")
+    set("${target_file_name}-${target_language}-SOURCES"
       ${output_path}/gen-${language}/${_python_output_subdir}/thrift_types.py
       ${output_path}/gen-${language}/${_python_output_subdir}/thrift_types.pyi
       ${output_path}/gen-${language}/${_python_output_subdir}/thrift_metadata.py
@@ -319,7 +326,7 @@ macro(thrift_generate
     )
     # If there are services (passed as second param to thrift_generate), add service files
     if(NOT "${services}" STREQUAL "")
-      list(APPEND "${target_file_name}-${language}-SOURCES"
+      list(APPEND "${target_file_name}-${target_language}-SOURCES"
         ${output_path}/gen-${language}/${_python_output_subdir}/thrift_services.py
         ${output_path}/gen-${language}/${_python_output_subdir}/thrift_clients.py
         ${output_path}/gen-${language}/${_python_output_subdir}/thrift_mutable_services.py
@@ -347,15 +354,15 @@ macro(thrift_generate
       set(_py_output_subdir "${source_file_name}")
     endif()
     # Override the C++ file lists with py-deprecated file lists
-    set("${target_file_name}-${language}-HEADERS" "")
-    set("${target_file_name}-${language}-SOURCES"
+    set("${target_file_name}-${target_language}-HEADERS" "")
+    set("${target_file_name}-${target_language}-SOURCES"
       ${output_path}/gen-${language}/${_py_output_subdir}/__init__.py
       ${output_path}/gen-${language}/${_py_output_subdir}/ttypes.py
       ${output_path}/gen-${language}/${_py_output_subdir}/constants.py
     )
     # If there are services, add service files
     foreach(service ${services})
-      list(APPEND "${target_file_name}-${language}-SOURCES"
+      list(APPEND "${target_file_name}-${target_language}-SOURCES"
         ${output_path}/gen-${language}/${_py_output_subdir}/${service}.py
       )
     endforeach()
@@ -371,8 +378,8 @@ macro(thrift_generate
     endif()
   endif()
   add_custom_command(
-    OUTPUT ${${target_file_name}-${language}-HEADERS}
-      ${${target_file_name}-${language}-SOURCES}
+    OUTPUT ${${target_file_name}-${target_language}-HEADERS}
+      ${${target_file_name}-${target_language}-SOURCES}
     COMMAND ${THRIFT1}
       --gen "${gen_language}${_gen_options}${include_prefix_text}"
       -o ${output_path}
@@ -384,9 +391,9 @@ macro(thrift_generate
     COMMENT "Generating ${target_file_name} files. Output: ${output_path}"
   )
   add_custom_target(
-    ${target_file_name}-${language}-target ALL
-    DEPENDS ${${language}-${language}-HEADERS}
-      ${${target_file_name}-${language}-SOURCES}
+    ${target_file_name}-${target_language}-target ALL
+    DEPENDS ${${target_language}-${target_language}-HEADERS}
+      ${${target_file_name}-${target_language}-SOURCES}
   )
   install(
     DIRECTORY gen-${language}
