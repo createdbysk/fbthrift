@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include(FBThriftLibrary)
+
 if(thrift_python)
   add_fbthrift_library(
     binary binary.thrift
