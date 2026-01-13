@@ -142,3 +142,12 @@ foreach(_src
   target_link_libraries(${_module_name} iobuf-cpp2 thriftcpp2)
 endforeach()
 
+# Generate thrift-python bindings for files needed by thrift/lib/python/test
+if(thrift_python)
+  add_fbthrift_library(
+    binary binary.thrift
+    LANGUAGES thrift_python
+    SERVICES BinaryService
+  )
+endif()
+
