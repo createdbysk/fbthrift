@@ -22,6 +22,7 @@ add_subdirectory(thrift)
 add_subdirectory(cpp)
 add_subdirectory(cpp2)
 if(thrift_python)
+  add_subdirectory(py3/test)
   add_subdirectory(python)
 endif()
 # DEPRECATED: thriftpy is deprecated on Linux. Use thrift_python instead.
@@ -416,8 +417,3 @@ foreach(dir ${LIB_DIRS})
           PATTERN "*.tcc"
           PATTERN CMakeFiles EXCLUDE)
 endforeach()
-
-if(thrift_python)
-  add_subdirectory(py3/test)
-  add_subdirectory(python/test)
-endif()
