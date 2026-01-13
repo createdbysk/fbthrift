@@ -40,7 +40,7 @@ if(thrift_python)
   thrift_library(
     "chatroom"
     "ChatRoomService;Echo"
-    "python"
+    "thrift_python"
     ""
     "${EXAMPLE_IF_HOME}"
     "${CMAKE_CURRENT_BINARY_DIR}"

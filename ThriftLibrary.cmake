@@ -294,7 +294,7 @@ macro(thrift_generate
   elseif("${language}" STREQUAL "py3")
     set(gen_language "mstch_py3")
     file(WRITE "${output_path}/gen-${language}/${source_file_name}/__init__.py")
-  elseif("${language}" STREQUAL "python")
+  elseif("${language}" STREQUAL "thrift_python")
     set(gen_language "mstch_python")
     # Determine output subdirectory based on NAMESPACE parameter
     # NAMESPACE should match the namespace py3 directive in the thrift file
@@ -326,7 +326,7 @@ macro(thrift_generate
         ${output_path}/gen-${language}/${_python_output_subdir}/thrift_mutable_clients.py
       )
     endif()
-  elseif("${language}" STREQUAL "py")
+  elseif("${language}" STREQUAL "py" OR "${language}" STREQUAL "python")
     # py-deprecated generator (legacy Python, generates ttypes.py)
     # Use py:new_style for Python 3 compatibility
     # Options are comma-separated (e.g., "py:new_style,asyncio")
