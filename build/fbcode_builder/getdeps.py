@@ -1067,13 +1067,6 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             manifest_ctx.set("test", "on")
         run_on = self.get_run_on(args)
 
-        # Parse per-dependency cmake defines
-        dep_cmake_defines = (
-            json.loads(args.dependency_cmake_defines)
-            if args.dependency_cmake_defines
-            else {}
-        )
-
         # Parse custom pre-build steps
         pre_build_steps = (
             json.loads(args.pre_build_steps) if args.pre_build_steps else []
@@ -1309,13 +1302,6 @@ jobs:
                     src_dir_arg = "--src-dir=. "
                     has_same_repo_dep = True
 
-                # Compute cache key suffix for custom cmake defines
-                cache_key_suffix = ""
-                if m.name in dep_cmake_defines:
-                    import hashlib
-                    defines_str = json.dumps(dep_cmake_defines[m.name], sort_keys=True)
-                    cache_key_suffix = f"-{hashlib.md5(defines_str.encode()).hexdigest()[:8]}"
-
                 if args.use_build_cache and not src_dir_arg:
                     out.write(f"    - name: Restore {m.name} from cache\n")
                     out.write(f"      id: restore_{m.name}\n")
@@ -1329,7 +1315,7 @@ jobs:
                         f"       path: ${{{{ steps.paths.outputs.{m.name}_INSTALL }}}}\n"
                     )
                     out.write(
-                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}{cache_key_suffix}-install\n"
+                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}-install\n"
                     )
 
                 out.write("    - name: Build %s\n" % m.name)
@@ -1343,25 +1329,8 @@ jobs:
                             f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
                         )
 
-                # Add per-dependency cmake defines if specified
-                dep_defines_arg = ""
-                if m.name in dep_cmake_defines:
-                    defines_json = json.dumps(dep_cmake_defines[m.name])
-                    dep_defines_arg = f"--extra-cmake-defines '{defines_json}' "
-
-                # Build the command
-                # Use --no-deps when dep_cmake_defines is specified to prevent deps from
-                # rebuilding their dependencies (which would use default defines instead
-                # of the custom ones we specified)
-                no_deps_for_dep = "--no-deps " if dep_cmake_defines else ""
-                build_cmd = f"{getdepscmd}{allow_sys_arg} build {build_type_arg}{dep_defines_arg}{src_dir_arg}{free_up_disk}{no_deps_for_dep}--no-tests {m.name}"
-
-                # Use block scalar if command contains quotes (for YAML safety)
-                if "'" in build_cmd or '"' in build_cmd:
-                    out.write("      run: |\n")
-                    out.write(f"        {build_cmd}\n")
-                else:
-                    out.write(f"      run: {build_cmd}\n")
+                build_cmd = f"{getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}"
+                out.write(f"      run: {build_cmd}\n")
 
                 if args.use_build_cache and not src_dir_arg:
                     out.write(f"    - name: Save {m.name} to cache\n")
@@ -1374,7 +1343,7 @@ jobs:
                         f"       path: ${{{{ steps.paths.outputs.{m.name}_INSTALL }}}}\n"
                     )
                     out.write(
-                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}{cache_key_suffix}-install\n"
+                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}-install\n"
                     )
 
             out.write("    - name: Build %s\n" % manifest.name)
@@ -1387,12 +1356,10 @@ jobs:
                     prefix,
                 )
 
-            # Use --no-deps for the main build if:
-            # 1. has_same_repo_dep: Deps from the same repo were built in separate steps
-            # 2. dep_cmake_defines: Deps have custom cmake defines that would be lost
-            #    if getdeps rebuilds them due to timestamp issues
+            # Use --no-deps for the main build if deps from the same repo
+            # were built in separate steps
             no_deps_arg = ""
-            if has_same_repo_dep or dep_cmake_defines:
+            if has_same_repo_dep:
                 no_deps_arg = "--no-deps "
 
             out.write(
@@ -1508,15 +1475,6 @@ jobs:
             default=True,
             dest="use_build_cache",
             help="Do not attempt to use the build cache.",
-        )
-        parser.add_argument(
-            "--dependency-cmake-defines",
-            help=(
-                "JSON map of dependency name to cmake defines, e.g. "
-                '\'{"folly": {"PYTHON_EXTENSIONS": "ON"}}\'. '
-                "These defines are passed to the build command for each matching dependency."
-            ),
-            default=None,
         )
         parser.add_argument(
             "--pre-build-steps",
