@@ -22,6 +22,8 @@ if(thrift_python)
   )
 endif()
 
+if(NOT thrift_python)
+
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/..")
 
 macro(thrift_py3_test filename services)
@@ -151,3 +153,5 @@ foreach(_src
 
   target_link_libraries(${_module_name} iobuf-cpp2 thriftcpp2)
 endforeach()
+
+endif()
