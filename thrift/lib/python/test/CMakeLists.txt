@@ -788,7 +788,8 @@ set(_thrift_wheel_install_dir
 add_custom_target(install_thrift_wheel ALL
   DEPENDS thrift_python_and_py3_bindings
   COMMAND bash -c "${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps --target '${_thrift_wheel_install_dir}' '${_thrift_wheel_dir}'/thrift-0.0.1-*.whl"
-  COMMENT "Installing thrift wheel for tests"
+  COMMAND ${Python3_EXECUTABLE} -m pip install --target "${_thrift_wheel_install_dir}" parameterized
+  COMMENT "Installing thrift wheel and test dependencies"
 )
 
 # Build PYTHONPATH for tests
