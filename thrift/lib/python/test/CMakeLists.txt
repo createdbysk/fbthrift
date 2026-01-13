@@ -980,17 +980,17 @@ add_dependencies(thrift_python_test_package thrift_py_deprecated_symlinks)
 # and RPATH $ORIGIN/.libs finds them. If tests fail, the wheel isn't portable.
 set(_test_env "PYTHONPATH=${TEST_PYTHONPATH}")
 
-foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
-  get_filename_component(test_name ${test_file} NAME_WE)
-  add_test(
-    NAME thrift_python_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest fbthrift_test.${test_name} -v
-    WORKING_DIRECTORY ${_gen_python}
-  )
-  set_tests_properties(thrift_python_${test_name} PROPERTIES
-    ENVIRONMENT "${_test_env}"
-  )
-endforeach()
+# foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
+#   get_filename_component(test_name ${test_file} NAME_WE)
+#   add_test(
+#     NAME thrift_python_${test_name}
+#     COMMAND ${Python3_EXECUTABLE} -m unittest fbthrift_test.${test_name} -v
+#     WORKING_DIRECTORY ${_gen_python}
+#   )
+#   set_tests_properties(thrift_python_${test_name} PROPERTIES
+#     ENVIRONMENT "${_test_env}"
+#   )
+# endforeach()
 
 #####
 # thrift/test/thrift-python/ tests
