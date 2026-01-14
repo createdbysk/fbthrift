@@ -223,6 +223,14 @@ macro(thrift_generate
     "THRIFT_INCLUDE_DIRECTORIES" # Multi-value args
     "${ARGN}")
 
+  # Reject "python" - use "thrift_python" for modern Python or "py" for py-deprecated
+  if("${language}" STREQUAL "python")
+    message(FATAL_ERROR
+      "Language 'python' is not supported. Use 'thrift_python' for modern Python "
+      "bindings or 'py' for py-deprecated bindings."
+    )
+  endif()
+
   set(source_file_name ${file_name})
   set(target_file_name ${file_name})
   set(thrift_include_directories)
@@ -325,7 +333,7 @@ macro(thrift_generate
         ${output_path}/gen-${language}/${_python_output_subdir}/thrift_mutable_clients.py
       )
     endif()
-  elseif("${language}" STREQUAL "py" OR "${language}" STREQUAL "python")
+  elseif("${language}" STREQUAL "py")
     # py-deprecated generator (legacy Python, generates ttypes.py)
     # Use py:new_style for Python 3 compatibility
     # Options are comma-separated (e.g., "py:new_style,asyncio")
