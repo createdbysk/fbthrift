@@ -112,14 +112,6 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
       "${THRIFT1}"
   )
 
-  # Create __init__.py for the package
-  add_custom_command(
-    OUTPUT "${python_output_dir}/__init__.py"
-    COMMAND "${CMAKE_COMMAND}" -E touch "${python_output_dir}/__init__.py"
-    DEPENDS ${generated_sources}
-  )
-  list(APPEND generated_sources "${python_output_dir}/__init__.py")
-
   # Create Python library target
   # Note: thrift_python runtime is built via setup.py, not add_fb_python_library,
   # so we don't add it as a CMake dependency here. The runtime must be installed
