@@ -4,9 +4,6 @@ name: python-Linux
 
 on:
   push:
-    branches:
-    - main
-    - oss_thrift_python_with_python_manifests_duplicate_shared_and_static_problems
   pull_request:
     branches:
     - main
