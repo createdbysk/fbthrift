@@ -733,18 +733,15 @@ add_test_namespace_symlink(transitive_deps
   "${_gen_python}/transitive_deps" "${_cybld}/transitive_deps"
   a-thrift_python-target b-thrift_python-target c-thrift_python-target d-thrift_python-target)
 
-# 9. apache.thrift.metadata namespace -> cybld/apache/thrift/metadata
+# 9. apache.thrift.metadata namespace -> gen-python/apache/thrift/metadata
 # The metadata module is built by the main thrift library,
 # we need to link it into gen-python
 # so tests can import apache.thrift.metadata.thrift_types
 # Note: metadata is in _cybld_base (cybld/), not _cybld (cybld/build/lib.../)
-add_custom_target(apache_thrift_metadata_symlink ALL
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_cybld_base}/apache/thrift/metadata"
-    "${_gen_python}/apache/thrift/metadata"
-  DEPENDS terse_write-thrift_python-target
-  COMMENT "Creating symlink for apache.thrift.metadata"
-)
+add_test_namespace_symlink(apache_thrift_metadata
+  "${_cybld_base}/apache/thrift/metadata"
+  "${_gen_python}/apache/thrift/metadata"
+  terse_write-thrift_python-target)
 
 # 11. Symlink py-deprecated files from gen-py to gen-python
 # for converter.py test
