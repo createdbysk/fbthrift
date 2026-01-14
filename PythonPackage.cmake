@@ -19,10 +19,12 @@
 #   @target_name - The CMake target to attach this command to
 #   @dir_path - The directory to make into a Python package
 #
+# EXPERIMENT: Testing if __init__.py creation is needed
+# Modern Python 3.3+ supports implicit namespace packages
 function(make_python_package target_name dir_path)
-  add_custom_command(
-    TARGET ${target_name}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E touch "${dir_path}/__init__.py"
-  )
+  # add_custom_command(
+  #   TARGET ${target_name}
+  #   POST_BUILD
+  #   COMMAND ${CMAKE_COMMAND} -E touch "${dir_path}/__init__.py"
+  # )
 endfunction()
