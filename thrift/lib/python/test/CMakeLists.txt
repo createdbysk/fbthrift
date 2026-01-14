@@ -763,38 +763,6 @@ add_custom_target(convertible_py_deprecated_symlink ALL
 )
 
 #####
-# Make directories into Python packages
-#####
-
-# EXPERIMENT: Testing if PythonPackage.cmake is needed
-# Modern Python 3.3+ supports implicit namespace packages
-# include(${CMAKE_SOURCE_DIR}/PythonPackage.cmake)
-
-# transitive_deps package
-# make_python_package(create_binding_symlink_transitive_deps
-#   "${_gen_python}/transitive_deps")
-
-# apache namespace packages
-# add_custom_target(python_package_apache ALL
-#   DEPENDS terse_write-thrift_python-target
-# )
-# make_python_package(python_package_apache "${_gen_python}/apache")
-# make_python_package(python_package_apache "${_gen_python}/apache/thrift")
-
-# py-deprecated testing namespace package (for gen-py/testing/)
-# Required for imports like testing.py_deprecated_asyncio_test.ttypes
-add_custom_target(python_package_testing_py_deprecated ALL
-  DEPENDS py_deprecated_asyncio_test_py-py-target py_deprecated_asyncio_fallback_test_py-py-target
-)
-add_custom_command(
-  TARGET python_package_testing_py_deprecated
-  PRE_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_py}/testing"
-  COMMAND ${CMAKE_COMMAND} -E touch "${_gen_py}/testing/__init__.py"
-  COMMENT "Creating gen-py/testing/__init__.py for py-deprecated imports"
-)
-
-#####
 # Python Test Definitions
 #####
 
