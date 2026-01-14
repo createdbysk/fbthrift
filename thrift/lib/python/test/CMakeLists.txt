@@ -1219,6 +1219,7 @@ if(thrift_python)
   add_fb_python_unittest(
     binary_unittest
     SOURCES binary.py
-    DEPENDS binary_thrift_python
+    DEPENDS binary_thrift_python install_thrift_wheel
+    ENV "PYTHONPATH=${TEST_PYTHONPATH}"
   )
 endif()
