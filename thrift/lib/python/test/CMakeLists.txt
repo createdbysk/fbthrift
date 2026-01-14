@@ -1215,6 +1215,7 @@ set_tests_properties(thrift_python_metadata_response_test PROPERTIES
 # Test using add_fb_python_unittest (same pattern external users would use)
 #####
 if(thrift_python)
+  include(FBPythonBinary)
   add_fb_python_unittest(
     binary_unittest
     SOURCES binary.py
