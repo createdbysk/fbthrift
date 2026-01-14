@@ -483,8 +483,8 @@ thrift_library(
 )
 
 # terse_write.thrift - from thrift/test/terse_write/
-# namespace py3 apache.thrift.test.terse_write
-# -> output to apache/thrift/test/terse_write/terse_write/
+# namespace py3 thrift.test
+# -> output to thrift/test/terse_write/
 set(TERSE_WRITE_DIR ${CMAKE_SOURCE_DIR}/thrift/test/terse_write)
 
 thrift_library(
@@ -496,7 +496,7 @@ thrift_library(
   "${CMAKE_CURRENT_BINARY_DIR}"
   ""
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE "apache.thrift.test.terse_write"
+  NAMESPACE "thrift.test"
 )
 
 # client/test thrift files (test.thrift, leaf.thrift)
@@ -705,14 +705,7 @@ add_test_namespace_symlink(transitive_deps
   "${_gen_python}/transitive_deps" "${_cybld}/transitive_deps"
   a-thrift_python-target b-thrift_python-target c-thrift_python-target d-thrift_python-target)
 
-# 9. apache.thrift.test.terse_write namespace -> cybld/apache/thrift/test
-# Note: cybld/apache/thrift/ already exists (for metadata),
-# so we symlink test/ subdirectory
-add_test_namespace_symlink(apache_thrift_test
-  "${_gen_python}/apache/thrift/test" "${_cybld}/apache/thrift/test"
-  terse_write-thrift_python-target)
-
-# 10. apache.thrift.metadata namespace -> cybld/apache/thrift/metadata
+# 9. apache.thrift.metadata namespace -> cybld/apache/thrift/metadata
 # The metadata module is built by the main thrift library,
 # we need to link it into gen-python
 # so tests can import apache.thrift.metadata.thrift_types
