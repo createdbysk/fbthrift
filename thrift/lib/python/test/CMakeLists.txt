@@ -17,16 +17,150 @@
 # Include ThriftLibrary macros (for standalone builds, CMAKE_MODULE_PATH must be set)
 include(ThriftLibrary OPTIONAL)
 
+#
+# thrift_library_for_test
+# Generate thrift code for Python languages (thrift-python and py-deprecated).
+# This is a test-local function that avoids modifying the public ThriftLibrary.cmake.
+#
+# Parameters match thrift_library() for easy migration:
+#   file_name, services, language, options, file_path, output_path, include_prefix
+#   THRIFT_INCLUDE_DIRECTORIES (optional)
+#   NAMESPACE (optional)
+#
+function(thrift_library_for_test
+  file_name
+  services
+  language
+  options
+  file_path
+  output_path
+  include_prefix
+)
+  cmake_parse_arguments(THRIFT_GENERATE
+    ""
+    "TARGET_NAME_BASE;NAMESPACE"
+    "THRIFT_INCLUDE_DIRECTORIES"
+    ${ARGN})
+
+  set(source_file_name ${file_name})
+  set(target_file_name ${file_name})
+  if(DEFINED THRIFT_GENERATE_TARGET_NAME_BASE AND NOT THRIFT_GENERATE_TARGET_NAME_BASE STREQUAL "")
+    set(target_file_name ${THRIFT_GENERATE_TARGET_NAME_BASE})
+  endif()
+
+  # Build include directories list
+  set(thrift_include_directories)
+  foreach(dir ${THRIFT_GENERATE_THRIFT_INCLUDE_DIRECTORIES})
+    list(APPEND thrift_include_directories "-I" "${dir}")
+  endforeach()
+
+  if("${language}" STREQUAL "python")
+    # thrift-python (mstch_python generator)
+    set(gen_language "mstch_python")
+    set(gen_dir "gen-python")
+
+    # Determine output subdirectory based on NAMESPACE
+    if(DEFINED THRIFT_GENERATE_NAMESPACE AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
+      string(REPLACE "." "/" _namespace_dir "${THRIFT_GENERATE_NAMESPACE}")
+      set(_output_subdir "${_namespace_dir}/${source_file_name}")
+    else()
+      set(_output_subdir "${source_file_name}")
+    endif()
+
+    # Python output files
+    set(_sources
+      ${output_path}/${gen_dir}/${_output_subdir}/thrift_types.py
+      ${output_path}/${gen_dir}/${_output_subdir}/thrift_types.pyi
+      ${output_path}/${gen_dir}/${_output_subdir}/thrift_metadata.py
+      ${output_path}/${gen_dir}/${_output_subdir}/thrift_enums.py
+      ${output_path}/${gen_dir}/${_output_subdir}/thrift_abstract_types.py
+      ${output_path}/${gen_dir}/${_output_subdir}/thrift_mutable_types.py
+      ${output_path}/${gen_dir}/${_output_subdir}/thrift_mutable_types.pyi
+    )
+    if(NOT "${services}" STREQUAL "")
+      list(APPEND _sources
+        ${output_path}/${gen_dir}/${_output_subdir}/thrift_services.py
+        ${output_path}/${gen_dir}/${_output_subdir}/thrift_clients.py
+        ${output_path}/${gen_dir}/${_output_subdir}/thrift_mutable_services.py
+        ${output_path}/${gen_dir}/${_output_subdir}/thrift_mutable_clients.py
+      )
+    endif()
+
+    # Build generator options
+    if(NOT "${options}" STREQUAL "")
+      set(_gen_options ":${options}")
+    else()
+      set(_gen_options "")
+    endif()
+
+  elseif("${language}" STREQUAL "py")
+    # py-deprecated (py:new_style generator)
+    set(gen_dir "gen-py")
+
+    # Build generator string with new_style
+    if(NOT "${options}" STREQUAL "")
+      set(gen_language "py:new_style,${options}")
+    else()
+      set(gen_language "py:new_style")
+    endif()
+    set(_gen_options "")
+
+    # Determine output subdirectory
+    if(DEFINED THRIFT_GENERATE_NAMESPACE AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
+      string(REPLACE "." "/" _output_subdir "${THRIFT_GENERATE_NAMESPACE}")
+    else()
+      set(_output_subdir "${source_file_name}")
+    endif()
+
+    # py-deprecated output files
+    set(_sources
+      ${output_path}/${gen_dir}/${_output_subdir}/__init__.py
+      ${output_path}/${gen_dir}/${_output_subdir}/ttypes.py
+      ${output_path}/${gen_dir}/${_output_subdir}/constants.py
+    )
+    foreach(service ${services})
+      list(APPEND _sources
+        ${output_path}/${gen_dir}/${_output_subdir}/${service}.py
+      )
+    endforeach()
+
+  else()
+    message(FATAL_ERROR "thrift_library_for_test: unsupported language '${language}'. Use 'python' or 'py'.")
+  endif()
+
+  # Add custom command to generate thrift code
+  add_custom_command(
+    OUTPUT ${_sources}
+    COMMAND ${THRIFT1}
+      --gen "${gen_language}${_gen_options}"
+      -o ${output_path}
+      ${thrift_include_directories}
+      "${file_path}/${source_file_name}.thrift"
+    DEPENDS
+      ${THRIFT1}
+      "${file_path}/${source_file_name}.thrift"
+    COMMENT "Generating ${target_file_name} ${language} files"
+  )
+
+  # Add custom target
+  add_custom_target(
+    ${target_file_name}-${language}-target ALL
+    DEPENDS ${_sources}
+  )
+
+  message("thrift_library_for_test: ${file_name}-${language}")
+endfunction()
+
 set(TEST_THRIFT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PY3_TEST_THRIFT_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test)
 
 # Files from py3/test needed by thrift-python tests
 # (no namespace in thrift file)
 # Output goes to gen-python/binary/, gen-python/iobuf/ etc.
-thrift_library(
+thrift_library_for_test(
   "binary"
   "BinaryService"
-  "thrift_python"
+  "python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -35,10 +169,10 @@ thrift_library(
   NAMESPACE ""
 )
 
-thrift_library(
+thrift_library_for_test(
   "iobuf"
   "IobufTestService"
-  "thrift_python"
+  "python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -48,10 +182,10 @@ thrift_library(
 )
 
 # derived.thrift - no py3 namespace, includes testing.thrift
-thrift_library(
+thrift_library_for_test(
   "derived"
   "DerivedTestingService"
-  "thrift_python"
+  "python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -61,10 +195,10 @@ thrift_library(
 )
 
 # convertible.thrift - no py3 namespace
-thrift_library(
+thrift_library_for_test(
   "convertible"
   ""
-  "thrift_python"
+  "python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -74,7 +208,7 @@ thrift_library(
 )
 
 # convertible.thrift - py-deprecated (generates ttypes.py for converter.py test)
-thrift_library(
+thrift_library_for_test(
   "convertible"
   ""
   "py"
@@ -92,10 +226,10 @@ thrift_library(
 # converter.py test is BLOCKED until py3/Cython support is added.
 
 # stack_args.thrift - no py3 namespace
-thrift_library(
+thrift_library_for_test(
   "stack_args"
   "StackService"
-  "thrift_python"
+  "python"
   ""
   "${PY3_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -105,10 +239,10 @@ thrift_library(
 )
 
 set(THRIFT_TEST_DIR ${CMAKE_SOURCE_DIR}/thrift/test)
-thrift_library(
+thrift_library_for_test(
   "schema_evolution_test"
   ""
-  "thrift_python"
+  "python"
   ""
   "${THRIFT_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -122,10 +256,10 @@ thrift_library(
 set(_testing_services
   "TestingService;TestingServiceChild;ExtendServiceWithNoTypes")
 string(APPEND _testing_services ";ClientMetadataTestingService")
-thrift_library(
+thrift_library_for_test(
   "testing"
   "${_testing_services}"
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -134,10 +268,10 @@ thrift_library(
 )
 
 # Files with namespace py3 "testing" - output to testing/<filename>/
-thrift_library(
+thrift_library_for_test(
   "base_service_only"
   "BaseService"
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -146,10 +280,10 @@ thrift_library(
   NAMESPACE "testing"
 )
 
-thrift_library(
+thrift_library_for_test(
   "dependency"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -158,10 +292,10 @@ thrift_library(
   NAMESPACE "testing"
 )
 
-thrift_library(
+thrift_library_for_test(
   "sub_dependency"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -170,10 +304,10 @@ thrift_library(
   NAMESPACE "testing"
 )
 
-thrift_library(
+thrift_library_for_test(
   "injected_field"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -182,10 +316,10 @@ thrift_library(
   NAMESPACE "testing"
 )
 
-thrift_library(
+thrift_library_for_test(
   "py_deprecated_asyncio_test"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -196,7 +330,7 @@ thrift_library(
 
 # py_deprecated_asyncio_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
 # namespace py.asyncio testing.py_deprecated_asyncio_test
-thrift_library(
+thrift_library_for_test(
   "py_deprecated_asyncio_test"
   ""
   "py"
@@ -209,10 +343,10 @@ thrift_library(
   TARGET_NAME_BASE "py_deprecated_asyncio_test_py"
 )
 
-thrift_library(
+thrift_library_for_test(
   "py_deprecated_asyncio_fallback_test"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -223,7 +357,7 @@ thrift_library(
 
 # py_deprecated_asyncio_fallback_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
 # namespace py testing.py_deprecated_asyncio_fallback_test
-thrift_library(
+thrift_library_for_test(
   "py_deprecated_asyncio_fallback_test"
   ""
   "py"
@@ -236,10 +370,10 @@ thrift_library(
   TARGET_NAME_BASE "py_deprecated_asyncio_fallback_test_py"
 )
 
-thrift_library(
+thrift_library_for_test(
   "test_inject_metadata_fields"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -249,10 +383,10 @@ thrift_library(
 )
 
 # Files with namespace py3 "python_test"
-thrift_library(
+thrift_library_for_test(
   "adapter"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -261,10 +395,10 @@ thrift_library(
   NAMESPACE "python_test"
 )
 
-thrift_library(
+thrift_library_for_test(
   "containers"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -273,10 +407,10 @@ thrift_library(
   NAMESPACE "python_test"
 )
 
-thrift_library(
+thrift_library_for_test(
   "enums"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -285,10 +419,10 @@ thrift_library(
   NAMESPACE "python_test"
 )
 
-thrift_library(
+thrift_library_for_test(
   "enums_typedef_only"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -297,10 +431,10 @@ thrift_library(
   NAMESPACE "python_test"
 )
 
-thrift_library(
+thrift_library_for_test(
   "lists"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -309,10 +443,10 @@ thrift_library(
   NAMESPACE "python_test"
 )
 
-thrift_library(
+thrift_library_for_test(
   "maps"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -321,10 +455,10 @@ thrift_library(
   NAMESPACE "python_test"
 )
 
-thrift_library(
+thrift_library_for_test(
   "refs"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -333,10 +467,10 @@ thrift_library(
   NAMESPACE "python_test"
 )
 
-thrift_library(
+thrift_library_for_test(
   "sets"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -346,10 +480,10 @@ thrift_library(
 )
 
 # Files with namespace py3 "thrift.python"
-thrift_library(
+thrift_library_for_test(
   "bidi_service"
   "TestBidiService"
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -358,10 +492,10 @@ thrift_library(
   NAMESPACE "thrift.python"
 )
 
-thrift_library(
+thrift_library_for_test(
   "sink_service"
   "TestSinkService"
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -371,10 +505,10 @@ thrift_library(
 )
 
 # Files with namespace py3 "thrift.python.test"
-thrift_library(
+thrift_library_for_test(
   "special_cases"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -385,10 +519,10 @@ thrift_library(
 
 # Files without namespace py3 - use empty namespace
 # (output to gen-python/<file_name>/)
-thrift_library(
+thrift_library_for_test(
   "abstract_types_flags"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -397,10 +531,10 @@ thrift_library(
   NAMESPACE "thrift.python.test"
 )
 
-thrift_library(
+thrift_library_for_test(
   "annotations"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -411,10 +545,10 @@ thrift_library(
 
 set(THRIFT_PYTHON_TEST_DIR "${CMAKE_SOURCE_DIR}/thrift/test/thrift-python")
 
-thrift_library(
+thrift_library_for_test(
   "struct_test"
   ""
-  "thrift_python"
+  "python"
   ""
   "${THRIFT_PYTHON_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -423,10 +557,10 @@ thrift_library(
   NAMESPACE "thrift.test.thrift_python"
 )
 
-thrift_library(
+thrift_library_for_test(
   "union_test"
   ""
-  "thrift_python"
+  "python"
   ""
   "${THRIFT_PYTHON_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -435,10 +569,10 @@ thrift_library(
   NAMESPACE "thrift.test.thrift_python"
 )
 
-thrift_library(
+thrift_library_for_test(
   "enum_test"
   ""
-  "thrift_python"
+  "python"
   ""
   "${THRIFT_PYTHON_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -447,10 +581,10 @@ thrift_library(
   NAMESPACE "thrift.test.thrift_python"
 )
 
-thrift_library(
+thrift_library_for_test(
   "included"
   ""
-  "thrift_python"
+  "python"
   ""
   "${THRIFT_PYTHON_TEST_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -463,10 +597,10 @@ thrift_library(
 # namespace py3 transitive_deps -> output to transitive_deps/a/, etc.
 set(TRANSITIVE_DEPS_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test/transitive_deps)
 
-thrift_library(
+thrift_library_for_test(
   "a"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TRANSITIVE_DEPS_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -475,10 +609,10 @@ thrift_library(
   NAMESPACE "transitive_deps"
 )
 
-thrift_library(
+thrift_library_for_test(
   "b"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TRANSITIVE_DEPS_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -487,10 +621,10 @@ thrift_library(
   NAMESPACE "transitive_deps"
 )
 
-thrift_library(
+thrift_library_for_test(
   "c"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TRANSITIVE_DEPS_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -499,10 +633,10 @@ thrift_library(
   NAMESPACE "transitive_deps"
 )
 
-thrift_library(
+thrift_library_for_test(
   "d"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TRANSITIVE_DEPS_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -516,10 +650,10 @@ thrift_library(
 # -> output to thrift/test/terse_write/
 set(TERSE_WRITE_DIR ${CMAKE_SOURCE_DIR}/thrift/test/terse_write)
 
-thrift_library(
+thrift_library_for_test(
   "terse_write"
   ""
-  "thrift_python"
+  "python"
   ""
   "${TERSE_WRITE_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -534,10 +668,10 @@ thrift_library(
 set(CLIENT_TEST_THRIFT_DIR "${CMAKE_SOURCE_DIR}/thrift/lib/python/client/test")
 
 # test.thrift - defines TestService, EchoService
-thrift_library(
+thrift_library_for_test(
   "test"
   "TestService;EchoService"
-  "thrift_python"
+  "python"
   ""
   "${CLIENT_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -547,10 +681,10 @@ thrift_library(
 )
 
 # leaf.thrift - defines LeafService (extends EchoService from test.thrift)
-thrift_library(
+thrift_library_for_test(
   "leaf"
   "LeafService"
-  "thrift_python"
+  "python"
   ""
   "${CLIENT_TEST_THRIFT_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
@@ -615,25 +749,25 @@ endfunction()
 # 1. testing namespace -> cybld/testing
 add_test_namespace_symlink(testing
   "${_gen_python}/testing" "${_cybld}/testing"
-  testing-thrift_python-target)
+  testing-python-target)
 
 # 2. python_test namespace -> cybld/python_test
 add_test_namespace_symlink(python_test
   "${_gen_python}/python_test" "${_cybld}/python_test"
-  adapter-thrift_python-target containers-thrift_python-target enums-thrift_python-target
-  lists-thrift_python-target maps-thrift_python-target refs-thrift_python-target
-  sets-thrift_python-target)
+  adapter-python-target containers-python-target enums-python-target
+  lists-python-target maps-python-target refs-python-target
+  sets-python-target)
 
 # 3. thrift.test.thrift_python -> cybld/thrift/test
 add_test_namespace_symlink(thrift_test
   "${_gen_python}/thrift/test" "${_cybld}/thrift/test"
-  struct_test-thrift_python-target union_test-thrift_python-target
-  enum_test-thrift_python-target included-thrift_python-target)
+  struct_test-python-target union_test-python-target
+  enum_test-python-target included-python-target)
 
 # 4. thrift.python.{bidi_service,sink_service}
 #    -> cybld/thrift/python/{bidi_service,sink_service}
 add_test_namespace_symlinks(thrift_python_services
-  bidi_service-thrift_python-target sink_service-thrift_python-target)
+  bidi_service-python-target sink_service-python-target)
 add_symlink_command(thrift_python_services
   "${_gen_python}/thrift/python/bidi_service"
   "${_cybld}/thrift/python/bidi_service")
@@ -643,8 +777,8 @@ add_symlink_command(thrift_python_services
 
 # 5. thrift.python.test.* -> cybld/thrift/python/test/*
 add_test_namespace_symlinks(thrift_python_test
-  special_cases-thrift_python-target abstract_types_flags-thrift_python-target
-  annotations-thrift_python-target)
+  special_cases-python-target abstract_types_flags-python-target
+  annotations-python-target)
 add_symlink_command(thrift_python_test
   "${_gen_python}/thrift/python/test/special_cases"
   "${_cybld}/thrift/python/test/special_cases")
@@ -665,7 +799,7 @@ add_symlink_command(thrift_python_test
 # so we symlink files, not the whole dir
 # The leaf/ directory is new so we can symlink it directly
 add_test_namespace_symlinks(thrift_python_client_test
-  test-thrift_python-target leaf-thrift_python-target)
+  test-python-target leaf-python-target)
 
 # For test/, symlink individual generated files (not the directory)
 # These files are generated by client/test/test.thrift
@@ -705,33 +839,33 @@ add_symlink_command(thrift_python_client_test
 # 6. binary and iobuf (no namespace) -> cybld/binary, cybld/iobuf
 add_test_namespace_symlink(binary_direct
   "${_gen_python}/binary" "${_cybld}/binary"
-  binary-thrift_python-target)
+  binary-python-target)
 
 add_test_namespace_symlink(iobuf_direct
   "${_gen_python}/iobuf" "${_cybld}/iobuf"
-  iobuf-thrift_python-target)
+  iobuf-python-target)
 
 # 7. derived and convertible (no namespace) -> cybld/derived, cybld/convertible
 add_test_namespace_symlink(derived_direct
   "${_gen_python}/derived" "${_cybld}/derived"
-  derived-thrift_python-target)
+  derived-python-target)
 
 add_test_namespace_symlink(convertible_direct
   "${_gen_python}/convertible" "${_cybld}/convertible"
-  convertible-thrift_python-target)
+  convertible-python-target)
 
 add_test_namespace_symlink(stack_args_direct
   "${_gen_python}/stack_args" "${_cybld}/stack_args"
-  stack_args-thrift_python-target)
+  stack_args-python-target)
 
 add_test_namespace_symlink(schema_evolution_test_direct
   "${_gen_python}/schema_evolution_test" "${_cybld}/schema_evolution_test"
-  schema_evolution_test-thrift_python-target)
+  schema_evolution_test-python-target)
 
 # 8. transitive_deps namespace -> cybld/transitive_deps
 add_test_namespace_symlink(transitive_deps
   "${_gen_python}/transitive_deps" "${_cybld}/transitive_deps"
-  a-thrift_python-target b-thrift_python-target c-thrift_python-target d-thrift_python-target)
+  a-python-target b-python-target c-python-target d-python-target)
 
 # 9. apache.thrift.metadata namespace -> gen-python/apache/thrift/metadata
 # The metadata module is built by the main thrift library,
@@ -741,7 +875,7 @@ add_test_namespace_symlink(transitive_deps
 add_test_namespace_symlink(apache_thrift_metadata
   "${_cybld_base}/apache/thrift/metadata"
   "${_gen_python}/apache/thrift/metadata"
-  terse_write-thrift_python-target)
+  terse_write-python-target)
 
 # 11. Symlink py-deprecated files from gen-py to gen-python
 # for converter.py test
@@ -754,7 +888,7 @@ add_custom_target(convertible_py_deprecated_symlink ALL
   COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${_gen_py}/convertible/constants.py"
     "${_gen_python}/convertible/constants.py"
-  DEPENDS convertible_py_deprecated-py-target convertible-thrift_python-target
+  DEPENDS convertible_py_deprecated-py-target convertible-python-target
   COMMENT "Creating symlinks for py-deprecated files in gen-python/convertible/"
 )
 
@@ -772,7 +906,7 @@ add_custom_target(convertible_py_deprecated_symlink ALL
 
 # apache namespace packages
 # add_custom_target(python_package_apache ALL
-#   DEPENDS terse_write-thrift_python-target
+#   DEPENDS terse_write-python-target
 # )
 # make_python_package(python_package_apache "${_gen_python}/apache")
 # make_python_package(python_package_apache "${_gen_python}/apache/thrift")
@@ -1072,8 +1206,8 @@ endforeach()
 # Target to create all thrift/test/thrift-python/ test symlinks
 add_custom_target(thrift_test_thrift_python_test_package ALL
   DEPENDS "${_thrift_test_tests_dir}/__init__.py" ${THRIFT_TEST_SYMLINK_OUTPUTS}
-  struct_test-thrift_python-target union_test-thrift_python-target
-  enum_test-thrift_python-target included-thrift_python-target
+  struct_test-python-target union_test-python-target
+  enum_test-python-target included-python-target
 )
 
 # Register thrift/test/thrift-python/ tests with ctest
@@ -1207,7 +1341,7 @@ add_custom_target(thrift_python_client_test_package ALL
   DEPENDS "${_fbthrift_client_test_dir}/__init__.py"
     ${CLIENT_TEST_SYMLINK_OUTPUTS}
   create_binding_symlink_thrift_python_client_test
-  test-thrift_python-target leaf-thrift_python-target
+  test-python-target leaf-python-target
 )
 
 # Register client tests with ctest
