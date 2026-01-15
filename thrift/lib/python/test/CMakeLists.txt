@@ -1138,6 +1138,37 @@ add_dependencies(thrift_python_test_package convertible_py_deprecated_symlink)
 # Add dependency on thrift.util symlink to fix namespace shadowing
 add_dependencies(thrift_python_test_package thrift_py_deprecated_symlinks)
 
+# Add dependencies on thrift generation targets
+add_dependencies(thrift_python_test_package
+  # Core test types (no namespace or namespace "testing")
+  testing-python-target
+  dependency-python-target
+  sub_dependency-python-target
+  base_service_only-python-target
+  injected_field-python-target
+  test_inject_metadata_fields-python-target
+  # py3/test types (no namespace)
+  binary-python-target
+  iobuf-python-target
+  derived-python-target
+  convertible-python-target
+  stack_args-python-target
+  schema_evolution_test-python-target
+  # py-deprecated asyncio tests
+  py_deprecated_asyncio_test-python-target
+  py_deprecated_asyncio_fallback_test-python-target
+  # python_test namespace
+  adapter-python-target
+  containers-python-target
+  enums-python-target
+  refs-python-target
+  maps-python-target
+  lists-python-target
+  sets-python-target
+  terse_write-python-target
+  enums_typedef_only-python-target
+)
+
 # Register each test file with ctest
 # Run as module to avoid sys.path[0] = test_dir shadowing
 
