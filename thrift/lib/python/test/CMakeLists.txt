@@ -74,24 +74,6 @@ thrift_library(
   NAMESPACE ""
 )
 
-# convertible.thrift - py-deprecated (generates ttypes.py for converter.py test)
-thrift_library(
-  "convertible"
-  ""
-  "py"
-  ""
-  "${PY3_TEST_THRIFT_DIR}"
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  ""
-  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE ""
-  TARGET_NAME_BASE "convertible_py_deprecated"
-)
-
-# NOTE: convertible.thrift py3 generator is NOT supported by thrift_library.
-# The py3 generator creates Cython code requiring separate compilation.
-# converter.py test is BLOCKED until py3/Cython support is added.
-
 # stack_args.thrift - no py3 namespace
 thrift_library(
   "stack_args"
@@ -195,21 +177,6 @@ thrift_library(
   NAMESPACE "testing"
 )
 
-# py_deprecated_asyncio_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
-# namespace py.asyncio testing.py_deprecated_asyncio_test
-thrift_library(
-  "py_deprecated_asyncio_test"
-  ""
-  "py"
-  "asyncio"
-  "${TEST_THRIFT_DIR}"
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  ""
-  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE "testing.py_deprecated_asyncio_test"
-  TARGET_NAME_BASE "py_deprecated_asyncio_test_py"
-)
-
 thrift_library(
   "py_deprecated_asyncio_fallback_test"
   ""
@@ -220,21 +187,6 @@ thrift_library(
   ""
   THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
   NAMESPACE "testing"
-)
-
-# py_deprecated_asyncio_fallback_test.thrift - py-deprecated (generates ttypes.py for converter.py test)
-# namespace py testing.py_deprecated_asyncio_fallback_test
-thrift_library(
-  "py_deprecated_asyncio_fallback_test"
-  ""
-  "py"
-  ""
-  "${TEST_THRIFT_DIR}"
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  ""
-  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE "testing.py_deprecated_asyncio_fallback_test"
-  TARGET_NAME_BASE "py_deprecated_asyncio_fallback_test_py"
 )
 
 thrift_library(
@@ -572,7 +524,6 @@ set(_cybld_suffix
   "build/lib.linux-${CMAKE_HOST_SYSTEM_PROCESSOR}-cpython-${_py_ver}")
 set(_cybld "${_cybld_base}/${_cybld_suffix}")
 set(_gen_python "${CMAKE_CURRENT_BINARY_DIR}/gen-python")
-set(_gen_py "${CMAKE_CURRENT_BINARY_DIR}/gen-py")
 
 # Helper function: create symlink from gen-python to cybld
 function(add_test_namespace_symlink name source_path target_path)
@@ -744,21 +695,6 @@ add_test_namespace_symlink(apache_thrift_metadata
   "${_gen_python}/apache/thrift/metadata"
   terse_write-thrift_python-target)
 
-# 11. Symlink py-deprecated files from gen-py to gen-python
-# for converter.py test
-# Problem: gen-python/convertible/ shadows gen-py/convertible/ in PYTHONPATH
-# Solution: symlink ttypes.py and constants.py into gen-python/convertible/
-add_custom_target(convertible_py_deprecated_symlink ALL
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_gen_py}/convertible/ttypes.py"
-    "${_gen_python}/convertible/ttypes.py"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_gen_py}/convertible/constants.py"
-    "${_gen_python}/convertible/constants.py"
-  DEPENDS convertible_py_deprecated-py-target convertible-thrift_python-target
-  COMMENT "Creating symlinks for py-deprecated files in gen-python/convertible/"
-)
-
 #####
 # Python Test Definitions
 #####
@@ -773,8 +709,6 @@ add_custom_target(convertible_py_deprecated_symlink ALL
 #
 # TEST_PYTHONPATH only needs:
 # - _gen_python: generated test thrift code (testing.thrift_types, etc.)
-# - _gen_py: py-deprecated generated code
-# - _thrift_py: py-deprecated runtime (thrift.Thrift, thrift.transport, etc.)
 # ==========================================================================
 
 # Install thrift wheel before running tests
@@ -798,9 +732,7 @@ add_custom_target(install_thrift_wheel ALL
 # With wheel-based approach for thrift, we need paths for:
 # - Thrift wheel install directory (thrift.python.*, thrift.py3.*, folly.*, etc.)
 # - Generated test thrift code (testing.thrift_types, etc.)
-# - py-deprecated runtime and generated code
 # Note: Folly Python bindings are now bundled into the thrift wheel
-set(_thrift_py "${CMAKE_INSTALL_PREFIX}/lib/fb-py-libs/thrift_py")
 # Note: Test modules are NOT in the wheel (removed by commit 1d87cfcfed).
 # - _cybld: Cython test extensions (.so files)
 # - _cybld_base: Pure Python test modules (adapters, etc.) - symlinked sources
@@ -808,37 +740,7 @@ string(CONCAT TEST_PYTHONPATH
   "${_thrift_wheel_install_dir}"
   ":${_cybld}"
   ":${_cybld_base}"
-  ":${_gen_python}"
-  ":${_gen_py}")
-
-# Symlink thrift.util from thrift_py INTO the wheel directory
-# Problem: py-deprecated imports like
-#   `from thrift.util.Recursive import ...` fail
-# because the thrift wheel doesn't include thrift.util
-# (it's a py-deprecated module)
-# Solution: symlink thrift_py/thrift/* into the wheel's thrift/ directory
-# This way py-deprecated modules are found when Python imports
-# from the wheel's thrift package
-#
-# IMPORTANT: Do NOT create gen-python/thrift/__init__.py - that would
-# shadow the wheel's thrift package, breaking imports like
-# thrift.python.abstract_types
-add_custom_target(thrift_py_deprecated_symlinks ALL
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_thrift_py}/thrift/util"
-    "${_thrift_wheel_install_dir}/thrift/util"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_thrift_py}/thrift/Thrift.py"
-    "${_thrift_wheel_install_dir}/thrift/Thrift.py"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_thrift_py}/thrift/protocol"
-    "${_thrift_wheel_install_dir}/thrift/protocol"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_thrift_py}/thrift/transport"
-    "${_thrift_wheel_install_dir}/thrift/transport"
-  COMMENT "Creating symlinks for py-deprecated modules in wheel directory"
-  DEPENDS install_thrift_wheel
-)
+  ":${_gen_python}")
 
 # ==========================================================================
 # SYMLINKS NO LONGER NEEDED - WHEEL APPROACH
@@ -966,12 +868,6 @@ list(APPEND TEST_SYMLINK_OUTPUTS "${_server_test_dst}")
 add_custom_target(thrift_python_test_package ALL
   DEPENDS "${_fbthrift_test_dir}/__init__.py" ${TEST_SYMLINK_OUTPUTS}
 )
-
-# Add dependency on py-deprecated symlinks for converter test
-add_dependencies(thrift_python_test_package convertible_py_deprecated_symlink)
-
-# Add dependency on thrift.util symlink to fix namespace shadowing
-add_dependencies(thrift_python_test_package thrift_py_deprecated_symlinks)
 
 # Register each test file with ctest
 # Run as module to avoid sys.path[0] = test_dir shadowing
