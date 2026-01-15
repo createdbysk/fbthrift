@@ -666,14 +666,17 @@ function(add_test_namespace_symlink name source_path target_path)
   add_custom_target(create_binding_symlink_${name} ALL
     DEPENDS ${ARGN} thrift_python_and_py3_bindings
   )
-  add_custom_command(
-    TARGET create_binding_symlink_${name}
-    PRE_BUILD
-    # First create the parent directory if it doesn't exist
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${target_parent_dir}"
-    # Then create the symlink
-    COMMAND ${CMAKE_COMMAND} -E create_symlink "${source_path}" "${target_path}"
-  )
+  # EXPERIMENT: Commenting out symlink creation to test if PEP 420 namespace
+  # package merging makes these symlinks redundant. Both _cybld and _gen_python
+  # are in PYTHONPATH, so Python should find modules from both directories.
+  # add_custom_command(
+  #   TARGET create_binding_symlink_${name}
+  #   PRE_BUILD
+  #   # First create the parent directory if it doesn't exist
+  #   COMMAND ${CMAKE_COMMAND} -E make_directory "${target_parent_dir}"
+  #   # Then create the symlink
+  #   COMMAND ${CMAKE_COMMAND} -E create_symlink "${source_path}" "${target_path}"
+  # )
 endfunction()
 
 # Helper function: create multiple symlinks for one target
@@ -687,14 +690,15 @@ function(add_symlink_command target_name source_path target_path)
   # Get the parent directory of the symlink target
   get_filename_component(target_parent_dir "${target_path}" DIRECTORY)
 
-  add_custom_command(
-    TARGET create_binding_symlink_${target_name}
-    PRE_BUILD
-    # First create the parent directory if it doesn't exist
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${target_parent_dir}"
-    # Then create the symlink
-    COMMAND ${CMAKE_COMMAND} -E create_symlink "${source_path}" "${target_path}"
-  )
+  # EXPERIMENT: Commenting out symlink creation (see add_test_namespace_symlink)
+  # add_custom_command(
+  #   TARGET create_binding_symlink_${target_name}
+  #   PRE_BUILD
+  #   # First create the parent directory if it doesn't exist
+  #   COMMAND ${CMAKE_COMMAND} -E make_directory "${target_parent_dir}"
+  #   # Then create the symlink
+  #   COMMAND ${CMAKE_COMMAND} -E create_symlink "${source_path}" "${target_path}"
+  # )
 endfunction()
 
 # 1. testing namespace -> cybld/testing
