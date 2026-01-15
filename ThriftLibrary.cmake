@@ -129,38 +129,22 @@ macro(thrift_library
   output_path
   include_prefix
 )
-  # For Python languages, just generate - no C++ library needed
-  if("${language}" STREQUAL "thrift_python" OR "${language}" STREQUAL "py")
-    thrift_generate(
-      "${file_name}"
-      "${services}"
-      "${language}"
-      "${options}"
-      "${file_path}"
-      "${output_path}"
-      "${include_prefix}"
-      ${ARGN}
-    )
-    message("Thrift will create the Python library : ${file_name}-${language}")
-  else()
-    # For C++ languages (cpp, cpp2, py3), create object and library
-    thrift_object(
-      "${file_name}"
-      "${services}"
-      "${language}"
-      "${options}"
-      "${file_path}"
-      "${output_path}"
-      "${include_prefix}"
-      ${ARGN}
-    )
-    add_library(
-      "${file_name}-${language}"
-      $<TARGET_OBJECTS:${file_name}-${language}-obj>
-    )
-    target_link_libraries("${file_name}-${language}" ${THRIFTCPP2})
-    message("Thrift will create the Library file : ${file_name}-${language}")
-  endif()
+  thrift_object(
+    "${file_name}"
+    "${services}"
+    "${language}"
+    "${options}"
+    "${file_path}"
+    "${output_path}"
+    "${include_prefix}"
+    ${ARGN}
+  )
+  add_library(
+    "${file_name}-${language}"
+    $<TARGET_OBJECTS:${file_name}-${language}-obj>
+  )
+  target_link_libraries("${file_name}-${language}" ${THRIFTCPP2})
+  message("Thrift will create the Library file : ${file_name}-${language}")
 endmacro()
 
 #
@@ -219,17 +203,9 @@ macro(thrift_generate
 )
   cmake_parse_arguments(THRIFT_GENERATE   # Prefix
     "" # Options
-    "TARGET_NAME_BASE;NAMESPACE" # One Value args
+    "TARGET_NAME_BASE" # One Value args
     "THRIFT_INCLUDE_DIRECTORIES" # Multi-value args
     "${ARGN}")
-
-  # Reject "python" - use "thrift_python" for modern Python or "py" for py-deprecated
-  if("${language}" STREQUAL "python")
-    message(FATAL_ERROR
-      "Language 'python' is not supported. Use 'thrift_python' for modern Python "
-      "bindings or 'py' for py-deprecated bindings."
-    )
-  endif()
 
   set(source_file_name ${file_name})
   set(target_file_name ${file_name})
@@ -289,11 +265,7 @@ macro(thrift_generate
   else()
     set(include_prefix_text "include_prefix=${include_prefix}")
     if(NOT "${options}" STREQUAL "")
-      # When options is provided, use comma separator
       set(include_prefix_text ",${include_prefix_text}")
-    else()
-      # When options is empty, we still need the colon separator for include_prefix
-      set(include_prefix_text ":${include_prefix_text}")
     endif()
   endif()
   set(gen_language ${language})
@@ -302,86 +274,12 @@ macro(thrift_generate
   elseif("${language}" STREQUAL "py3")
     set(gen_language "mstch_py3")
     file(WRITE "${output_path}/gen-${language}/${source_file_name}/__init__.py")
-  elseif("${language}" STREQUAL "thrift_python")
-    set(gen_language "mstch_python")
-    # Determine output subdirectory based on NAMESPACE parameter
-    # NAMESPACE should match the namespace py3 directive in the thrift file
-    if(DEFINED THRIFT_GENERATE_NAMESPACE AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
-      string(REPLACE "." "/" _namespace_dir "${THRIFT_GENERATE_NAMESPACE}")
-      set(_python_output_subdir "${_namespace_dir}/${source_file_name}")
-    else()
-      # No namespace means output directly to gen-python/<file_name>/
-      set(_python_output_subdir "${source_file_name}")
-    endif()
-    # Override the C++ file lists with Python file lists
-    set("${target_file_name}-${language}-HEADERS" "")
-    set("${target_file_name}-${language}-SOURCES"
-      ${output_path}/gen-${language}/${_python_output_subdir}/thrift_types.py
-      ${output_path}/gen-${language}/${_python_output_subdir}/thrift_types.pyi
-      ${output_path}/gen-${language}/${_python_output_subdir}/thrift_metadata.py
-      ${output_path}/gen-${language}/${_python_output_subdir}/thrift_enums.py
-      ${output_path}/gen-${language}/${_python_output_subdir}/thrift_abstract_types.py
-      ${output_path}/gen-${language}/${_python_output_subdir}/thrift_mutable_types.py
-      ${output_path}/gen-${language}/${_python_output_subdir}/thrift_mutable_types.pyi
-    )
-    # If there are services (passed as second param to thrift_generate), add service files
-    if(NOT "${services}" STREQUAL "")
-      list(APPEND "${target_file_name}-${language}-SOURCES"
-        ${output_path}/gen-${language}/${_python_output_subdir}/thrift_services.py
-        ${output_path}/gen-${language}/${_python_output_subdir}/thrift_clients.py
-        ${output_path}/gen-${language}/${_python_output_subdir}/thrift_mutable_services.py
-        ${output_path}/gen-${language}/${_python_output_subdir}/thrift_mutable_clients.py
-      )
-    endif()
-  elseif("${language}" STREQUAL "py")
-    # py-deprecated generator (legacy Python, generates ttypes.py)
-    # Use py:new_style for Python 3 compatibility
-    # Options are comma-separated (e.g., "py:new_style,asyncio")
-    if(NOT "${options}" STREQUAL "")
-      set(gen_language "py:new_style,${options}")
-      set(_skip_options TRUE)
-    else()
-      set(gen_language "py:new_style")
-      set(_skip_options FALSE)
-    endif()
-    # For py generator, namespace comes from the thrift file's "namespace py" directive
-    # Output goes to gen-py/<namespace>/ where namespace uses dots replaced by slashes
-    # If NAMESPACE is provided, use it; otherwise the thrift file's namespace is used
-    if(DEFINED THRIFT_GENERATE_NAMESPACE AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
-      string(REPLACE "." "/" _py_output_subdir "${THRIFT_GENERATE_NAMESPACE}")
-    else()
-      # No namespace means output directly to gen-py/<file_name>/
-      set(_py_output_subdir "${source_file_name}")
-    endif()
-    # Override the C++ file lists with py-deprecated file lists
-    set("${target_file_name}-${language}-HEADERS" "")
-    set("${target_file_name}-${language}-SOURCES"
-      ${output_path}/gen-${language}/${_py_output_subdir}/__init__.py
-      ${output_path}/gen-${language}/${_py_output_subdir}/ttypes.py
-      ${output_path}/gen-${language}/${_py_output_subdir}/constants.py
-    )
-    # If there are services, add service files
-    foreach(service ${services})
-      list(APPEND "${target_file_name}-${language}-SOURCES"
-        ${output_path}/gen-${language}/${_py_output_subdir}/${service}.py
-      )
-    endforeach()
-  endif()
-  # Build the generator options string
-  if(_skip_options)
-    set(_gen_options "")
-  else()
-    if(NOT "${options}" STREQUAL "")
-      set(_gen_options ":${options}")
-    else()
-      set(_gen_options "")
-    endif()
   endif()
   add_custom_command(
     OUTPUT ${${target_file_name}-${language}-HEADERS}
       ${${target_file_name}-${language}-SOURCES}
     COMMAND ${THRIFT1}
-      --gen "${gen_language}${_gen_options}${include_prefix_text}"
+      --gen "${gen_language}:${options}${include_prefix_text}"
       -o ${output_path}
       ${thrift_include_directories}
       "${file_path}/${source_file_name}.thrift"
