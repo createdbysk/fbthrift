@@ -765,6 +765,7 @@ add_custom_command(TARGET thrift_python_and_py3_bindings
     "LDFLAGS=${SETUP_LDFLAGS}"
     "CYTHON_INCLUDE_PATH=${cython_include_path}"
     "LIBRARY_DIRS=${library_dirs_str}"
+    "THRIFT_BUILD_TESTS=${THRIFT_BUILD_TESTS}"
     python3 ${_lib_dir}/setup.py -v
     bdist_wheel --libpython ${python_libname}
   WORKING_DIRECTORY ${_cybld}
