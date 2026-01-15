@@ -44,6 +44,9 @@ xxhash
 # specific configuration we rely on the folly manifest to provide this
 # dependency to avoid duplication.
 
+[dependencies.os=linux]
+libaio
+libevent
 
 [shipit.pathmap]
 xplat/thrift/public_tld = .

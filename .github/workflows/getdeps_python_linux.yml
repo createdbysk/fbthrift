@@ -641,6 +641,9 @@ jobs:
       with:
        path: ${{ steps.paths.outputs.wangle-python_INSTALL }}
        key: ${{ steps.paths.outputs.wangle-python_CACHE_KEY }}-install
+    - name: Build fbthrift-python
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. fbthrift-python --project-install-prefix fbthrift-python:/usr/local
+    - name: Copy artifacts
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --strip --src-dir=. fbthrift-python _artifacts/linux --project-install-prefix fbthrift-python:/usr/local --final-install-prefix /usr/local
     - uses: actions/upload-artifact@v6
       with:

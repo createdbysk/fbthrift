@@ -282,6 +282,24 @@ get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(
   glog_include_dirs glog::glog INTERFACE_INCLUDE_DIRECTORIES)
 
+set(_all_cython_includes
+  # Thrift includes
+  ${thrift_include_dirs}
+  ${CMAKE_BINARY_DIR}/thrift/lib
+  ${CMAKE_BINARY_DIR}/thrift/lib/cybld
+  # Folly includes (including .pxd files)
+  ${FOLLY_INCLUDE_DIR}
+  ${FOLLY_PYTHON_SITE_PACKAGES}
+  # Boost
+  ${Boost_INCLUDE_DIRS}
+  # Other dependencies
+  ${fmt_include_dirs}
+  ${wangle_incs}
+  ${glog_include_dirs}
+)
+
+list(JOIN _all_cython_includes ":" cython_include_path)
+
 # For setup.py build_ext -I flags
 set(inc_dirs "$<TARGET_PROPERTY:thrift,INCLUDE_DIRECTORIES>")
 list(JOIN wangle_incs ":" wangle_include_dirs)
