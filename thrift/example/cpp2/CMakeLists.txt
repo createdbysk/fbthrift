@@ -14,28 +14,6 @@
 
 PROJECT(ThriftTransport_CPP2_Example CXX)
 
-# Find all dependencies using correct patterns for Meta OSS libraries
-# All of these use CONFIG mode and provide namespaced targets
-find_package(folly CONFIG REQUIRED)   # Provides Folly::folly (capital F!)
-find_package(wangle CONFIG REQUIRED)  # Provides wangle::wangle
-find_package(fizz CONFIG REQUIRED)    # Provides fizz::fizz
-find_package(proxygen CONFIG REQUIRED) # Provides proxygen::proxygen, proxygen::proxygenhttpserver
-find_package(Glog REQUIRED)           # Provides glog::glog (MODULE mode)
-find_package(range-v3 REQUIRED)       # Header-only, provides range-v3::range-v3
-
-# gflags has compatibility layer - try CONFIG first, fallback to MODULE
-find_package(gflags CONFIG QUIET)
-if (gflags_FOUND)
-  if (TARGET gflags-shared)
-    set(GFLAGS_TARGET gflags-shared)
-  elseif (TARGET gflags)
-    set(GFLAGS_TARGET gflags)
-  endif()
-else()
-  find_package(Gflags REQUIRED MODULE)
-  set(GFLAGS_TARGET ${LIBGFLAGS_LIBRARY})
-endif()
-
 add_executable(
   example_server
 
@@ -47,18 +25,10 @@ add_executable(
 )
 target_link_libraries(
   example_server
-  PRIVATE
-    thriftcpp2
-    chatroom-cpp2
-    http2_routing
-    Folly::folly                 # Capital F!
-    wangle::wangle
-    fizz::fizz
-    proxygen::proxygen           # Use namespaced targets
-    proxygen::proxygenhttpserver
-    glog::glog
-    ${GFLAGS_TARGET}
-    range-v3::range-v3          # For MetadataExample.cpp includes
+  thriftcpp2
+  chatroom-cpp2
+  ${LIBGFLAGS_LIBRARY}
+  ${GLOG_LIBRARIES}
 )
 install(
   TARGETS example_server

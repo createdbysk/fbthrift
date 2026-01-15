@@ -76,7 +76,6 @@ find_package(Zstd REQUIRED)
 find_package(fizz CONFIG REQUIRED)
 find_package(wangle CONFIG REQUIRED)
 find_package(mvfst CONFIG REQUIRED)
-find_package(proxygen CONFIG REQUIRED)
 
 # ==========================================================================
 # Build DEPENDENCY_LIB_PATH for Python test LD_LIBRARY_PATH
@@ -115,9 +114,6 @@ get_filename_component(_mvfst_cmake_parent "${mvfst_DIR}" DIRECTORY)
 get_filename_component(_mvfst_lib_dir "${_mvfst_cmake_parent}" DIRECTORY)
 list(APPEND DEPENDENCY_LIB_DIRS "${_mvfst_lib_dir}")
 
-get_filename_component(_proxygen_cmake_parent "${proxygen_DIR}" DIRECTORY)
-get_filename_component(_proxygen_lib_dir "${_proxygen_cmake_parent}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_proxygen_lib_dir}")
 
 get_filename_component(_dc_lib_dir "${DOUBLE_CONVERSION_LIBRARY}" DIRECTORY)
 list(APPEND DEPENDENCY_LIB_DIRS "${_dc_lib_dir}")
@@ -301,30 +297,6 @@ string(CONCAT incs
 get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
 
 # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
-# Proxygen and mvfst include directories (for http2_helper in client tests)
-# Derive from cmake targets (found via find_package above) - not hardcoded paths
-get_target_property(proxygen_incs proxygen::proxygen INTERFACE_INCLUDE_DIRECTORIES)
-get_target_property(mvfst_incs mvfst::mvfst_transport INTERFACE_INCLUDE_DIRECTORIES)
-
-set(_all_cython_includes
-  # Thrift includes
-  ${thrift_include_dirs}
-  ${CMAKE_BINARY_DIR}/thrift/lib
-  ${CMAKE_BINARY_DIR}/thrift/lib/cybld
-  # Folly includes (including .pxd files)
-  ${FOLLY_INCLUDE_DIR}
-  ${FOLLY_PYTHON_SITE_PACKAGES}
-  # Boost
-  ${Boost_INCLUDE_DIRS}
-  # Other dependencies
-  ${fmt_include_dirs}
-  ${wangle_incs}
-  ${glog_include_dirs}
-  # Proxygen and mvfst (for http2_helper.pyx client tests)
-  ${proxygen_incs}
-  ${mvfst_incs}
-)
-list(JOIN _all_cython_includes ":" cython_include_path)
 log_debug("cython_include_path='${cython_include_path}'")
 
 #####################################################################

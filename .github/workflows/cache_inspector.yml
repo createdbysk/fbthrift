@@ -52,12 +52,6 @@ jobs:
           key: mvfst-python-linux-ubuntu-22.04-G2HFLuqCryF6j11jVDYxVNq0tViidTat10VyEF4WCis-install
           fail-on-cache-miss: false
 
-      - name: Restore proxygen-python cache
-        uses: actions/cache/restore@v4
-        with:
-          path: /tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed/proxygen-python
-          key: proxygen-python-linux-ubuntu-22.04-SFT5j8gJJFbwYrh5ulsvh0ghGGKQC3lQZPSYkLvx-XU-install
-          fail-on-cache-miss: false
 
       - name: Inspect cache contents
         run: |
@@ -66,7 +60,7 @@ jobs:
 
           BASE="/tmp/fbcode_builder_getdeps-ZhomeZrunnerZworkZfbthriftZfbthriftZbuildZfbcode_builder/installed"
 
-          for pkg in folly-python fizz-python wangle-python mvfst-python proxygen-python; do
+          for pkg in folly-python fizz-python wangle-python mvfst-python; do
             echo "========== $pkg =========="
             if [ -d "$BASE/$pkg" ]; then
               echo "--- lib/ contents ---"
