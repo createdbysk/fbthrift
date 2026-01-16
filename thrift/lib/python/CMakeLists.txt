@@ -15,8 +15,8 @@
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
 # Set FOLLY_INCLUDE_DIR for Cython .pxd file symlinking
-# folly CONFIG mode doesn't set this variable, but we need it for thrift/lib/CMakeLists.txt
-# Get it from the folly package's install prefix
+# folly CONFIG mode doesn't set this variable, but we need it for
+# thrift/lib/CMakeLists.txt. Get it from the folly package's install prefix.
 get_target_property(_folly_location Folly::folly LOCATION)
 get_filename_component(_folly_prefix "${_folly_location}" DIRECTORY)
 get_filename_component(_folly_prefix "${_folly_prefix}" DIRECTORY)
@@ -27,25 +27,33 @@ message(STATUS "FOLLY_INCLUDE_DIR set to: ${FOLLY_INCLUDE_DIR}")
 set(FOLLY_LIB_DIR "${_folly_prefix}/lib")
 message(STATUS "FOLLY_LIB_DIR set to: ${FOLLY_LIB_DIR}")
 
-# Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files (folly.pxd, iobuf.pxd, etc.)
-# These are separate from C++ headers and live in Python site-packages
-# Note: pip --prefix on Debian/Ubuntu installs to local/lib/pythonX.Y/dist-packages/
-# while setup.py install goes to lib/pythonX.Y/site-packages/
-# Check both locations to handle different folly build methods
-set(_folly_py_version "python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
-set(_folly_site_packages "${_folly_prefix}/lib/${_folly_py_version}/site-packages")
-set(_folly_dist_packages "${_folly_prefix}/local/lib/${_folly_py_version}/dist-packages")
+# Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files
+# (folly.pxd, iobuf.pxd, etc.)
+# These are separate from C++ headers and live in Python site-packages.
+# Note: pip --prefix on Debian/Ubuntu installs to
+# local/lib/pythonX.Y/dist-packages/ while setup.py install goes to
+# lib/pythonX.Y/site-packages/. Check both to handle different folly builds.
+set(_folly_py_version
+  "python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
+set(_folly_site_packages
+  "${_folly_prefix}/lib/${_folly_py_version}/site-packages")
+set(_folly_dist_packages
+  "${_folly_prefix}/local/lib/${_folly_py_version}/dist-packages")
 
 if(EXISTS "${_folly_site_packages}/folly")
   set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
-  message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES} (site-packages)")
+  message(STATUS
+    "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES}")
 elseif(EXISTS "${_folly_dist_packages}/folly")
   set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_dist_packages}")
-  message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES} (dist-packages)")
+  message(STATUS
+    "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES}")
 else()
   # Fallback to site-packages and hope it gets created later
   set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
-  message(WARNING "Neither folly site-packages nor dist-packages found. Using default: ${FOLLY_PYTHON_SITE_PACKAGES}")
+  message(WARNING
+    "Neither folly site-packages nor dist-packages found. "
+    "Using default: ${FOLLY_PYTHON_SITE_PACKAGES}")
 endif()
 
 
@@ -233,7 +241,8 @@ endfunction()
 
 # Helper function: recursively symlink all files from a source tree
 # to build directory. Calls symlink_dir_contents for each directory.
-# Optional ARGN: list of "relpath/filename" exclusions (e.g., "streaming/bidistream.cpp")
+# Optional ARGN: list of "relpath/filename" exclusions
+# (e.g., "streaming/bidistream.cpp")
 function(symlink_dir_recursive src_dir dest_base_dir)
   # Parse exclusion list from optional arguments
   set(_exclusion_list ${ARGN})
@@ -250,7 +259,9 @@ function(symlink_dir_recursive src_dir dest_base_dir)
     if(IS_DIRECTORY "${_src_dir}")
       file(RELATIVE_PATH _rel "${src_dir}" "${_src_dir}")
       get_exclusions_for_dir(_subdir_exclusions "${_rel}" ${_exclusion_list})
-      symlink_dir_contents("${src_dir}/${_rel}" "${dest_base_dir}/${_rel}" ${_subdir_exclusions})
+      symlink_dir_contents(
+        "${src_dir}/${_rel}" "${dest_base_dir}/${_rel}"
+        ${_subdir_exclusions})
     endif()
   endforeach()
 endfunction()
@@ -258,7 +269,9 @@ endfunction()
 # Symlink all python/ and py3/ source files recursively
 # Exclude streaming/bidistream.cpp - it's symlinked separately as Bidistream.cpp
 # to avoid Cython conflict (bidistream.pyx generates bidistream.cpp)
-symlink_dir_recursive("${CMAKE_CURRENT_SOURCE_DIR}" "${_cybld}/thrift/python" "streaming/bidistream.cpp")
+symlink_dir_recursive(
+  "${CMAKE_CURRENT_SOURCE_DIR}" "${_cybld}/thrift/python"
+  "streaming/bidistream.cpp")
 symlink_dir_recursive("${_lib_dir}/py3" "${_cybld}/thrift/py3")
 
 # Special case: bidistream.cpp needs to be symlinked with capital B to avoid
@@ -303,8 +316,10 @@ get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
 # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
 # Proxygen and mvfst include directories (for http2_helper in client tests)
 # Derive from cmake targets (found via find_package above) - not hardcoded paths
-get_target_property(proxygen_incs proxygen::proxygen INTERFACE_INCLUDE_DIRECTORIES)
-get_target_property(mvfst_incs mvfst::mvfst_transport INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(
+  proxygen_incs proxygen::proxygen INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(
+  mvfst_incs mvfst::mvfst_transport INTERFACE_INCLUDE_DIRECTORIES)
 
 set(_all_cython_includes
   # Thrift includes
@@ -784,7 +799,8 @@ add_custom_command(TARGET thrift_python_and_py3_bindings
   WORKING_DIRECTORY ${_cybld}
 )
 
-# Install the self-contained wheel to the install prefix for users to pip install
+# Install the self-contained wheel to the install prefix for users
+# to pip install
 # The wheel is processed by auditwheel to ${_cybld}/dist_self_contained/
 install(
   DIRECTORY "${_cybld}/dist_self_contained/"
