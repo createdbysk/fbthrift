@@ -29,7 +29,7 @@ CMAKE_POSITION_INDEPENDENT_CODE = ON
 BUILD_SHARED_LIBS = ON
 
 [dependencies]
-zlib
+zlib-python
 gperf
 folly-python
 fizz-python

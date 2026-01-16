@@ -34,8 +34,8 @@ BUILD_TESTS = OFF
 folly-python
 liboqs
 libsodium
-zlib
-zstd
+zlib-python
+zstd-python
 
 [dependencies.all(test=on, not(os=windows))]
 googletest
