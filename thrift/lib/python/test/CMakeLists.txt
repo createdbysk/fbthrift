@@ -17,16 +17,19 @@
 # Signal to setup.py that test extensions should be built
 set(THRIFT_BUILD_TESTS "1" PARENT_SCOPE)
 
-# Include ThriftLibrary macros (for standalone builds, CMAKE_MODULE_PATH must be set)
+# Include ThriftLibrary macros
+# (for standalone builds, CMAKE_MODULE_PATH must be set)
 include(ThriftLibrary OPTIONAL)
 
 #
 # thrift_library_for_test
-# Generate thrift code for Python languages (thrift-python and py-deprecated).
-# This is a test-local function that avoids modifying the public ThriftLibrary.cmake.
+# Generate thrift code for Python languages (thrift-python and
+# py-deprecated). This is a test-local function that avoids modifying
+# the public ThriftLibrary.cmake.
 #
 # Parameters match thrift_library() for easy migration:
-#   file_name, services, language, options, file_path, output_path, include_prefix
+#   file_name, services, language, options, file_path, output_path,
+#   include_prefix
 #   THRIFT_INCLUDE_DIRECTORIES (optional)
 #   NAMESPACE (optional)
 #
@@ -47,7 +50,8 @@ function(thrift_library_for_test
 
   set(source_file_name ${file_name})
   set(target_file_name ${file_name})
-  if(DEFINED THRIFT_GENERATE_TARGET_NAME_BASE AND NOT THRIFT_GENERATE_TARGET_NAME_BASE STREQUAL "")
+  if(DEFINED THRIFT_GENERATE_TARGET_NAME_BASE
+      AND NOT THRIFT_GENERATE_TARGET_NAME_BASE STREQUAL "")
     set(target_file_name ${THRIFT_GENERATE_TARGET_NAME_BASE})
   endif()
 
@@ -63,7 +67,8 @@ function(thrift_library_for_test
     set(gen_dir "gen-python")
 
     # Determine output subdirectory based on NAMESPACE
-    if(DEFINED THRIFT_GENERATE_NAMESPACE AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
+    if(DEFINED THRIFT_GENERATE_NAMESPACE
+        AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
       string(REPLACE "." "/" _namespace_dir "${THRIFT_GENERATE_NAMESPACE}")
       set(_output_subdir "${_namespace_dir}/${source_file_name}")
     else()
@@ -96,39 +101,6 @@ function(thrift_library_for_test
       set(_gen_options "")
     endif()
 
-  elseif("${language}" STREQUAL "py")
-    # py-deprecated (py:new_style generator)
-    set(gen_dir "gen-py")
-
-    # Build generator string with new_style
-    if(NOT "${options}" STREQUAL "")
-      set(gen_language "py:new_style,${options}")
-    else()
-      set(gen_language "py:new_style")
-    endif()
-    set(_gen_options "")
-
-    # Determine output subdirectory
-    if(DEFINED THRIFT_GENERATE_NAMESPACE AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
-      string(REPLACE "." "/" _output_subdir "${THRIFT_GENERATE_NAMESPACE}")
-    else()
-      set(_output_subdir "${source_file_name}")
-    endif()
-
-    # py-deprecated output files
-    set(_sources
-      ${output_path}/${gen_dir}/${_output_subdir}/__init__.py
-      ${output_path}/${gen_dir}/${_output_subdir}/ttypes.py
-      ${output_path}/${gen_dir}/${_output_subdir}/constants.py
-    )
-    foreach(service ${services})
-      list(APPEND _sources
-        ${output_path}/${gen_dir}/${_output_subdir}/${service}.py
-      )
-    endforeach()
-
-  else()
-    message(FATAL_ERROR "thrift_library_for_test: unsupported language '${language}'. Use 'python' or 'py'.")
   endif()
 
   # Add custom command to generate thrift code
@@ -906,20 +878,27 @@ set(_gen_python "${CMAKE_CURRENT_BINARY_DIR}/gen-python")
 # Use CMAKE_BINARY_DIR (top-level build dir) for absolute path
 # to avoid fragile relative paths
 # Use --target to install to a known directory that we add to TEST_PYTHONPATH
-set(_thrift_wheel_dir "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist_self_contained")
+set(_thrift_wheel_dir
+  "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist_self_contained")
 set(_thrift_wheel_install_dir
   "${CMAKE_BINARY_DIR}/thrift/lib/thrift_wheel_pythonpath")
 # Note: auditwheel may change the wheel platform tag, so we use a shell glob
+set(_pip_install_cmd
+  "${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps"
+  " --target '${_thrift_wheel_install_dir}'"
+  " '${_thrift_wheel_dir}'/thrift-0.0.1-*.whl")
 add_custom_target(install_thrift_wheel ALL
   DEPENDS thrift_python_and_py3_bindings
-  COMMAND bash -c "${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps --target '${_thrift_wheel_install_dir}' '${_thrift_wheel_dir}'/thrift-0.0.1-*.whl"
-  COMMAND ${Python3_EXECUTABLE} -m pip install --target "${_thrift_wheel_install_dir}" parameterized
+  COMMAND bash -c "${_pip_install_cmd}"
+  COMMAND ${Python3_EXECUTABLE} -m pip install
+    --target "${_thrift_wheel_install_dir}" parameterized
   COMMENT "Installing thrift wheel and test dependencies"
 )
 
 # Build PYTHONPATH for tests
 # With wheel-based approach for thrift, we need paths for:
-# - Thrift wheel install directory (thrift.python.*, thrift.py3.*, folly.*, etc.)
+# - Thrift wheel install directory
+#   (thrift.python.*, thrift.py3.*, folly.*, etc.)
 # - Generated test thrift code (testing.thrift_types, etc.)
 # Note: Folly Python bindings are now bundled into the thrift wheel
 # Note: Test modules are NOT in the wheel (removed by commit 1d87cfcfed).
