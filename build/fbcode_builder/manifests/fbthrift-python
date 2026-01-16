@@ -45,9 +45,11 @@ xxhash
 # dependency to avoid duplication.
 
 [dependencies.os=linux]
+cython
 libaio
 libevent-python
 proxygen-python
+python-auditwheel
 
 [shipit.pathmap]
 xplat/thrift/public_tld = .

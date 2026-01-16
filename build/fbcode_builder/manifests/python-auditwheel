@@ -1,0 +1,21 @@
+[manifest]
+name = python-auditwheel
+
+[debs]
+auditwheel
+
+[rpms]
+auditwheel
+
+[homebrew]
+auditwheel
+
+[download]
+url = https://files.pythonhosted.org/packages/7b/ed/342df5a75589103d72402dcdd88d7b8cc2df338fbc39042ce1b3ac008960/auditwheel-6.6.0.tar.gz
+sha256 = 277f3b315ad0b04df0a2be2d126c3fd39930bc265df0f9589d78c970ff06f52b
+
+[build]
+builder = python-install
+
+[dependencies]
+python-setuptools
