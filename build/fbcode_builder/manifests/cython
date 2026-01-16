@@ -16,6 +16,7 @@ sha256 = 84226ecd313b233da27dc2eb3601b4f222b8209c3a7216d8733b031da1dc64e6
 
 [build]
 builder = setup-py
+subdir = cython-3.2.4
 
 [dependencies]
 python-setuptools
