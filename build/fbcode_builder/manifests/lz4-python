@@ -1,5 +1,5 @@
 [manifest]
-name = lz4
+name = lz4-python
 
 [homebrew]
 lz4
@@ -23,3 +23,6 @@ sha256 = 537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b
 [build]
 builder = cmake
 subdir = lz4-1.10.0/build/cmake
+
+[cmake.defines]
+CMAKE_POSITION_INDEPENDENT_CODE=ON
