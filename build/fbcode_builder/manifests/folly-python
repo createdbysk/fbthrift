@@ -19,15 +19,15 @@ gflags
 glog
 googletest
 boost-python
-libdwarf
-libevent
+libdwarf-python
+libevent-python
 libsodium
-double-conversion
+double-conversion-python
 fast_float
-fmt
-lz4
+fmt-python
+lz4-python
 snappy
-zstd
+zstd-python
 # no openssl or zlib in the linux case, why?
 # these are usually installed on the system
 # and are the easiest system deps to pull in.
