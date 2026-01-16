@@ -313,7 +313,8 @@ else:
             "thrift.python.streaming.bidistream",
             sources=[
                 "thrift/python/streaming/bidistream.pyx",
-                "thrift/python/streaming/Bidistream.cpp",  # Capital B to avoid Cython conflict
+                # Capital B to avoid Cython conflict
+                "thrift/python/streaming/Bidistream.cpp",
             ],
             **common_options,
         ),
@@ -340,7 +341,8 @@ else:
         ),
         # NOTE: thrift.python.server.* submodule extensions are NOT built here.
         # They would conflict with the thrift.python.server extension module (.so).
-        # All imports use thrift.python.server_impl.* instead (see server.pyx, py3/server.pyx).
+        # All imports use thrift.python.server_impl.* instead
+        # (see server.pyx, py3/server.pyx).
         # thrift.python.server_impl extension modules
         Extension(
             "thrift.python.server_impl.async_processor",
@@ -429,8 +431,12 @@ else:
     if os.environ.get("THRIFT_BUILD_TESTS", "0") == "1":
         test_extensions = [
             Extension(
-                "thrift.python.test.request_context_extractor.request_context_extractor",
-                sources=["thrift/python/test/request_context_extractor/request_context_extractor.pyx"],
+                "thrift.python.test.request_context_extractor"
+                ".request_context_extractor",
+                sources=[
+                    "thrift/python/test/request_context_extractor"
+                    "/request_context_extractor.pyx"
+                ],
                 **common_options,
             ),
             Extension(
@@ -454,7 +460,8 @@ else:
                 sources=["thrift/python/client/test/exceptions_helper.pyx"],
                 **common_options,
             ),
-            # client/test Cython helpers (thrift.lib.python.* namespace for test imports)
+            # client/test Cython helpers
+            # (thrift.lib.python.* namespace for test imports)
             Extension(
                 "thrift.lib.python.client.test.event_handler_helper",
                 sources=["thrift/lib/python/client/test/event_handler_helper.pyx"],
@@ -467,7 +474,11 @@ else:
             ),
             Extension(
                 "thrift.lib.python.client.test.client_event_handler.helper",
-                sources=["thrift/lib/python/client/test/client_event_handler/helper.pyx"],  # singular dir via symlink
+                # singular dir via symlink
+                sources=[
+                    "thrift/lib/python/client/test/client_event_handler"
+                    "/helper.pyx"
+                ],
                 **common_options,
             ),
             # event_handlers/helper extension for client_server tests
@@ -484,7 +495,11 @@ else:
                 language="c++",
                 include_dirs=include_dirs,
                 library_dirs=lib_search_paths,
-                libraries=dynamic_libs + ["proxygen", "proxygenhttpserver"] + [python_lib],
+                libraries=(
+                    dynamic_libs
+                    + ["proxygen", "proxygenhttpserver"]
+                    + [python_lib]
+                ),
                 extra_compile_args=["-std=c++20", "-fcoroutines"],
                 extra_link_args=extra_link_args,
             ),
@@ -492,7 +507,10 @@ else:
             # Uses header-only C++ implementation in metadata_response.h
             Extension(
                 "thrift.lib.python.test.metadata_response.metadata_response",
-                sources=["thrift/lib/python/test/metadata_response/metadata_response.pyx"],
+                sources=[
+                    "thrift/lib/python/test/metadata_response"
+                    "/metadata_response.pyx"
+                ],
                 **common_options,
             ),
         ]
@@ -502,7 +520,10 @@ else:
         missing_names = {ext.name for ext in test_extensions if ext not in available}
 
         if missing_names:
-            print(f"WARNING: THRIFT_BUILD_TESTS=1 but {len(missing_names)} test extension(s) missing source files:")
+            print(
+                f"WARNING: THRIFT_BUILD_TESTS=1 but {len(missing_names)} "
+                "test extension(s) missing source files:"
+            )
             for name in sorted(missing_names):
                 print(f"  - {name}")
 
