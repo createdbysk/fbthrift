@@ -1,11 +1,8 @@
 [manifest]
 name = boost-python
 
-[debs]
-python3-dev
-
-[rpms]
-python3-devel
+[dependencies]
+python
 
 [download.not(os=windows)]
 url = https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.gz
