@@ -32,12 +32,12 @@ enable_tests=ON
 
 [dependencies]
 fizz-python
-fmt
+fmt-python
 folly-python
 googletest
 libsodium
 wangle-python
-zstd
+zstd-python
 mvfst-python
 xxhash
 # Thrift also depends on openssl but since the latter requires a platform-
@@ -46,7 +46,7 @@ xxhash
 
 [dependencies.os=linux]
 libaio
-libevent
+libevent-python
 proxygen-python
 
 [shipit.pathmap]
