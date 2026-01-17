@@ -49,7 +49,7 @@ zlib
 
 [dependencies.os=linux]
 libaio
-libiberty
+libiberty-python
 libunwind
 
 # xz depends on autoconf which does not build on
