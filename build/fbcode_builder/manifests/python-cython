@@ -11,12 +11,11 @@ Cython
 cython
 
 [download]
-url = https://files.pythonhosted.org/packages/91/85/7574c9cd44b69a27210444b6650f6477f56c75fee1b70d7672d3e4166167/cython-3.2.4.tar.gz
-sha256 = 84226ecd313b233da27dc2eb3601b4f222b8209c3a7216d8733b031da1dc64e6
+url = https://files.pythonhosted.org/packages/ff/fa/d3c15189f7c52aaefbaea76fb012119b04b9013f4bf446cb4eb4c26c4e6b/cython-3.2.4-py3-none-any.whl
+sha256 = 732fc93bc33ae4b14f6afaca663b916c2fdd5dcbfad7114e17fb2434eeaea45c
 
 [build]
-builder = setup-py
-subdir = cython-3.2.4
+builder = python-wheel
 
 [dependencies]
 python-setuptools
