@@ -45,7 +45,7 @@ xxhash
 # dependency to avoid duplication.
 
 [dependencies.os=linux]
-cython
+python-cython
 libaio
 libevent-python
 proxygen-python

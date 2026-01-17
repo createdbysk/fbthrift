@@ -48,7 +48,7 @@ openssl
 zlib
 
 [dependencies.os=linux]
-cython
+python-cython
 libaio
 libiberty
 libunwind

@@ -1,5 +1,5 @@
 [manifest]
-name = cython
+name = python-cython
 
 [debs]
 cython3
