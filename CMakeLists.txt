@@ -20,7 +20,6 @@ if (NOT DEFINED PACKAGE_VERSION)
 endif ()
 project(THRIFT VERSION ${PACKAGE_VERSION} LANGUAGES CXX)
 
-# Enable testing early so tests registered in subdirectories are visible to ctest
 enable_testing()
 
 if (NOT DEFINED CPACK_GENERATOR)
