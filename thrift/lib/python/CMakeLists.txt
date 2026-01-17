@@ -14,17 +14,36 @@
 
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
-# Set FOLLY_INCLUDE_DIR for Cython .pxd file symlinking
-# folly CONFIG mode doesn't set this variable, but we need it for thrift/lib/CMakeLists.txt
-# Get it from the folly package's install prefix
-get_target_property(_folly_location Folly::folly LOCATION)
-get_filename_component(_folly_prefix "${_folly_location}" DIRECTORY)
-get_filename_component(_folly_prefix "${_folly_prefix}" DIRECTORY)
-set(FOLLY_INCLUDE_DIR "${_folly_prefix}/include")
+# Get folly include directory for Cython include path
+# Used by setup.py to locate folly .pxd files during Cython compilation
+get_target_property(FOLLY_INCLUDE_DIR Folly::folly INTERFACE_INCLUDE_DIRECTORIES)
+# INTERFACE_INCLUDE_DIRECTORIES may return a list; take the first entry
+list(GET FOLLY_INCLUDE_DIR 0 FOLLY_INCLUDE_DIR)
 message(STATUS "FOLLY_INCLUDE_DIR set to: ${FOLLY_INCLUDE_DIR}")
 
+# Get folly prefix for lib directory and Python site-packages
+get_target_property(_folly_location Folly::folly IMPORTED_LOCATION)
+if(NOT _folly_location)
+  get_target_property(_folly_location Folly::folly IMPORTED_LOCATION_RELEASE)
+endif()
+if(NOT _folly_location)
+  get_target_property(
+    _folly_location Folly::folly IMPORTED_LOCATION_RELWITHDEBINFO
+  )
+endif()
+if(NOT _folly_location)
+  message(
+    FATAL_ERROR
+    "Could not find Folly::folly IMPORTED_LOCATION. "
+    "Tried IMPORTED_LOCATION, IMPORTED_LOCATION_RELEASE, "
+    "IMPORTED_LOCATION_RELWITHDEBINFO."
+  )
+endif()
+get_filename_component(_folly_lib_dir "${_folly_location}" DIRECTORY)
+get_filename_component(_folly_prefix "${_folly_lib_dir}" DIRECTORY)
+
 # Set FOLLY_LIB_DIR for LD_LIBRARY_PATH in tests
-set(FOLLY_LIB_DIR "${_folly_prefix}/lib")
+set(FOLLY_LIB_DIR "${_folly_lib_dir}")
 message(STATUS "FOLLY_LIB_DIR set to: ${FOLLY_LIB_DIR}")
 
 # Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files (folly.pxd, iobuf.pxd, etc.)
