@@ -1,12 +1,14 @@
 [manifest]
 name = libevent
 
-# NOTE: System packages (debs, rpms) removed because they don't include
-# LibeventConfig.cmake which is required by find_package(Libevent REQUIRED CONFIG).
-# Building from source ensures CMake config files are present.
+[debs]
+libevent-dev
 
 [homebrew]
 libevent
+
+[rpms]
+libevent-devel
 
 [pps]
 libevent
@@ -28,7 +30,6 @@ EVENT__DISABLE_TESTS = ON
 EVENT__DISABLE_BENCHMARK = ON
 EVENT__DISABLE_SAMPLES = ON
 EVENT__DISABLE_REGRESS = ON
-CMAKE_POSITION_INDEPENDENT_CODE=ON
 
 [cmake.defines.shared_libs=on]
 EVENT__BUILD_SHARED_LIBRARIES = ON
