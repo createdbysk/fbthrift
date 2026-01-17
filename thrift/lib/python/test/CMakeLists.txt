@@ -51,7 +51,6 @@ function(thrift_library_for_test
     set(target_file_name ${THRIFT_GENERATE_TARGET_NAME_BASE})
   endif()
 
-  # Build include directories list
   set(thrift_include_directories)
   foreach(dir ${THRIFT_GENERATE_THRIFT_INCLUDE_DIRECTORIES})
     list(APPEND thrift_include_directories "-I" "${dir}")
@@ -62,7 +61,6 @@ function(thrift_library_for_test
     set(gen_language "mstch_python")
     set(gen_dir "gen-python")
 
-    # Determine output subdirectory based on NAMESPACE
     if(DEFINED THRIFT_GENERATE_NAMESPACE AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
       string(REPLACE "." "/" _namespace_dir "${THRIFT_GENERATE_NAMESPACE}")
       set(_output_subdir "${_namespace_dir}/${source_file_name}")
@@ -70,7 +68,6 @@ function(thrift_library_for_test
       set(_output_subdir "${source_file_name}")
     endif()
 
-    # Python output files
     set(_sources
       ${output_path}/${gen_dir}/${_output_subdir}/thrift_types.py
       ${output_path}/${gen_dir}/${_output_subdir}/thrift_types.pyi
@@ -89,7 +86,6 @@ function(thrift_library_for_test
       )
     endif()
 
-    # Build generator options
     if(NOT "${options}" STREQUAL "")
       set(_gen_options ":${options}")
     else()
@@ -100,7 +96,6 @@ function(thrift_library_for_test
     # py-deprecated (py:new_style generator)
     set(gen_dir "gen-py")
 
-    # Build generator string with new_style
     if(NOT "${options}" STREQUAL "")
       set(gen_language "py:new_style,${options}")
     else()
@@ -108,14 +103,12 @@ function(thrift_library_for_test
     endif()
     set(_gen_options "")
 
-    # Determine output subdirectory
     if(DEFINED THRIFT_GENERATE_NAMESPACE AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
       string(REPLACE "." "/" _output_subdir "${THRIFT_GENERATE_NAMESPACE}")
     else()
       set(_output_subdir "${source_file_name}")
     endif()
 
-    # py-deprecated output files
     set(_sources
       ${output_path}/${gen_dir}/${_output_subdir}/__init__.py
       ${output_path}/${gen_dir}/${_output_subdir}/ttypes.py
@@ -131,7 +124,6 @@ function(thrift_library_for_test
     message(FATAL_ERROR "thrift_library_for_test: unsupported language '${language}'. Use 'python' or 'py'.")
   endif()
 
-  # Add custom command to generate thrift code
   add_custom_command(
     OUTPUT ${_sources}
     COMMAND ${THRIFT1}
@@ -145,7 +137,6 @@ function(thrift_library_for_test
     COMMENT "Generating ${target_file_name} ${language} files"
   )
 
-  # Add custom target
   add_custom_target(
     ${target_file_name}-${language}-target ALL
     DEPENDS ${_sources}
@@ -1033,7 +1024,6 @@ add_custom_command(
 )
 list(APPEND TEST_SYMLINK_OUTPUTS "${_server_test_dst}")
 
-# Target to create all test symlinks
 add_custom_target(thrift_python_test_package ALL
   DEPENDS "${_fbthrift_test_dir}/__init__.py" ${TEST_SYMLINK_OUTPUTS}
 )
@@ -1110,7 +1100,6 @@ add_custom_command(
   COMMENT "Creating thrift_test_thrift_python_tests package directory"
 )
 
-# Test files from thrift/test/thrift-python/
 set(THRIFT_TEST_THRIFT_PYTHON_TEST_FILES
   abstract_types_test.py
   enum_test.py
@@ -1119,7 +1108,6 @@ set(THRIFT_TEST_THRIFT_PYTHON_TEST_FILES
   union_test.py
 )
 
-# Create symlinks for thrift/test/thrift-python/ test files
 set(THRIFT_TEST_SYMLINK_OUTPUTS "")
 foreach(test_file ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
   set(_src "${THRIFT_TEST_THRIFT_PYTHON_DIR}/${test_file}")
@@ -1133,14 +1121,12 @@ foreach(test_file ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
   )
 endforeach()
 
-# Target to create all thrift/test/thrift-python/ test symlinks
 add_custom_target(thrift_test_thrift_python_test_package ALL
   DEPENDS "${_thrift_test_tests_dir}/__init__.py" ${THRIFT_TEST_SYMLINK_OUTPUTS}
   struct_test-python-target union_test-python-target
   enum_test-python-target included-python-target
 )
 
-# Register thrift/test/thrift-python/ tests with ctest
 foreach(test_file ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
@@ -1252,7 +1238,6 @@ set(CLIENT_TEST_HELPERS
   test_server.py
 )
 
-# Create symlinks for client test files
 set(CLIENT_TEST_SYMLINK_OUTPUTS "")
 foreach(test_file ${CLIENT_TEST_FILES} ${CLIENT_TEST_HELPERS})
   set(_src "${CLIENT_TEST_DIR}/${test_file}")
@@ -1266,14 +1251,12 @@ foreach(test_file ${CLIENT_TEST_FILES} ${CLIENT_TEST_HELPERS})
   )
 endforeach()
 
-# Target to create all client test symlinks
 add_custom_target(thrift_python_client_test_package ALL
   DEPENDS "${_fbthrift_client_test_dir}/__init__.py"
     ${CLIENT_TEST_SYMLINK_OUTPUTS}
   test-python-target leaf-python-target
 )
 
-# Register client tests with ctest
 foreach(test_file ${CLIENT_TEST_FILES})
   get_filename_component(test_name ${test_file} NAME_WE)
   add_test(
