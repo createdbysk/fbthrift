@@ -48,24 +48,19 @@ message(STATUS "FOLLY_LIB_DIR set to: ${FOLLY_LIB_DIR}")
 
 # Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files (folly.pxd, iobuf.pxd, etc.)
 # These are separate from C++ headers and live in Python site-packages
-# Note: pip --prefix on Debian/Ubuntu installs to local/lib/pythonX.Y/dist-packages/
-# while setup.py install goes to lib/pythonX.Y/site-packages/
-# Check both locations to handle different folly build methods
+# folly uses "pip install --prefix" which installs to lib/pythonX.Y/site-packages/
 set(_folly_py_version "python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
-set(_folly_site_packages "${_folly_prefix}/lib/${_folly_py_version}/site-packages")
-set(_folly_dist_packages "${_folly_prefix}/local/lib/${_folly_py_version}/dist-packages")
-
-if(EXISTS "${_folly_site_packages}/folly")
-  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
-  message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES} (site-packages)")
-elseif(EXISTS "${_folly_dist_packages}/folly")
-  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_dist_packages}")
-  message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES} (dist-packages)")
-else()
-  # Fallback to site-packages and hope it gets created later
-  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
-  message(WARNING "Neither folly site-packages nor dist-packages found. Using default: ${FOLLY_PYTHON_SITE_PACKAGES}")
+set(FOLLY_PYTHON_SITE_PACKAGES
+  "${_folly_prefix}/lib/${_folly_py_version}/site-packages"
+)
+if(NOT EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}/folly")
+  message(
+    FATAL_ERROR
+    "Folly Python package not found at ${FOLLY_PYTHON_SITE_PACKAGES}/folly. "
+    "Ensure folly was built with PYTHON_EXTENSIONS=ON."
+  )
 endif()
+message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES}")
 
 
 # Compatibility shims for code expecting old variable names
