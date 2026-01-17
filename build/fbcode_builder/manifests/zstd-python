@@ -25,6 +25,9 @@ sha256 = 9c4396cc829cfae319a6e2615202e82aad41372073482fce286fac78646d3ee4
 builder = cmake
 subdir = zstd-1.5.5/build/cmake
 
+[build.not(os=linux)]
+builder = nop
+
 # The zstd cmake build explicitly sets the install name
 # for the shared library in such a way that cmake discards
 # the path to the library from the install_name, rendering
