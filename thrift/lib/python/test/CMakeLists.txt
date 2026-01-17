@@ -832,7 +832,7 @@ set(_thrift_wheel_dir
 set(_thrift_wheel_install_dir
   "${CMAKE_BINARY_DIR}/thrift/lib/thrift_wheel_pythonpath")
 # Note: auditwheel may change the wheel platform tag, so we use a shell glob
-set(_pip_install_cmd
+string(CONCAT _pip_install_cmd
   "${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps"
   " --target '${_thrift_wheel_install_dir}'"
   " '${_thrift_wheel_dir}'/thrift-0.0.1-*.whl")
