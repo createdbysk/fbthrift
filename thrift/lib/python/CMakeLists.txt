@@ -41,20 +41,26 @@ message(STATUS "FOLLY_LIB_DIR: ${FOLLY_LIB_DIR}")
 
 # Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files (folly.pxd, iobuf.pxd, etc.)
 # These are separate from C++ headers and live in Python site-packages
-# folly uses "pip install --prefix" which installs to lib/pythonX.Y/site-packages/
-# FOLLY_PREFIX_DIR is exported by folly-config.cmake
+# Note: pip --prefix on Debian/Ubuntu installs to local/lib/pythonX.Y/dist-packages/
+# while setup.py install goes to lib/pythonX.Y/site-packages/
+# Check both locations to handle different folly build methods
 set(_folly_py_version "python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
-set(FOLLY_PYTHON_SITE_PACKAGES
-  "${FOLLY_PREFIX_DIR}/lib/${_folly_py_version}/site-packages"
-)
-if(NOT EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}/folly")
-  message(
-    WARNING
-    "Folly Python package not found at ${FOLLY_PYTHON_SITE_PACKAGES}/folly. "
-    "Cython compilation may fail if folly .pxd files are missing."
+set(_folly_site_packages "${FOLLY_PREFIX_DIR}/lib/${_folly_py_version}/site-packages")
+set(_folly_dist_packages "${FOLLY_PREFIX_DIR}/local/lib/${_folly_py_version}/dist-packages")
+
+if(EXISTS "${_folly_site_packages}/folly")
+  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
+  message(STATUS "FOLLY_PYTHON_SITE_PACKAGES: ${FOLLY_PYTHON_SITE_PACKAGES} (site-packages)")
+elseif(EXISTS "${_folly_dist_packages}/folly")
+  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_dist_packages}")
+  message(STATUS "FOLLY_PYTHON_SITE_PACKAGES: ${FOLLY_PYTHON_SITE_PACKAGES} (dist-packages)")
+else()
+  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
+  message(WARNING
+    "Folly Python package not found at ${_folly_site_packages}/folly or "
+    "${_folly_dist_packages}/folly. Cython compilation may fail."
   )
 endif()
-message(STATUS "FOLLY_PYTHON_SITE_PACKAGES: ${FOLLY_PYTHON_SITE_PACKAGES}")
 
 
 find_package(Cython 0.28 REQUIRED)
