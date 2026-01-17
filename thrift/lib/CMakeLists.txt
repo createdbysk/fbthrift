@@ -24,12 +24,12 @@ add_subdirectory(cpp2)
 if(thrift_python)
   add_subdirectory(python)
 endif()
-# DEPRECATED: thriftpy is deprecated on Linux. Use thrift_python instead.
+# DEPRECATED: thriftpy is deprecated. On Linux, use thrift_python instead.
 if(thriftpy)
   add_subdirectory(py)
 endif()
 
-# DEPRECATED: thriftpy3 is deprecated on Linux. Use thrift_python instead.
+# DEPRECATED: thriftpy3 is deprecated. On Linux, use thrift_python instead.
 if(thriftpy3)
   set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
   file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
