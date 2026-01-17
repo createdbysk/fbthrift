@@ -4,8 +4,6 @@ name: python-Linux
 
 on:
   push:
-    branches:
-    - main
   pull_request:
     branches:
     - main
