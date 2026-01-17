@@ -14,14 +14,11 @@
 
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
-# Get folly include directory for Cython include path
+# FOLLY_INCLUDE_DIR is exported by folly-config.cmake (set by find_package)
 # Used by setup.py to locate folly .pxd files during Cython compilation
-get_target_property(FOLLY_INCLUDE_DIR Folly::folly INTERFACE_INCLUDE_DIRECTORIES)
-# INTERFACE_INCLUDE_DIRECTORIES may return a list; take the first entry
-list(GET FOLLY_INCLUDE_DIR 0 FOLLY_INCLUDE_DIR)
-message(STATUS "FOLLY_INCLUDE_DIR set to: ${FOLLY_INCLUDE_DIR}")
+message(STATUS "FOLLY_INCLUDE_DIR: ${FOLLY_INCLUDE_DIR}")
 
-# Get folly prefix for lib directory and Python site-packages
+# Get folly lib directory from IMPORTED_LOCATION for LD_LIBRARY_PATH
 get_target_property(_folly_location Folly::folly IMPORTED_LOCATION)
 if(NOT _folly_location)
   get_target_property(_folly_location Folly::folly IMPORTED_LOCATION_RELEASE)
@@ -39,28 +36,25 @@ if(NOT _folly_location)
     "IMPORTED_LOCATION_RELWITHDEBINFO."
   )
 endif()
-get_filename_component(_folly_lib_dir "${_folly_location}" DIRECTORY)
-get_filename_component(_folly_prefix "${_folly_lib_dir}" DIRECTORY)
-
-# Set FOLLY_LIB_DIR for LD_LIBRARY_PATH in tests
-set(FOLLY_LIB_DIR "${_folly_lib_dir}")
-message(STATUS "FOLLY_LIB_DIR set to: ${FOLLY_LIB_DIR}")
+get_filename_component(FOLLY_LIB_DIR "${_folly_location}" DIRECTORY)
+message(STATUS "FOLLY_LIB_DIR: ${FOLLY_LIB_DIR}")
 
 # Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files (folly.pxd, iobuf.pxd, etc.)
 # These are separate from C++ headers and live in Python site-packages
 # folly uses "pip install --prefix" which installs to lib/pythonX.Y/site-packages/
+# FOLLY_PREFIX_DIR is exported by folly-config.cmake
 set(_folly_py_version "python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
 set(FOLLY_PYTHON_SITE_PACKAGES
-  "${_folly_prefix}/lib/${_folly_py_version}/site-packages"
+  "${FOLLY_PREFIX_DIR}/lib/${_folly_py_version}/site-packages"
 )
 if(NOT EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}/folly")
   message(
-    FATAL_ERROR
+    WARNING
     "Folly Python package not found at ${FOLLY_PYTHON_SITE_PACKAGES}/folly. "
-    "Ensure folly was built with PYTHON_EXTENSIONS=ON."
+    "Cython compilation may fail if folly .pxd files are missing."
   )
 endif()
-message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES}")
+message(STATUS "FOLLY_PYTHON_SITE_PACKAGES: ${FOLLY_PYTHON_SITE_PACKAGES}")
 
 
 find_package(Cython 0.28 REQUIRED)
