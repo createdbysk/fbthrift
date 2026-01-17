@@ -64,6 +64,9 @@ builder = boost
 job_weight_mib = 512
 patchfile = boost_1_83_0.patch
 
+[build.not(os=linux)]
+builder = nop
+
 [b2.args]
 --with-atomic
 --with-chrono

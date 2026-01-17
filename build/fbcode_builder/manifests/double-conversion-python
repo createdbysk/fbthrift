@@ -22,5 +22,8 @@ double-conversion
 builder = cmake
 subdir = double-conversion-3.1.4
 
+[build.not(os=linux)]
+builder = nop
+
 [cmake.defines]
 CMAKE_POSITION_INDEPENDENT_CODE=ON

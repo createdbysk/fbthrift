@@ -24,5 +24,8 @@ sha256 = 537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b
 builder = cmake
 subdir = lz4-1.10.0/build/cmake
 
+[build.not(os=linux)]
+builder = nop
+
 [cmake.defines]
 CMAKE_POSITION_INDEPENDENT_CODE=ON
