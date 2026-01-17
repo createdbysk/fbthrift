@@ -17,7 +17,8 @@
 # Signal to setup.py that test extensions should be built
 set(THRIFT_BUILD_TESTS "1" PARENT_SCOPE)
 
-# Include ThriftLibrary macros (for standalone builds, CMAKE_MODULE_PATH must be set)
+# Include ThriftLibrary macros
+# (for standalone builds, CMAKE_MODULE_PATH must be set)
 include(ThriftLibrary OPTIONAL)
 
 #
@@ -826,20 +827,27 @@ set(_gen_python "${CMAKE_CURRENT_BINARY_DIR}/gen-python")
 # Use CMAKE_BINARY_DIR (top-level build dir) for absolute path
 # to avoid fragile relative paths
 # Use --target to install to a known directory that we add to TEST_PYTHONPATH
-set(_thrift_wheel_dir "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist_self_contained")
+set(_thrift_wheel_dir
+  "${CMAKE_BINARY_DIR}/thrift/lib/cybld/dist_self_contained")
 set(_thrift_wheel_install_dir
   "${CMAKE_BINARY_DIR}/thrift/lib/thrift_wheel_pythonpath")
 # Note: auditwheel may change the wheel platform tag, so we use a shell glob
+set(_pip_install_cmd
+  "${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps"
+  " --target '${_thrift_wheel_install_dir}'"
+  " '${_thrift_wheel_dir}'/thrift-0.0.1-*.whl")
 add_custom_target(install_thrift_wheel ALL
   DEPENDS thrift_python_and_py3_bindings
-  COMMAND bash -c "${Python3_EXECUTABLE} -m pip install --force-reinstall --no-deps --target '${_thrift_wheel_install_dir}' '${_thrift_wheel_dir}'/thrift-0.0.1-*.whl"
-  COMMAND ${Python3_EXECUTABLE} -m pip install --target "${_thrift_wheel_install_dir}" parameterized
+  COMMAND bash -c "${_pip_install_cmd}"
+  COMMAND ${Python3_EXECUTABLE} -m pip install
+    --target "${_thrift_wheel_install_dir}" parameterized
   COMMENT "Installing thrift wheel and test dependencies"
 )
 
 # Build PYTHONPATH for tests
 # With wheel-based approach for thrift, we need paths for:
-# - Thrift wheel install directory (thrift.python.*, thrift.py3.*, folly.*, etc.)
+# - Thrift wheel install directory
+#   (thrift.python.*, thrift.py3.*, folly.*, etc.)
 # - Generated test thrift code (testing.thrift_types, etc.)
 # Note: Folly Python bindings are now bundled into the thrift wheel
 # Note: Test modules are NOT in the wheel (removed by commit 1d87cfcfed).

@@ -313,7 +313,8 @@ else:
             "thrift.python.streaming.bidistream",
             sources=[
                 "thrift/python/streaming/bidistream.pyx",
-                "thrift/python/streaming/Bidistream.cpp",  # Capital B to avoid Cython conflict
+                # Capital B to avoid Cython conflict
+                "thrift/python/streaming/Bidistream.cpp",
             ],
             **common_options,
         ),
