@@ -468,7 +468,9 @@ else:
             ),
             Extension(
                 "thrift.lib.python.client.test.client_event_handler.helper",
-                sources=["thrift/lib/python/client/test/client_event_handler/helper.pyx"],  # singular dir via symlink
+                sources=[
+                    "thrift/lib/python/client/test/client_event_handler/helper.pyx"
+                ],
                 **common_options,
             ),
             # event_handlers/helper extension for client_server tests
