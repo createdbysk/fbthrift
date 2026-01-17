@@ -70,7 +70,6 @@ find_package(Libiberty REQUIRED)
 # gflags_shared at runtime = conflict.
 # Let glog's dependency chain provide gflags at runtime.
 
-# Debug logging function
 function(log_debug msg)
   if(DEBUG_BUILD)
     message(STATUS "[DEBUG] ${msg}")
@@ -190,7 +189,6 @@ add_custom_target(create_binding_symlink_py3 ALL)
 #####################################################################
 # Include Path Setup (must be done early, before API header generation)
 #####################################################################
-# Get include directories from dependencies
 get_target_property(thrift_include_dirs thrift INCLUDE_DIRECTORIES)
 get_target_property(fmt_include_dirs fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
@@ -264,9 +262,7 @@ foreach(pkg ${installed_packages})
     list(APPEND all_lib_dirs "${pkg}/lib64")
   endif()
 endforeach()
-# Add system library paths
 list(APPEND all_lib_dirs "/usr/lib64")
-# Add python library directory
 get_filename_component(python_lib ${Python3_LIBRARIES} DIRECTORY)
 list(APPEND all_lib_dirs "${python_lib}")
 
@@ -481,7 +477,6 @@ foreach(mapping IN LISTS CYTHON_API_SYMLINK_MAPPINGS)
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${source} ${dest})
 endforeach()
 
-# Create destination directories
 file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/")
 file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server")
 file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/server/interceptor")
@@ -584,11 +579,10 @@ install(
 #####
 add_custom_target(create_binding_symlink_server_impl ALL)
 
-# Create server_impl directory structure
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/server_impl")
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/server_impl/interceptor")
 
-# Create symlinks for server_impl/*.pxd -> server/*.pxd (compile-time cimport)
+# For cimport during Cython compilation
 file(GLOB ServerImplFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/server/*.pxd"
   "${CMAKE_CURRENT_SOURCE_DIR}/server/*.pyx"
