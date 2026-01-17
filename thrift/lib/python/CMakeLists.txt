@@ -43,12 +43,6 @@ endif()
 
 
 find_package(Cython 0.28 REQUIRED)
-
-# Find dependencies for include paths and linking
-find_package(Glog REQUIRED)
-find_package(fizz CONFIG REQUIRED)
-find_package(wangle CONFIG REQUIRED)
-find_package(mvfst CONFIG REQUIRED)
 find_package(proxygen CONFIG REQUIRED)
 
 
