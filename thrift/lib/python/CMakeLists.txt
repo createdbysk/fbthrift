@@ -63,11 +63,6 @@ endif()
 message(STATUS "FOLLY_PYTHON_SITE_PACKAGES set to: ${FOLLY_PYTHON_SITE_PACKAGES}")
 
 
-# Compatibility shims for code expecting old variable names
-set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
-set(PYTHON_LIBRARY ${Python3_LIBRARIES})
-set(PYTHON_LIBRARIES ${Python3_LIBRARIES})
-set(PYTHON_INCLUDE_DIRS ${Python3_INCLUDE_DIRS})
 find_package(Cython 0.28 REQUIRED)
 
 # ==========================================================================
@@ -312,7 +307,7 @@ string(CONCAT incs
   ":${CMAKE_BINARY_DIR}/thrift/lib"
   ":${CMAKE_BINARY_DIR}/thrift/lib/cybld"
 )
-get_filename_component(python_libname ${PYTHON_LIBRARY} NAME)
+get_filename_component(python_libname ${Python3_LIBRARIES} NAME)
 
 # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
 # Proxygen and mvfst include directories (for http2_helper in client tests)
@@ -370,7 +365,7 @@ endforeach()
 # Add system library paths
 list(APPEND all_lib_dirs "/usr/lib64")
 # Add python library directory
-get_filename_component(python_lib ${PYTHON_LIBRARY} DIRECTORY)
+get_filename_component(python_lib ${Python3_LIBRARIES} DIRECTORY)
 list(APPEND all_lib_dirs "${python_lib}")
 
 # Join all library directories with colons for -L flags and LIBRARY_DIRS
@@ -635,7 +630,7 @@ target_compile_definitions(thrift_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
 target_compile_definitions(
   thrift_python_cpp PRIVATE THRIFT_NO_HTTP_CLIENT_CHANNEL)
 target_include_directories(
-  thrift_python_cpp PRIVATE "${_cybld}" ${PYTHON_INCLUDE_DIRS})
+  thrift_python_cpp PRIVATE "${_cybld}" ${Python3_INCLUDE_DIRS})
 # Link strategy:
 # - STATIC libs (thrift + deps): embed with --whole-archive to consolidate
 #   into single .so
