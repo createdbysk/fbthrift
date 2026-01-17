@@ -18,27 +18,6 @@ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 # Used by setup.py to locate folly .pxd files during Cython compilation
 message(STATUS "FOLLY_INCLUDE_DIR: ${FOLLY_INCLUDE_DIR}")
 
-# Get folly lib directory from IMPORTED_LOCATION for LD_LIBRARY_PATH
-get_target_property(_folly_location Folly::folly IMPORTED_LOCATION)
-if(NOT _folly_location)
-  get_target_property(_folly_location Folly::folly IMPORTED_LOCATION_RELEASE)
-endif()
-if(NOT _folly_location)
-  get_target_property(
-    _folly_location Folly::folly IMPORTED_LOCATION_RELWITHDEBINFO
-  )
-endif()
-if(NOT _folly_location)
-  message(
-    FATAL_ERROR
-    "Could not find Folly::folly IMPORTED_LOCATION. "
-    "Tried IMPORTED_LOCATION, IMPORTED_LOCATION_RELEASE, "
-    "IMPORTED_LOCATION_RELWITHDEBINFO."
-  )
-endif()
-get_filename_component(FOLLY_LIB_DIR "${_folly_location}" DIRECTORY)
-message(STATUS "FOLLY_LIB_DIR: ${FOLLY_LIB_DIR}")
-
 # Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files (folly.pxd, iobuf.pxd, etc.)
 # These are separate from C++ headers and live in Python site-packages
 # Note: pip --prefix on Debian/Ubuntu installs to local/lib/pythonX.Y/dist-packages/
