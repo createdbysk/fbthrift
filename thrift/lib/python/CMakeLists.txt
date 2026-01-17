@@ -65,83 +65,12 @@ endif()
 
 find_package(Cython 0.28 REQUIRED)
 
-# ==========================================================================
-# Find all transitive dependencies needed for DEPENDENCY_LIB_PATH
-# ==========================================================================
-# These are transitive deps of folly/fizz/wangle that we need at runtime.
-# We must call find_package() explicitly because folly's CMake config
-# doesn't export these variables.
-#
-# Each find_package(X REQUIRED) will FATAL_ERROR if X is not found,
-# so no conditional checks are needed after - variables are guaranteed set.
-# ==========================================================================
-
-find_package(LibEvent REQUIRED)
-find_package(Sodium REQUIRED)
+# Find dependencies for include paths and linking
 find_package(Glog REQUIRED)
-find_package(LibUnwind REQUIRED)
-find_package(DoubleConversion REQUIRED)
-find_package(Zstd REQUIRED)
 find_package(fizz CONFIG REQUIRED)
 find_package(wangle CONFIG REQUIRED)
 find_package(mvfst CONFIG REQUIRED)
 find_package(proxygen CONFIG REQUIRED)
-
-# ==========================================================================
-# Build DEPENDENCY_LIB_PATH for Python test LD_LIBRARY_PATH
-# ==========================================================================
-
-set(DEPENDENCY_LIB_DIRS "")
-
-list(APPEND DEPENDENCY_LIB_DIRS "${FOLLY_LIB_DIR}")
-
-get_filename_component(_glog_lib_dir "${GLOG_LIBRARY}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_glog_lib_dir}")
-
-get_filename_component(_gflags_cmake_parent "${gflags_DIR}" DIRECTORY)
-get_filename_component(_gflags_lib_dir "${_gflags_cmake_parent}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_gflags_lib_dir}")
-
-get_filename_component(_fmt_cmake_parent "${fmt_DIR}" DIRECTORY)
-get_filename_component(_fmt_lib_dir "${_fmt_cmake_parent}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_fmt_lib_dir}")
-
-get_filename_component(_libevent_lib_dir "${LIBEVENT_LIB}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_libevent_lib_dir}")
-
-get_filename_component(_libunwind_lib_dir "${LIBUNWIND_LIBRARY}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_libunwind_lib_dir}")
-
-get_filename_component(_fizz_cmake_parent "${fizz_DIR}" DIRECTORY)
-get_filename_component(_fizz_lib_dir "${_fizz_cmake_parent}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_fizz_lib_dir}")
-
-get_filename_component(_wangle_cmake_parent "${wangle_DIR}" DIRECTORY)
-get_filename_component(_wangle_lib_dir "${_wangle_cmake_parent}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_wangle_lib_dir}")
-
-get_filename_component(_mvfst_cmake_parent "${mvfst_DIR}" DIRECTORY)
-get_filename_component(_mvfst_lib_dir "${_mvfst_cmake_parent}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_mvfst_lib_dir}")
-
-get_filename_component(_proxygen_cmake_parent "${proxygen_DIR}" DIRECTORY)
-get_filename_component(_proxygen_lib_dir "${_proxygen_cmake_parent}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_proxygen_lib_dir}")
-
-get_filename_component(_dc_lib_dir "${DOUBLE_CONVERSION_LIBRARY}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_dc_lib_dir}")
-
-list(APPEND DEPENDENCY_LIB_DIRS ${Boost_LIBRARY_DIRS})
-
-get_filename_component(_sodium_lib_dir "${sodium_LIBRARY_RELEASE}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_sodium_lib_dir}")
-
-get_filename_component(_zstd_lib_dir "${ZSTD_LIBRARY}" DIRECTORY)
-list(APPEND DEPENDENCY_LIB_DIRS "${_zstd_lib_dir}")
-
-list(REMOVE_DUPLICATES DEPENDENCY_LIB_DIRS)
-string(REPLACE ";" ":" DEPENDENCY_LIB_PATH "${DEPENDENCY_LIB_DIRS}")
-message(STATUS "DEPENDENCY_LIB_PATH for Python tests: ${DEPENDENCY_LIB_PATH}")
 
 
 # thrift-python and py3 build logic
