@@ -187,7 +187,8 @@ python3 build/fbcode_builder/getdeps.py --allow-system-packages test fbthrift-py
 ```bash
 conda create -n thrift-python-build python=3.10
 conda activate thrift-python-build
-pip3 install cython auditwheel cmake==3.28.0
+conda install cython=3.2.2
+pip3 install auditwheel cmake==3.28.0
 sudo apt-get update
 sudo apt-get install -y patchelf
 python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive fbthrift-python
