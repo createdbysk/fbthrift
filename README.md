@@ -163,9 +163,15 @@ apt-get update
 python3 build/fbcode_builder/getdeps.py install-system-deps --recursive fbthrift-python
 python3 build/fbcode_builder/getdeps.py build fbthrift-python
 python3 build/fbcode_builder/getdeps.py test fbthrift-python
+pip3 install $(python3 build/fbcode_builder/getdeps.py show-inst-dir fbthrift-python)/share/thrift/wheels/thrift-*.whl
+python3 -c "from thrift.python.types import StructMeta; print('thrift-python installed successfully')"
 ```
 
-#### Non-Container Build
+**Note:** The wheel is portable and can be installed into any compatible Python environment (Python 3.8+).
+
+#### Other Ways to Build
+
+**Non-Container Build:**
 
 ```bash
 sudo apt-get update
@@ -176,37 +182,38 @@ python3 build/fbcode_builder/getdeps.py --allow-system-packages build fbthrift-p
 python3 build/fbcode_builder/getdeps.py --allow-system-packages test fbthrift-python
 ```
 
-#### Install the Wheel
+**Build with Conda:**
 
 ```bash
-pip3 install $(python3 build/fbcode_builder/getdeps.py show-inst-dir fbthrift-python)/share/thrift/wheels/thrift-*.whl
+conda create -n thrift-python-build python=3.10
+conda activate thrift-python-build
+pip3 install cython auditwheel cmake==3.28.0
+sudo apt-get update
+sudo apt-get install -y patchelf
+python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive fbthrift-python
+python3 build/fbcode_builder/getdeps.py --allow-system-packages build fbthrift-python
+python3 build/fbcode_builder/getdeps.py --allow-system-packages test fbthrift-python
 ```
 
-Verify:
+**Other Container Runtimes:**
 
-```bash
-python3 -c "from thrift.python.types import StructMeta; print('thrift-python installed successfully')"
-```
-
-**Note:** The wheel is portable and can be installed into any compatible Python environment (Python 3.8+).
-
-#### Other Container Runtimes
-
-**Legacy Docker build:**
-
+Legacy Docker:
 ```bash
 docker build -t fbthrift-python-build -f .devcontainer/Containerfile .
 docker run -it -v $(pwd):/fbthrift -w /fbthrift fbthrift-python-build bash
 ```
 
-**Podman:**
-
+Podman:
 ```bash
 podman build -t fbthrift-python-build -f .devcontainer/Containerfile .
 podman run -it -v $(pwd):/fbthrift -w /fbthrift fbthrift-python-build bash
 ```
 
-Once inside the container, run the same build commands as the BuildKit section above.
+**Install the wheel** (for all non-container builds):
+
+```bash
+pip3 install $(python3 build/fbcode_builder/getdeps.py show-inst-dir fbthrift-python)/share/thrift/wheels/thrift-*.whl
+```
 
 ## C++ Static Reflection
 
