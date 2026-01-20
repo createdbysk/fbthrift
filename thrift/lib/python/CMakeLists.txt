@@ -21,31 +21,25 @@ message(STATUS "FOLLY_INCLUDE_DIR: ${FOLLY_INCLUDE_DIR}")
 # Set FOLLY_PYTHON_SITE_PACKAGES for Cython .pxd files
 # (folly.pxd, iobuf.pxd, etc.)
 # These are separate from C++ headers and live in Python site-packages
-# Note: pip --prefix on Debian/Ubuntu installs to
-# local/lib/pythonX.Y/dist-packages/
-# while setup.py install goes to lib/pythonX.Y/site-packages/
-# Check both locations to handle different folly build methods
+#
+# find_file locates a known file, then extract the parent directory.
+# HINTS cover both install locations:
+#   - lib/pythonX.Y/site-packages/ (setup.py install)
+#   - local/lib/pythonX.Y/dist-packages/ (pip --prefix on Debian/Ubuntu)
 set(_folly_py_version "python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
-set(_folly_site_packages
-  "${FOLLY_PREFIX_DIR}/lib/${_folly_py_version}/site-packages")
-set(_folly_dist_packages
-  "${FOLLY_PREFIX_DIR}/local/lib/${_folly_py_version}/dist-packages")
+find_file(_folly_pxd_file
+  NAMES folly/__init__.pxd
+  HINTS
+    "${FOLLY_PREFIX_DIR}/lib/${_folly_py_version}/site-packages"
+    "${FOLLY_PREFIX_DIR}/local/lib/${_folly_py_version}/dist-packages"
+  NO_DEFAULT_PATH
+  REQUIRED
+)
 
-if(EXISTS "${_folly_site_packages}/folly")
-  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
-  message(STATUS
-    "FOLLY_PYTHON_SITE_PACKAGES: ${FOLLY_PYTHON_SITE_PACKAGES} (site-packages)")
-elseif(EXISTS "${_folly_dist_packages}/folly")
-  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_dist_packages}")
-  message(STATUS
-    "FOLLY_PYTHON_SITE_PACKAGES: ${FOLLY_PYTHON_SITE_PACKAGES} (dist-packages)")
-else()
-  set(FOLLY_PYTHON_SITE_PACKAGES "${_folly_site_packages}")
-  message(WARNING
-    "Folly Python package not found at ${_folly_site_packages}/folly or "
-    "${_folly_dist_packages}/folly. Cython compilation may fail."
-  )
-endif()
+# Extract site-packages directory (two levels up from folly/__init__.pxd)
+get_filename_component(_folly_pkg_dir "${_folly_pxd_file}" DIRECTORY)
+get_filename_component(FOLLY_PYTHON_SITE_PACKAGES "${_folly_pkg_dir}" DIRECTORY)
+message(STATUS "FOLLY_PYTHON_SITE_PACKAGES: ${FOLLY_PYTHON_SITE_PACKAGES}")
 
 
 find_package(Cython 0.28 REQUIRED)
