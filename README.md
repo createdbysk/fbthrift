@@ -156,7 +156,7 @@ docker buildx build -t fbthrift-python-build -f .devcontainer/Containerfile .
 docker run -it -v $(pwd):/fbthrift -w /fbthrift fbthrift-python-build bash
 ```
 
-Inside container:
+#### Build and Test Commands
 
 ```bash
 apt-get update
@@ -196,7 +196,7 @@ python3 build/fbcode_builder/getdeps.py --allow-system-packages build fbthrift-p
 python3 build/fbcode_builder/getdeps.py --allow-system-packages test fbthrift-python
 ```
 
-**Other Container Runtimes:**
+**Building Containers with Other Runtimes:**
 
 Legacy Docker:
 ```bash
