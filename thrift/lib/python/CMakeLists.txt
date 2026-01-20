@@ -122,6 +122,13 @@ endfunction()
 
 # Use parent binary dir so _cybld stays at <build>/thrift/lib/cybld
 # (consistent with include paths like thrift/lib/python/server/*.h)
+#
+# Why symlinks?
+# Buck has a "base_module" concept that changes import paths. Buck handles this
+# automatically. This build achieves the same explicitly via symlinks from source
+# files to the build directory with the desired import path structure.
+# Example: thrift/lib/python with base_module="thrift.python" becomes import
+# thrift.python. Symlinks map thrift/lib/python -> thrift/python under _cybld.
 get_filename_component(_cybld "${CMAKE_CURRENT_BINARY_DIR}/../cybld" ABSOLUTE)
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/")
