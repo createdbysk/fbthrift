@@ -61,14 +61,49 @@ get_filename_component(_lib_dir "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 # Debug option for build troubleshooting
 option(DEBUG_BUILD "Enable debug messages" OFF)
 
-# Find libevent for Python bindings (needed for folly Python extensions)
-# Force static linking to embed symbols into libthrift_python_cpp.so
-# From LibeventConfig.cmake: "To find the static ones instead, you must set
-# the LIBEVENT_STATIC_LINK variable to TRUE before calling find_package"
+# =============================================================================
+# Explicit Dependencies for Self-Contained Wheel
+# =============================================================================
+#
+# Goal: Build a self-contained Python wheel that installs with just
+# `pip install thrift-*.whl` - no additional dependencies required.
+#
+# Challenge: A standard shared library build would require wheel consumers to:
+#   - Install 20+ shared libraries (folly, fizz, wangle, etc.) separately
+#   - Manage LD_LIBRARY_PATH or install to system paths
+#   - Handle version compatibility across all dependencies
+#
+# Approach: Create a consolidated library (libthrift_python_cpp.so) that embeds
+# all C++ dependencies into one shared object. auditwheel bundles this single
+# .so into the wheel.
+#
+# Why --whole-archive?
+#   Without it, each Python extension (.so) would embed the full static library:
+#     types.so (~600MB) + client.so (~600MB) + server.so (~600MB) + ...
+#     = 27+ extensions × 600MB = 16-32GB of duplicated code
+#
+#   With --whole-archive, one shared library holds everything:
+#     libthrift_python_cpp.so (~600MB) + tiny extensions (~50KB each)
+#     = ~600MB total
+#
+# Trade-off: --whole-archive is a linker flag, not a CMake concept. CMake
+# propagates transitive dependencies via INTERFACE_LINK_LIBRARIES on targets.
+# But linker flags bypass this mechanism. When CMake sees:
+#
+#   target_link_libraries(thrift_python_cpp "-Wl,--whole-archive" Folly::folly ...)
+#
+# it passes the flag to the linker, but the linker does not understand CMake's
+# target properties. Transitive deps like libiberty (from Folly::folly) do not
+# propagate. Without --whole-archive, CMake would automatically add libiberty
+# to the link line. With --whole-archive, the find_package calls below must add
+# them explicitly.
+# =============================================================================
+
+# Libevent: Force static link to embed symbols
 set(LIBEVENT_STATIC_LINK TRUE)
 find_package(Libevent REQUIRED CONFIG)
 
-# Find libiberty (provides cplus_demangle_v3_callback needed by folly)
+# Libiberty: Provides cplus_demangle_v3_callback for folly stack traces
 find_package(Libiberty REQUIRED)
 
 # NOTE: Do NOT add gflags here. glog::glog (shared) depends on
