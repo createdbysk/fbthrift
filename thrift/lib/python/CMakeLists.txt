@@ -52,8 +52,11 @@ find_package(Cython 0.28 REQUIRED)
 find_package(proxygen CONFIG REQUIRED)
 
 
-# thrift-python and py3 build logic
-# NOTE: py3 is tightly coupled with python and is handled in this file.
+# thrift-python's server and streaming modules depend architecturally on py3's
+# infrastructure. The py3 code provides:
+#   - Streaming support (stream)
+#   - Core server infrastructure (server)
+# thrift-python builds on top of these py3 components rather than duplicating them.
 # They cannot be separated into independent add_subdirectory() calls.
 
 # Reference to parent lib directory for sibling directories (py3/) and setup.py
