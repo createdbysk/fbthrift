@@ -129,6 +129,20 @@ function(make_directories)
   endforeach()
 endfunction()
 
+# Helper function: create symlinks for files to a target directory
+function(symlink_files_to_target target_name dest_dir)
+  foreach(_src ${ARGN})
+    get_filename_component(_target_file "${_src}" NAME)
+    add_custom_command(
+      TARGET ${target_name}
+      PRE_BUILD
+        COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}" "${dest_dir}/${_target_file}"
+    )
+  endforeach()
+endfunction()
+
 make_directories(
   "${_cybld}/thrift/python/test"
   "${_cybld}/thrift/python/test/adapters"
@@ -138,33 +152,13 @@ file(GLOB TestFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/*.py"
 )
 
-foreach(_src ${TestFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_src}" "${_cybld}/thrift/python/test/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_test "${_cybld}/thrift/python/test" ${TestFiles})
 
 file(GLOB TestAdapterFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/adapters/*.py"
 )
 
-foreach(_src ${TestAdapterFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_src}" "${_cybld}/thrift/python/test/adapters/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_test "${_cybld}/thrift/python/test/adapters" ${TestAdapterFiles})
 
 # Create request_context_extractor subpackage symlinks
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/test/request_context_extractor")
@@ -176,17 +170,10 @@ file(GLOB TestRequestContextExtractorFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/request_context_extractor/*.pyi"
 )
 
-foreach(_src ${TestRequestContextExtractorFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_src}"
-      "${_cybld}/thrift/python/test/request_context_extractor/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_test
+  "${_cybld}/thrift/python/test/request_context_extractor"
+  ${TestRequestContextExtractorFiles}
+)
 
 # Create server/test Cython module symlinks in thrift/python/test/
 # Note: The Cython module needs to be at
@@ -198,17 +185,7 @@ file(GLOB ServerTestCythonFiles
   "${_python_src_dir}/server/test/*.pyi"
 )
 
-foreach(_src ${ServerTestCythonFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_src}" "${_cybld}/thrift/python/test/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_test "${_cybld}/thrift/python/test" ${ServerTestCythonFiles})
 
 # Create client/test Cython module symlinks in thrift/python/client/test/
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/test")
@@ -219,17 +196,7 @@ file(GLOB ClientTestCythonFiles
   "${_python_src_dir}/client/test/*.h"
 )
 
-foreach(_src ${ClientTestCythonFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink "${_src}"
-      "${_cybld}/thrift/python/client/test/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_test "${_cybld}/thrift/python/client/test" ${ClientTestCythonFiles})
 
 #####
 # Create thrift.lib.python.test package symlinks (fbcode import path shim)
@@ -245,17 +212,7 @@ make_directories(
   "${_cybld}/thrift/lib/python/test/event_handlers"
 )
 
-foreach(_src ${TestFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_lib_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_src}" "${_cybld}/thrift/lib/python/test/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_lib_test "${_cybld}/thrift/lib/python/test" ${TestFiles})
 
 file(GLOB TestEventHandlerFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/event_handlers/*.py"
@@ -263,18 +220,10 @@ file(GLOB TestEventHandlerFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/event_handlers/*.pxd"
 )
 
-foreach(_src ${TestEventHandlerFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_lib_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_src}"
-      "${_cybld}/thrift/lib/python/test/event_handlers/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_lib_test
+  "${_cybld}/thrift/lib/python/test/event_handlers"
+  ${TestEventHandlerFiles}
+)
 
 # Create thrift/lib/python/test/metadata_response/ symlinks
 # for metadata_response Cython module
@@ -288,18 +237,10 @@ file(GLOB TestMetadataResponseFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/metadata_response/*.h"
 )
 
-foreach(_src ${TestMetadataResponseFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_lib_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_src}"
-      "${_cybld}/thrift/lib/python/test/metadata_response/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_lib_test
+  "${_cybld}/thrift/lib/python/test/metadata_response"
+  ${TestMetadataResponseFiles}
+)
 
 # Create thrift/lib/python/client/test/ symlinks
 # for client test Cython modules
@@ -317,17 +258,10 @@ file(GLOB LibClientTestCythonFiles
   "${_python_src_dir}/client/test/*.py"
 )
 
-foreach(_src ${LibClientTestCythonFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_lib_test
-    PRE_BUILD
-      COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_src}" "${_cybld}/thrift/lib/python/client/test/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_lib_test
+  "${_cybld}/thrift/lib/python/client/test"
+  ${LibClientTestCythonFiles}
+)
 
 file(GLOB LibClientEventHandlerFiles
   "${_python_src_dir}/client/test/client_event_handlers/*.pyx"
@@ -336,17 +270,10 @@ file(GLOB LibClientEventHandlerFiles
   "${_python_src_dir}/client/test/client_event_handlers/*.h"
 )
 
-foreach(_src ${LibClientEventHandlerFiles})
-  get_filename_component(_target_file "${_src}" NAME)
-  add_custom_command(
-    TARGET
-    create_binding_symlink_lib_test
-    PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-    "${_src}"
-"${_cybld}/thrift/lib/python/client/test/client_event_handler/${_target_file}"
-  )
-endforeach()
+symlink_files_to_target(create_binding_symlink_lib_test
+  "${_cybld}/thrift/lib/python/client/test/client_event_handler"
+  ${LibClientEventHandlerFiles}
+)
 
 set(TEST_THRIFT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PY3_TEST_THRIFT_DIR ${CMAKE_SOURCE_DIR}/thrift/lib/py3/test)
