@@ -143,6 +143,21 @@ function(symlink_files_to_target target_name dest_dir)
   endforeach()
 endfunction()
 
+# Helper function: register Python unittest tests
+function(register_python_tests test_prefix module_prefix test_env working_dir)
+  foreach(test_file ${ARGN})
+    get_filename_component(test_name ${test_file} NAME_WE)
+    add_test(
+      NAME ${test_prefix}_${test_name}
+      COMMAND ${Python3_EXECUTABLE} -m unittest ${module_prefix}.${test_name} -v
+      WORKING_DIRECTORY ${working_dir}
+    )
+    set_tests_properties(${test_prefix}_${test_name} PROPERTIES
+      ENVIRONMENT "${test_env}"
+    )
+  endforeach()
+endfunction()
+
 make_directories(
   "${_cybld}/thrift/python/test"
   "${_cybld}/thrift/python/test/adapters"
@@ -943,17 +958,7 @@ add_dependencies(thrift_python_test_package
 # and RPATH $ORIGIN/.libs finds them. If tests fail, the wheel isn't portable.
 set(_test_env "PYTHONPATH=${TEST_PYTHONPATH}")
 
-foreach(test_file ${THRIFT_PYTHON_TEST_FILES})
-  get_filename_component(test_name ${test_file} NAME_WE)
-  add_test(
-    NAME thrift_python_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest fbthrift_test.${test_name} -v
-    WORKING_DIRECTORY ${_gen_python}
-  )
-  set_tests_properties(thrift_python_${test_name} PROPERTIES
-    ENVIRONMENT "${_test_env}"
-  )
-endforeach()
+register_python_tests(thrift_python fbthrift_test "${_test_env}" "${_gen_python}" ${THRIFT_PYTHON_TEST_FILES})
 
 #####
 # thrift/test/thrift-python/ tests
@@ -1003,18 +1008,7 @@ add_custom_target(thrift_test_thrift_python_test_package ALL
   enum_test-python-target included-python-target
 )
 
-foreach(test_file ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
-  get_filename_component(test_name ${test_file} NAME_WE)
-  add_test(
-    NAME thrift_test_thrift_python_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest
-      thrift_test_thrift_python_tests.${test_name} -v
-    WORKING_DIRECTORY ${_gen_python}
-  )
-  set_tests_properties(thrift_test_thrift_python_${test_name} PROPERTIES
-    ENVIRONMENT "${_test_env}"
-  )
-endforeach()
+register_python_tests(thrift_test_thrift_python thrift_test_thrift_python_tests "${_test_env}" "${_gen_python}" ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
 
 #####
 # thrift/lib/python/test/adapters/ tests
@@ -1024,18 +1018,7 @@ set(ADAPTERS_TEST_FILES
   datetime_test.py
 )
 
-foreach(test_file ${ADAPTERS_TEST_FILES})
-  get_filename_component(test_name ${test_file} NAME_WE)
-  add_test(
-    NAME thrift_python_adapters_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest
-      thrift.python.test.adapters.${test_name} -v
-    WORKING_DIRECTORY ${_gen_python}
-  )
-  set_tests_properties(thrift_python_adapters_${test_name} PROPERTIES
-    ENVIRONMENT "${_test_env}"
-  )
-endforeach()
+register_python_tests(thrift_python_adapters thrift.python.test.adapters "${_test_env}" "${_gen_python}" ${ADAPTERS_TEST_FILES})
 
 #####
 # thrift/lib/python/test/request_context_extractor/ tests
@@ -1133,18 +1116,7 @@ add_custom_target(thrift_python_client_test_package ALL
   test-python-target leaf-python-target
 )
 
-foreach(test_file ${CLIENT_TEST_FILES})
-  get_filename_component(test_name ${test_file} NAME_WE)
-  add_test(
-    NAME thrift_python_client_${test_name}
-    COMMAND ${Python3_EXECUTABLE} -m unittest
-      fbthrift_client_test.${test_name} -v
-    WORKING_DIRECTORY ${_gen_python}
-  )
-  set_tests_properties(thrift_python_client_${test_name} PROPERTIES
-    ENVIRONMENT "${_test_env}"
-  )
-endforeach()
+register_python_tests(thrift_python_client fbthrift_client_test "${_test_env}" "${_gen_python}" ${CLIENT_TEST_FILES})
 
 #####
 # thrift/lib/python/test/metadata_response/ tests
