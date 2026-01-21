@@ -103,10 +103,13 @@ find_package(Libevent REQUIRED CONFIG)
 # Libiberty: Provides cplus_demangle_v3_callback for folly stack traces
 find_package(Libiberty REQUIRED)
 
-# NOTE: Do NOT add gflags here. glog::glog (shared) depends on
-# gflags (shared). If we embed gflags_static AND glog loads
-# gflags_shared at runtime = conflict.
-# Let glog's dependency chain provide gflags at runtime.
+# gflags warning:
+# This section adds explicit dependencies that --whole-archive bypasses.
+# A natural assumption: if libevent and libiberty are here, gflags should be too.
+# gflags is different. It's a transitive dependency (glog depends on gflags).
+# setup.py links glog and gflags as shared libraries. A find_package(gflags) call
+# here would embed static gflags symbols into thrift_python_cpp.so. At runtime,
+# glog loads shared gflags, and duplicate symbols conflict. Do not add gflags.
 
 function(log_debug msg)
   if(DEBUG_BUILD)
