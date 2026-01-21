@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read  #  to fetch code (actions/checkout)
-  packages: read  #  to pull container from GHCR
+  packages: read  #  to pull container from GitHub Container Registry (ghcr.io)
 
 jobs:
   build:
