@@ -251,18 +251,6 @@ get_target_property(wangle_incs wangle::wangle INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(
   glog_include_dirs glog::glog INTERFACE_INCLUDE_DIRECTORIES)
 
-# For setup.py build_ext -I flags
-set(inc_dirs "$<TARGET_PROPERTY:thrift,INCLUDE_DIRECTORIES>")
-list(JOIN wangle_incs ":" wangle_include_dirs)
-string(CONCAT incs
-  "-I$<JOIN:${inc_dirs},:>"
-  ":${FOLLY_INCLUDE_DIR}"
-  ":${Boost_INCLUDE_DIRS}"
-  ":${fmt_include_dirs}"
-  ":${wangle_include_dirs}"
-  ":${CMAKE_BINARY_DIR}/thrift/lib"
-  ":${CMAKE_BINARY_DIR}/thrift/lib/cybld"
-)
 get_filename_component(python_libname ${Python3_LIBRARIES} NAME)
 
 # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
