@@ -122,8 +122,17 @@ add_custom_target(create_binding_symlink_test ALL)
 # Parent directory (thrift/lib/python/) for accessing sibling directories
 get_filename_component(_python_src_dir "${CMAKE_CURRENT_SOURCE_DIR}" DIRECTORY)
 
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/test")
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/test/adapters")
+# Helper function: create multiple directories from a list
+function(make_directories)
+  foreach(_dir ${ARGN})
+    file(MAKE_DIRECTORY "${_dir}")
+  endforeach()
+endfunction()
+
+make_directories(
+  "${_cybld}/thrift/python/test"
+  "${_cybld}/thrift/python/test/adapters"
+)
 
 file(GLOB TestFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/*.py"
@@ -229,10 +238,12 @@ endforeach()
 #####
 add_custom_target(create_binding_symlink_lib_test ALL)
 
-file(MAKE_DIRECTORY "${_cybld}/thrift/lib")
-file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python")
-file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test")
-file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/test/event_handlers")
+make_directories(
+  "${_cybld}/thrift/lib"
+  "${_cybld}/thrift/lib/python"
+  "${_cybld}/thrift/lib/python/test"
+  "${_cybld}/thrift/lib/python/test/event_handlers"
+)
 
 foreach(_src ${TestFiles})
   get_filename_component(_target_file "${_src}" NAME)
@@ -292,10 +303,11 @@ endforeach()
 
 # Create thrift/lib/python/client/test/ symlinks
 # for client test Cython modules
-file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client")
-file(MAKE_DIRECTORY "${_cybld}/thrift/lib/python/client/test")
-file(MAKE_DIRECTORY
-  "${_cybld}/thrift/lib/python/client/test/client_event_handler")
+make_directories(
+  "${_cybld}/thrift/lib/python/client"
+  "${_cybld}/thrift/lib/python/client/test"
+  "${_cybld}/thrift/lib/python/client/test/client_event_handler"
+)
 
 file(GLOB LibClientTestCythonFiles
   "${_python_src_dir}/client/test/*.pyx"
