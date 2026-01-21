@@ -124,15 +124,22 @@ endfunction()
 # Example: thrift/lib/python with base_module="thrift.python" becomes import
 # thrift.python. Symlinks map thrift/lib/python -> thrift/python under _cybld.
 get_filename_component(_cybld "${CMAKE_CURRENT_BINARY_DIR}/../cybld" ABSOLUTE)
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/")
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/")
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/")
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/flagged/")
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/server/interceptor/")
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/any/")
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/conformance/")
-file(MAKE_DIRECTORY "${_cybld}/thrift/python/streaming/")
-file(MAKE_DIRECTORY "${_cybld}/thrift/py3/")
+
+# Create build directory structure
+set(_cybld_dirs
+  "thrift/python"
+  "thrift/python/client"
+  "thrift/python/server"
+  "thrift/python/server/flagged"
+  "thrift/python/server/interceptor"
+  "thrift/python/any"
+  "thrift/python/conformance"
+  "thrift/python/streaming"
+  "thrift/py3"
+)
+foreach(_dir ${_cybld_dirs})
+  file(MAKE_DIRECTORY "${_cybld}/${_dir}")
+endforeach()
 
 # So that cython includes work correctly
 file(TOUCH "${_cybld}/thrift/__init__.pxd")
