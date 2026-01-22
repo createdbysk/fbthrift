@@ -167,13 +167,15 @@ file(GLOB TestFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/*.py"
 )
 
-symlink_files_to_target(create_binding_symlink_test "${_cybld}/thrift/python/test" ${TestFiles})
+symlink_files_to_target(create_binding_symlink_test
+  "${_cybld}/thrift/python/test" ${TestFiles})
 
 file(GLOB TestAdapterFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/adapters/*.py"
 )
 
-symlink_files_to_target(create_binding_symlink_test "${_cybld}/thrift/python/test/adapters" ${TestAdapterFiles})
+symlink_files_to_target(create_binding_symlink_test
+  "${_cybld}/thrift/python/test/adapters" ${TestAdapterFiles})
 
 # Create request_context_extractor subpackage symlinks
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/test/request_context_extractor")
@@ -200,7 +202,8 @@ file(GLOB ServerTestCythonFiles
   "${_python_src_dir}/server/test/*.pyi"
 )
 
-symlink_files_to_target(create_binding_symlink_test "${_cybld}/thrift/python/test" ${ServerTestCythonFiles})
+symlink_files_to_target(create_binding_symlink_test
+  "${_cybld}/thrift/python/test" ${ServerTestCythonFiles})
 
 # Create client/test Cython module symlinks in thrift/python/client/test/
 file(MAKE_DIRECTORY "${_cybld}/thrift/python/client/test")
@@ -211,7 +214,8 @@ file(GLOB ClientTestCythonFiles
   "${_python_src_dir}/client/test/*.h"
 )
 
-symlink_files_to_target(create_binding_symlink_test "${_cybld}/thrift/python/client/test" ${ClientTestCythonFiles})
+symlink_files_to_target(create_binding_symlink_test
+  "${_cybld}/thrift/python/client/test" ${ClientTestCythonFiles})
 
 #####
 # Create thrift.lib.python.test package symlinks (fbcode import path shim)
@@ -227,7 +231,8 @@ make_directories(
   "${_cybld}/thrift/lib/python/test/event_handlers"
 )
 
-symlink_files_to_target(create_binding_symlink_lib_test "${_cybld}/thrift/lib/python/test" ${TestFiles})
+symlink_files_to_target(create_binding_symlink_lib_test
+  "${_cybld}/thrift/lib/python/test" ${TestFiles})
 
 file(GLOB TestEventHandlerFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/event_handlers/*.py"
@@ -958,7 +963,8 @@ add_dependencies(thrift_python_test_package
 # and RPATH $ORIGIN/.libs finds them. If tests fail, the wheel isn't portable.
 set(_test_env "PYTHONPATH=${TEST_PYTHONPATH}")
 
-register_python_tests(thrift_python fbthrift_test "${_test_env}" "${_gen_python}" ${THRIFT_PYTHON_TEST_FILES})
+register_python_tests(thrift_python fbthrift_test
+  "${_test_env}" "${_gen_python}" ${THRIFT_PYTHON_TEST_FILES})
 
 #####
 # thrift/test/thrift-python/ tests
@@ -1008,7 +1014,8 @@ add_custom_target(thrift_test_thrift_python_test_package ALL
   enum_test-python-target included-python-target
 )
 
-register_python_tests(thrift_test_thrift_python thrift_test_thrift_python_tests "${_test_env}" "${_gen_python}" ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
+register_python_tests(thrift_test_thrift_python thrift_test_thrift_python_tests
+  "${_test_env}" "${_gen_python}" ${THRIFT_TEST_THRIFT_PYTHON_TEST_FILES})
 
 #####
 # thrift/lib/python/test/adapters/ tests
@@ -1018,7 +1025,8 @@ set(ADAPTERS_TEST_FILES
   datetime_test.py
 )
 
-register_python_tests(thrift_python_adapters thrift.python.test.adapters "${_test_env}" "${_gen_python}" ${ADAPTERS_TEST_FILES})
+register_python_tests(thrift_python_adapters thrift.python.test.adapters
+  "${_test_env}" "${_gen_python}" ${ADAPTERS_TEST_FILES})
 
 #####
 # thrift/lib/python/test/request_context_extractor/ tests
@@ -1116,7 +1124,8 @@ add_custom_target(thrift_python_client_test_package ALL
   test-python-target leaf-python-target
 )
 
-register_python_tests(thrift_python_client fbthrift_client_test "${_test_env}" "${_gen_python}" ${CLIENT_TEST_FILES})
+register_python_tests(thrift_python_client fbthrift_client_test
+  "${_test_env}" "${_gen_python}" ${CLIENT_TEST_FILES})
 
 #####
 # thrift/lib/python/test/metadata_response/ tests
