@@ -591,17 +591,6 @@ thrift_python_library_for_test(
 # Files without namespace py3 - use empty namespace
 # (output to gen-python/<file_name>/)
 thrift_python_library_for_test(
-  "abstract_types_flags"
-  ""
-  ""
-  "${TEST_THRIFT_DIR}"
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  ""
-  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
-  NAMESPACE "thrift.python.test"
-)
-
-thrift_python_library_for_test(
   "annotations"
   ""
   ""
