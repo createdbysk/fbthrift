@@ -477,6 +477,17 @@ thrift_python_library_for_test(
 )
 
 thrift_python_library_for_test(
+  "adapter_const_only"
+  ""
+  ""
+  "${TEST_THRIFT_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  ""
+  THRIFT_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+  NAMESPACE "python_test"
+)
+
+thrift_python_library_for_test(
   "containers"
   ""
   ""
@@ -933,6 +944,7 @@ add_dependencies(thrift_python_test_package
   schema_evolution_test-python-target
   # python_test namespace
   adapter-python-target
+  adapter_const_only-python-target
   containers-python-target
   enums-python-target
   refs-python-target

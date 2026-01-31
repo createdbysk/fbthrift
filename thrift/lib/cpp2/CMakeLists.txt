@@ -443,6 +443,7 @@ add_library(
   transport/rocket/framing/Util.cpp
   transport/rocket/payload/DefaultPayloadSerializerStrategy.cpp
   transport/rocket/payload/PayloadSerializer.cpp
+  transport/rocket/server/BidirectionalStreamState.cpp
   transport/rocket/server/InteractionOverload.cpp
   transport/rocket/server/RocketRoutingHandler.cpp
   transport/rocket/server/RocketServerConnection.cpp
@@ -455,6 +456,8 @@ add_library(
   transport/rocket/server/RocketThriftRequests.cpp
   transport/rocket/server/RocketServerConnectionFactory.cpp
   transport/rocket/server/ThriftRocketServerHandler.cpp
+  transport/rocket/server/detail/RocketContextUtils.cpp
+  transport/rocket/server/detail/RocketErrorHandler.cpp
   transport/rocket/server/detail/WriteBatcher.cpp
   util/Checksum.cpp
   util/DebugString.cpp
