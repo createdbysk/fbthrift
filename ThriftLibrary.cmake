@@ -27,7 +27,7 @@
 # Params:
 #   @file_name - The name of the thrift file
 #   @services  - A list of services that are declared in the thrift file
-#   @language  - The generator to use (cpp or cpp2)
+#   @language  - The generator to use (cpp, cpp2, or python)
 #   @options   - Extra options to pass to the generator
 #   @file_path - The directory where the thrift file lives
 #   @output_path - The directory where the thrift objects will be built
@@ -93,7 +93,7 @@ endmacro()
 # Params:
 #   @file_name - The name of the thrift file
 #   @services  - A list of services that are declared in the thrift file
-#   @language  - The generator to use (cpp or cpp2)
+#   @language  - The generator to use (cpp, cpp2, or python)
 #   @options   - Extra options to pass to the generator
 #   @file_path - The directory where the thrift file lives
 #   @output_path - The directory where the thrift objects will be built
@@ -173,12 +173,14 @@ endmacro()
 #   @file_name - Input file name. Will be used for naming the CMake
 #       target if TARGET_NAME_BASE is not specified.
 #   @services  - A list of services that are declared in the thrift file
-#   @language  - The generator to use (cpp, cpp2 or py3)
+#   @language  - The generator to use (cpp, cpp2, py3, or python)
 #   @options   - Extra options to pass to the generator
 #   @output_path - The directory where the thrift file lives
 #   @include_prefix - Prefix to use for thrift includes in generated sources
 #   @TARGET_NAME_BASE (optional) - name used for target instead of real filename
 #   @THRIFT_INCLUDE_DIRECTORIES (optional) path to thrift include directories
+#   @NAMESPACE (optional) - py3 namespace for python language. Dot-separated
+#       (e.g. "testing") controls output directory structure.
 #
 # Output:
 #  file-language-target     - A custom target to add a dependency
@@ -203,7 +205,7 @@ macro(thrift_generate
 )
   cmake_parse_arguments(THRIFT_GENERATE   # Prefix
     "" # Options
-    "TARGET_NAME_BASE" # One Value args
+    "TARGET_NAME_BASE;NAMESPACE" # One Value args
     "THRIFT_INCLUDE_DIRECTORIES" # Multi-value args
     "${ARGN}")
 
@@ -274,6 +276,60 @@ macro(thrift_generate
   elseif("${language}" STREQUAL "py3")
     set(gen_language "mstch_py3")
     file(WRITE "${output_path}/gen-${language}/${source_file_name}/__init__.py")
+  elseif("${language}" STREQUAL "python")
+    set(gen_language "mstch_python")
+    # thrift-python uses PEP 420 namespace packages — no __init__.py.
+    # NAMESPACE controls output directory: "testing" -> testing/<file_name>/
+    if(DEFINED THRIFT_GENERATE_NAMESPACE
+        AND NOT THRIFT_GENERATE_NAMESPACE STREQUAL "")
+      string(REPLACE "." "/" _namespace_dir "${THRIFT_GENERATE_NAMESPACE}")
+      set(_python_output_subdir "${_namespace_dir}/${source_file_name}")
+    else()
+      set(_python_output_subdir "${source_file_name}")
+    endif()
+    # Override C++ HEADERS/SOURCES with Python output files
+    set("${target_file_name}-${language}-HEADERS" "")
+    set("${target_file_name}-${language}-SOURCES"
+      ${output_path}/gen-python/${_python_output_subdir}/thrift_types.py
+      ${output_path}/gen-python/${_python_output_subdir}/thrift_types.pyi
+      ${output_path}/gen-python/${_python_output_subdir}/thrift_metadata.py
+      ${output_path}/gen-python/${_python_output_subdir}/thrift_enums.py
+      ${output_path}/gen-python/${_python_output_subdir}/thrift_abstract_types.py
+      ${output_path}/gen-python/${_python_output_subdir}/thrift_mutable_types.py
+      ${output_path}/gen-python/${_python_output_subdir}/thrift_mutable_types.pyi
+    )
+    if(NOT "${services}" STREQUAL "")
+      list(APPEND "${target_file_name}-${language}-SOURCES"
+        ${output_path}/gen-python/${_python_output_subdir}/thrift_services.py
+        ${output_path}/gen-python/${_python_output_subdir}/thrift_clients.py
+        ${output_path}/gen-python/${_python_output_subdir}/thrift_mutable_services.py
+        ${output_path}/gen-python/${_python_output_subdir}/thrift_mutable_clients.py
+      )
+    endif()
+    # Python options format differs from C++: no include_prefix
+    if(NOT "${options}" STREQUAL "")
+      set(_python_gen_options ":${options}")
+    else()
+      set(_python_gen_options "")
+    endif()
+    add_custom_command(
+      OUTPUT ${${target_file_name}-${language}-SOURCES}
+      COMMAND ${THRIFT1}
+        --gen "${gen_language}${_python_gen_options}"
+        -o ${output_path}
+        ${thrift_include_directories}
+        "${file_path}/${source_file_name}.thrift"
+      DEPENDS
+        ${THRIFT1}
+        "${file_path}/${source_file_name}.thrift"
+      COMMENT "Generating ${target_file_name} thrift-python files. Output: ${output_path}"
+    )
+    add_custom_target(
+      ${target_file_name}-${language}-target ALL
+      DEPENDS ${${target_file_name}-${language}-SOURCES}
+    )
+    # Python files do not need C++ header/tcc install
+    return()
   endif()
   add_custom_command(
     OUTPUT ${${target_file_name}-${language}-HEADERS}
