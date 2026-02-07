@@ -72,17 +72,22 @@ macro(thrift_object
     "${include_prefix}"
     ${ARGN}
   )
-  bypass_source_check(${${file_name}-${language}-SOURCES})
-  add_library(
-    "${file_name}-${language}-obj"
-    OBJECT
-    ${${file_name}-${language}-SOURCES}
-  )
-  add_dependencies(
-    "${file_name}-${language}-obj"
-    "${file_name}-${language}-target"
-  )
-  message("Thrift will create the Object file : ${file_name}-${language}-obj")
+  if("${language}" STREQUAL "python")
+    # Python: no C++ object library needed, just expose the custom target
+    message("Thrift will create the Python target : ${file_name}-${language}-target")
+  else()
+    bypass_source_check(${${file_name}-${language}-SOURCES})
+    add_library(
+      "${file_name}-${language}-obj"
+      OBJECT
+      ${${file_name}-${language}-SOURCES}
+    )
+    add_dependencies(
+      "${file_name}-${language}-obj"
+      "${file_name}-${language}-target"
+    )
+    message("Thrift will create the Object file : ${file_name}-${language}-obj")
+  endif()
 endmacro()
 
 # thrift_library
@@ -139,12 +144,19 @@ macro(thrift_library
     "${include_prefix}"
     ${ARGN}
   )
-  add_library(
-    "${file_name}-${language}"
-    $<TARGET_OBJECTS:${file_name}-${language}-obj>
-  )
-  target_link_libraries("${file_name}-${language}" ${THRIFTCPP2})
-  message("Thrift will create the Library file : ${file_name}-${language}")
+  if("${language}" STREQUAL "python")
+    # Python: create an alias target so users can depend on <name>-python
+    add_custom_target("${file_name}-${language}" ALL)
+    add_dependencies("${file_name}-${language}" "${file_name}-${language}-target")
+    message("Thrift will create the Python library target : ${file_name}-${language}")
+  else()
+    add_library(
+      "${file_name}-${language}"
+      $<TARGET_OBJECTS:${file_name}-${language}-obj>
+    )
+    target_link_libraries("${file_name}-${language}" ${THRIFTCPP2})
+    message("Thrift will create the Library file : ${file_name}-${language}")
+  endif()
 endmacro()
 
 #
@@ -328,33 +340,33 @@ macro(thrift_generate
       ${target_file_name}-${language}-target ALL
       DEPENDS ${${target_file_name}-${language}-SOURCES}
     )
-    # Python files do not need C++ header/tcc install
-    return()
   endif()
-  add_custom_command(
-    OUTPUT ${${target_file_name}-${language}-HEADERS}
-      ${${target_file_name}-${language}-SOURCES}
-    COMMAND ${THRIFT1}
-      --gen "${gen_language}:${options}${include_prefix_text}"
-      -o ${output_path}
-      ${thrift_include_directories}
-      "${file_path}/${source_file_name}.thrift"
-    DEPENDS
-      ${THRIFT1}
-      "${file_path}/${source_file_name}.thrift"
-    COMMENT "Generating ${target_file_name} files. Output: ${output_path}"
-  )
-  add_custom_target(
-    ${target_file_name}-${language}-target ALL
-    DEPENDS ${${language}-${language}-HEADERS}
-      ${${target_file_name}-${language}-SOURCES}
-  )
-  install(
-    DIRECTORY gen-${language}
-    DESTINATION include/${include_prefix}
-    FILES_MATCHING PATTERN "*.h")
-  install(
-    DIRECTORY gen-${language}
-    DESTINATION include/${include_prefix}
-    FILES_MATCHING PATTERN "*.tcc")
+  if(NOT "${language}" STREQUAL "python")
+    add_custom_command(
+      OUTPUT ${${target_file_name}-${language}-HEADERS}
+        ${${target_file_name}-${language}-SOURCES}
+      COMMAND ${THRIFT1}
+        --gen "${gen_language}:${options}${include_prefix_text}"
+        -o ${output_path}
+        ${thrift_include_directories}
+        "${file_path}/${source_file_name}.thrift"
+      DEPENDS
+        ${THRIFT1}
+        "${file_path}/${source_file_name}.thrift"
+      COMMENT "Generating ${target_file_name} files. Output: ${output_path}"
+    )
+    add_custom_target(
+      ${target_file_name}-${language}-target ALL
+      DEPENDS ${${language}-${language}-HEADERS}
+        ${${target_file_name}-${language}-SOURCES}
+    )
+    install(
+      DIRECTORY gen-${language}
+      DESTINATION include/${include_prefix}
+      FILES_MATCHING PATTERN "*.h")
+    install(
+      DIRECTORY gen-${language}
+      DESTINATION include/${include_prefix}
+      FILES_MATCHING PATTERN "*.tcc")
+  endif()
 endmacro()

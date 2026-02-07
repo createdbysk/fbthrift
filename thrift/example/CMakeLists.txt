@@ -14,3 +14,4 @@
 
 add_subdirectory(if)
 add_subdirectory(cpp2)
+add_subdirectory(python)

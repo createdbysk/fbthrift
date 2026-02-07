@@ -24,3 +24,15 @@ thrift_library(
   "${EXAMPLE_IF_HOME}" #output_path
   "thrift/example/if" #include_prefix
 )
+
+# Example to test python code generation
+thrift_library(
+  "sum" #file_name
+  "SumService" #services
+  "python" #language
+  "" #options
+  "${EXAMPLE_IF_HOME}" #file_path
+  "${EXAMPLE_IF_HOME}" #output_path
+  "thrift/example/if" #include_prefix
+  NAMESPACE "example"
+)
