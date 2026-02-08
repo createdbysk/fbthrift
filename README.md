@@ -32,6 +32,7 @@ Table of Contents
   * [Build](#build)
   * [Thrift Files](#thrift-files)
   * [Python Build (thrift-python)](#python-build-thrift-python)
+  * [Python Example](#python-example)
 * [C++ Static Reflection](#c-static-reflection)
 * [C++ Server Metrics](#c-server-metrics)
 
@@ -215,6 +216,25 @@ podman run -it -v $(pwd):/fbthrift -w /fbthrift fbthrift-python-build bash
 ```bash
 pip3 install $(python3 build/fbcode_builder/getdeps.py show-inst-dir fbthrift-python)/share/thrift/wheels/thrift-*.whl
 ```
+
+### Python Example
+
+A working example lives in `thrift/example/python/`. It defines a `SumService` in Thrift, implements a handler, and runs a unit test.
+
+**Prerequisites:**
+- thrift-python wheel installed (see [Python Build](#python-build-thrift-python))
+- `thrift1` compiler (produced by the build step above, at `installed/fbthrift-python/bin/thrift1`)
+
+**Quick start:**
+
+```bash
+cd thrift/example/python
+cmake -S . -B build -DTHRIFT1=/path/to/thrift1
+cmake --build build
+ctest --test-dir build
+```
+
+`cmake --build` generates Python types from `sum.thrift` and installs them into site-packages. `ctest` runs the test.
 
 ## C++ Static Reflection
 
