@@ -14,10 +14,10 @@ thrift_library(
   "SumService"                    #services
   "python"                        #language
   ""                              #options
-  "${CMAKE_CURRENT_SOURCE_DIR}"   #file_path
+  "${CMAKE_CURRENT_SOURCE_DIR}/../if"   #file_path
   "${CMAKE_CURRENT_BINARY_DIR}"   #output_path
   ""                              #include_prefix
-  NAMESPACE "facebook.thrift.example.sum"
+  NAMESPACE "example"
 )
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)

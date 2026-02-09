@@ -4,7 +4,7 @@
 
 import unittest
 
-from facebook.thrift.example.sum.sum.thrift_types import SumRequest, SumResponse
+from example.sum.thrift_types import SumRequest, SumResponse
 from handler import Handler
 
 
