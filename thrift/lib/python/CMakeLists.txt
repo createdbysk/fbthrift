@@ -43,7 +43,6 @@ message(STATUS "FOLLY_PYTHON_SITE_PACKAGES: ${FOLLY_PYTHON_SITE_PACKAGES}")
 
 
 find_package(Cython 0.28 REQUIRED)
-find_package(proxygen CONFIG REQUIRED)
 
 
 # thrift-python's server and streaming modules depend architecturally on py3's
@@ -210,10 +209,8 @@ get_target_property(
 get_filename_component(python_libname ${Python3_LIBRARIES} NAME)
 
 # Create colon-separated include path for CYTHON_INCLUDE_PATH env var
-# Proxygen and mvfst include directories (for http2_helper in client tests)
+# mvfst include directories
 # Derive from cmake targets (found via find_package above) - not hardcoded paths
-get_target_property(
-  proxygen_incs proxygen::proxygen INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(
   mvfst_incs mvfst::mvfst_transport INTERFACE_INCLUDE_DIRECTORIES)
 
@@ -231,8 +228,7 @@ set(_all_cython_includes
   ${fmt_include_dirs}
   ${wangle_incs}
   ${glog_include_dirs}
-  # Proxygen and mvfst (for http2_helper.pyx client tests)
-  ${proxygen_incs}
+  # mvfst (for transport)
   ${mvfst_incs}
 )
 list(JOIN _all_cython_includes ":" cython_include_path)
