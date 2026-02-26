@@ -106,9 +106,9 @@ jobs:
     - name: Fetch libiberty-python
       if: ${{ steps.paths.outputs.libiberty-python_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libiberty-python
-    - name: Fetch libunwind
-      if: ${{ steps.paths.outputs.libunwind_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libunwind
+    - name: Fetch libunwind-python
+      if: ${{ steps.paths.outputs.libunwind-python_SOURCE }}
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libunwind-python
     - name: Fetch xz
       if: ${{ steps.paths.outputs.xz_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests xz
@@ -527,22 +527,22 @@ jobs:
       with:
        path: ${{ steps.paths.outputs.libiberty-python_INSTALL }}
        key: ${{ steps.paths.outputs.libiberty-python_CACHE_KEY }}-install
-    - name: Restore libunwind from cache
-      id: restore_libunwind
-      if: ${{ steps.paths.outputs.libunwind_SOURCE }}
+    - name: Restore libunwind-python from cache
+      id: restore_libunwind-python
+      if: ${{ steps.paths.outputs.libunwind-python_SOURCE }}
       uses: actions/cache/restore@v4
       with:
-       path: ${{ steps.paths.outputs.libunwind_INSTALL }}
-       key: ${{ steps.paths.outputs.libunwind_CACHE_KEY }}-install
-    - name: Build libunwind
-      if: ${{ steps.paths.outputs.libunwind_SOURCE && ! steps.restore_libunwind.outputs.cache-hit }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libunwind
-    - name: Save libunwind to cache
+       path: ${{ steps.paths.outputs.libunwind-python_INSTALL }}
+       key: ${{ steps.paths.outputs.libunwind-python_CACHE_KEY }}-install
+    - name: Build libunwind-python
+      if: ${{ steps.paths.outputs.libunwind-python_SOURCE && ! steps.restore_libunwind-python.outputs.cache-hit }}
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libunwind-python
+    - name: Save libunwind-python to cache
       uses: actions/cache/save@v4
-      if: ${{ steps.paths.outputs.libunwind_SOURCE && ! steps.restore_libunwind.outputs.cache-hit }}
+      if: ${{ steps.paths.outputs.libunwind-python_SOURCE && ! steps.restore_libunwind-python.outputs.cache-hit }}
       with:
-       path: ${{ steps.paths.outputs.libunwind_INSTALL }}
-       key: ${{ steps.paths.outputs.libunwind_CACHE_KEY }}-install
+       path: ${{ steps.paths.outputs.libunwind-python_INSTALL }}
+       key: ${{ steps.paths.outputs.libunwind-python_CACHE_KEY }}-install
     - name: Restore xz from cache
       id: restore_xz
       if: ${{ steps.paths.outputs.xz_SOURCE }}
