@@ -50,7 +50,7 @@ zlib
 [dependencies.os=linux]
 libaio
 libiberty-python
-libunwind
+libunwind-python
 
 # xz depends on autoconf which does not build on
 # Windows
