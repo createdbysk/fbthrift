@@ -161,6 +161,13 @@ function(symlink_dir_contents src_dir dest_dir)
     endif()
 
     get_filename_component(_filename "${_src}" NAME)
+
+    # Skip http2_helper files - they depend on proxygen which is not
+    # included in the OSS Python build
+    if("${_filename}" MATCHES "^http2_helper\\.")
+      continue()
+    endif()
+
     set(_dest "${dest_dir}/${_filename}")
 
     message(STATUS "Symlinking ${_src} -> ${_dest}")
