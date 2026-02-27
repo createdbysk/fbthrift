@@ -489,31 +489,6 @@ else:
                 sources=["thrift/lib/python/test/event_handlers/helper.pyx"],
                 **common_options,
             ),
-            # http2_helper extension for client tests - requires proxygen
-            # This extension is only built if proxygen headers are available
-            *(
-                [
-                    Extension(
-                        "thrift.lib.python.client.test.http2_helper",
-                        sources=["thrift/lib/python/client/test/http2_helper.pyx"],
-                        language="c++",
-                        include_dirs=include_dirs,
-                        library_dirs=lib_search_paths,
-                        libraries=dynamic_libs
-                        + ["proxygen", "proxygenhttpserver"]
-                        + [python_lib],
-                        extra_compile_args=["-std=c++20", "-fcoroutines"],
-                        extra_link_args=extra_link_args,
-                    ),
-                ]
-                if any(
-                    os.path.exists(
-                        os.path.join(d, "proxygen", "httpserver", "HTTPServerOptions.h")
-                    )
-                    for d in include_dirs + ["/usr/include", "/usr/local/include"]
-                )
-                else []
-            ),
             # metadata_response extension for metadata response tests
             # Uses header-only C++ implementation in metadata_response.h
             Extension(
