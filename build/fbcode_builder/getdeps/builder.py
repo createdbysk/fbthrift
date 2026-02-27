@@ -339,7 +339,6 @@ class MakeBuilder(BuilderBase):
         return ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
 
     def _build(self, reconfigure) -> None:
-
         env = self._compute_env()
 
         # Need to ensure that PREFIX is set prior to install because
@@ -435,7 +434,11 @@ class AutoconfBuilder(BuilderBase):
             inst_dir,
         )
         self.args = args or []
-        if not build_opts.shared_libs and "--disable-shared" not in self.args:
+        if (
+            not build_opts.shared_libs
+            and "--disable-shared" not in self.args
+            and "--enable-shared" not in self.args
+        ):
             self.args.append("--disable-shared")
         self.conf_env_args = conf_env_args or {}
 
