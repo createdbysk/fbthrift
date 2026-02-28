@@ -15,8 +15,8 @@ job_weight_mib = 1024
 builder = nop
 
 [dependencies]
-gflags
-glog
+gflags-python
+glog-python
 googletest
 boost-python
 libdwarf-python
@@ -39,13 +39,13 @@ zstd-python
 # macOS doesn't expose the openssl api so we need
 # to build our own.
 [dependencies.os=darwin]
-openssl
+openssl-python
 
 # Windows has neither openssl nor zlib, so we get
 # to provide both
 [dependencies.os=windows]
-openssl
-zlib
+openssl-python
+zlib-python
 
 [dependencies.os=linux]
 libaio-python

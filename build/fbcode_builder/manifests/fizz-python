@@ -32,7 +32,7 @@ BUILD_TESTS = OFF
 
 [dependencies]
 folly-python
-liboqs
+liboqs-python
 libsodium-python
 zlib-python
 zstd-python

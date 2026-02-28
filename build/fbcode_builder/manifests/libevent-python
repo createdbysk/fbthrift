@@ -40,4 +40,4 @@ EVENT__BUILD_SHARED_LIBRARIES = ON
 EVENT__LIBRARY_TYPE = STATIC
 
 [dependencies.not(any(os=linux, os=freebsd))]
-openssl
+openssl-python

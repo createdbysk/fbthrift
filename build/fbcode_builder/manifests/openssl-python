@@ -1,0 +1,34 @@
+[manifest]
+name = openssl-python
+
+[debs]
+libssl-dev
+
+[homebrew]
+openssl
+
+[rpms]
+openssl
+openssl-devel
+openssl-libs
+
+[pps]
+openssl
+
+[download.not(any(os=linux, os=freebsd))]
+url = https://www.openssl.org/source/openssl-3.0.15.tar.gz
+sha256 = 23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533
+
+[build.any(os=linux, os=freebsd)]
+builder = nop
+
+[build.not(any(os=linux, os=freebsd))]
+builder = openssl
+subdir = openssl-3.0.15
+
+[cmake.defines]
+BUILD_SHARED_LIBS = ON
+
+[dependencies.os=windows]
+jom
+perl
