@@ -38,6 +38,8 @@ Table of Contents
   * [Build](#build)
   * [Thrift Files](#thrift-files)
   * [Python Build (thrift-python)](#python-build-thrift-python)
+* [Development](#development)
+  * [Phase 5: Upstream Manifest Alignment](#phase-5-upstream-manifest-alignment)
 * [C++ Static Reflection](#c-static-reflection)
 * [C++ Server Metrics](#c-server-metrics)
 
@@ -84,6 +86,9 @@ system dependencies to avoid building them:
 
 On other platforms or if on Linux and without system dependencies `getdeps.py`
 will mostly download and build them for you during the build step.
+
+- [ ] Add Python dependencies diagram
+- [ ] Add non-python dependencies diagram (C++, Hack, etc.)
 
 Some of the dependencies `getdeps.py` uses and installs are:
 
@@ -221,6 +226,12 @@ podman run -it -v $(pwd):/fbthrift -w /fbthrift fbthrift-python-build bash
 ```bash
 pip3 install $(python3 build/fbcode_builder/getdeps.py show-inst-dir fbthrift-python)/share/thrift/wheels/thrift-*.whl
 ```
+
+## Development
+
+### Phase 5: Upstream Manifest Alignment
+
+See [PHASE_5_PLAN.md](PHASE_5_PLAN.md) for details on aligning fbthrift-python manifests with upstream fbsource versions.
 
 ## C++ Static Reflection
 
