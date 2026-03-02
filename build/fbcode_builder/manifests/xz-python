@@ -5,9 +5,6 @@ name = xz-python
 [debs.not(distro=ubuntu)]
 liblzma-dev
 
-[homebrew]
-xz
-
 [rpms]
 xz-devel
 
