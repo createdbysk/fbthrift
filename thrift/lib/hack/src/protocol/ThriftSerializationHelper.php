@@ -24,6 +24,24 @@
 <<Oncalls('thrift')>> // @oss-disable
 abstract final class ThriftSerializationHelper {
 
+  public static function useCommonRPCHelpers(
+    string $switchval,
+  )[write_props]: bool {
+    return HH\Coeffects\fb\backdoor_from_write_props__DO_NOT_USE(
+      ()[defaults] ==>
+        JustKnobs::eval('thrift/hack:use_common_rpc_helpers', null, $switchval),
+      'Need to gate the change',
+    );
+  }
+
+  public static function useStructToStringRPCHelpers()[write_props]: bool {
+    return HH\Coeffects\fb\backdoor_from_write_props__DO_NOT_USE(
+      ()[defaults] ==>
+        JustKnobs::eval('thrift/hack:use_struct_to_string_extensions_in_rpc'),
+      'Need to gate the change',
+    );
+  }
+
   public static function readStruct(
     TProtocol $protocol,
     IThriftStruct $object,
@@ -217,7 +235,7 @@ abstract final class ThriftSerializationHelper {
         } else if (Shapes::at($tspec, 'format') === 'collection') {
           $list = new Vector($list);
         } else { // format === 'array'
-          $list = ($protocol->getOptions() & THRIFT_MARK_LEGACY_ARRAYS)
+          $list = (($protocol->getOptions() & THRIFT_MARK_LEGACY_ARRAYS) !== 0)
             ? HH\array_mark_legacy($list)
             : $list;
         }
@@ -266,7 +284,7 @@ abstract final class ThriftSerializationHelper {
           // When using a set array(), we can't append in the normal way.
           // Therefore, we need to distinguish between the two types
           // before we add the element to the set.
-          $tmp = ($protocol->getOptions() & THRIFT_MARK_LEGACY_ARRAYS)
+          $tmp = (($protocol->getOptions() & THRIFT_MARK_LEGACY_ARRAYS) !== 0)
             ? HH\array_mark_legacy(dict[])
             : dict[];
           foreach ($set as $set_element) {
@@ -329,7 +347,7 @@ abstract final class ThriftSerializationHelper {
         } else if (Shapes::at($tspec, 'format') === 'collection') {
           $map = new Map($map);
         } else { // format === 'array'
-          $map = ($protocol->getOptions() & THRIFT_MARK_LEGACY_ARRAYS)
+          $map = (($protocol->getOptions() & THRIFT_MARK_LEGACY_ARRAYS) !== 0)
             ? HH\array_mark_legacy($map)
             : $map;
         }
@@ -410,7 +428,7 @@ abstract final class ThriftSerializationHelper {
   )[]: bool {
     switch ($field_type) {
       case TType::BOOL:
-        return (bool)$field_value === false;
+        return HH\legacy_is_truthy($field_value) === false;
       case TType::BYTE:
       case TType::I16:
       case TType::I32:
@@ -511,7 +529,7 @@ abstract final class ThriftSerializationHelper {
     // types
     switch ($field_type) {
       case TType::BOOL:
-        $xfer += $protocol->writeBool((bool)$object);
+        $xfer += $protocol->writeBool(HH\legacy_is_truthy($object));
         break;
       case TType::BYTE:
         $xfer += $protocol->writeByte((int)$object);

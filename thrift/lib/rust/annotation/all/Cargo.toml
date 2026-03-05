@@ -16,7 +16,7 @@ doctest = false
 doc = false
 
 [dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.101"
 codegen_includer_proc_macro = { version = "0.1.0", git = "https://github.com/facebookexperimental/rust-shed.git", branch = "main" }
 cpp = { version = "0.0.1+unstable", path = "../cpp" }
 erlang = { version = "0.0.1+unstable", path = "../erlang" }
@@ -29,7 +29,7 @@ python = { version = "0.0.1+unstable", path = "../python" }
 ref-cast = "1.0.18"
 rust = { version = "0.0.1+unstable", path = "../rust" }
 scope = { version = "0.0.1+unstable", path = "../scope" }
-thiserror = "2.0.12"
+thiserror = "2.0.18"
 thrift = { version = "0.0.1+unstable", path = "../thrift" }
 
 [build-dependencies]

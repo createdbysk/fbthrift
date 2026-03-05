@@ -112,6 +112,21 @@ target_link_libraries(
 )
 
 add_library(
+  thrift_path
+
+  dynamic/Path.cpp
+)
+add_dependencies(thrift_path thriftmetadata thriftprotocol)
+target_link_libraries(
+  thrift_path
+  PUBLIC
+    fmt::fmt
+    Folly::folly
+    thriftmetadata
+    thriftprotocol
+)
+
+add_library(
   thrift_dynamic_value
 
   dynamic/Any.cpp
@@ -142,13 +157,14 @@ add_library(
   dynamic/detail/Datum.cpp
   dynamic/detail/DatumHash.cpp
 )
-add_dependencies(thrift_dynamic_value thriftmetadata thriftprotocol)
+add_dependencies(thrift_dynamic_value thriftmetadata thriftprotocol thrift_path)
 target_link_libraries(
   thrift_dynamic_value
   PUBLIC
     Folly::folly
     thriftmetadata
     thriftprotocol
+    thrift_path
 )
 
 bypass_source_check("${frozen-cpp2-SOURCES}")
@@ -319,6 +335,7 @@ add_library(
   async/ClientChannel.cpp
   async/ClientSinkBridge.cpp
   async/ClientStreamBridge.cpp
+  async/ClientStreamInterceptorContext.cpp
   async/Cpp2Channel.cpp
   async/DuplexChannel.cpp
   async/FramingHandler.cpp
@@ -338,8 +355,10 @@ add_library(
   async/ResponseChannel.cpp
   async/RetryingRequestChannel.cpp
   async/RocketClientChannel.cpp
+  async/RocketClientChannelBase.cpp
   async/RpcOptions.cpp
   async/RpcTypes.cpp
+  async/SecureRocketClientChannel.cpp
   async/ServerBiDiStreamFactory.cpp
   async/ServerGeneratorStreamBridge.cpp
   async/ServerRequestData.cpp
@@ -366,6 +385,7 @@ add_library(
   security/FizzPeeker.cpp
   security/SSLUtil.cpp
   security/extensions/ThriftParametersClientExtension.cpp
+  security/extensions/ThriftParametersServerExtension.cpp
   security/extensions/Types.cpp
   server/AdaptiveConcurrency.cpp
   server/ConcurrencyControllerBase.cpp
@@ -425,6 +445,7 @@ add_library(
   transport/rocket/client/RequestContext.cpp
   transport/rocket/client/RequestContextQueue.cpp
   transport/rocket/client/RocketClient.cpp
+  transport/rocket/client/SecureRocketClient.cpp
   transport/rocket/client/KeepAliveWatcher.cpp
   transport/rocket/client/RocketStreamServerCallback.cpp
   transport/rocket/client/RocketStreamServerCallbackWithChunkTimeout.cpp
@@ -440,10 +461,12 @@ add_library(
   transport/rocket/framing/Util.cpp
   transport/rocket/payload/DefaultPayloadSerializerStrategy.cpp
   transport/rocket/payload/PayloadSerializer.cpp
+  transport/rocket/server/BidirectionalStreamState.cpp
   transport/rocket/server/InteractionOverload.cpp
   transport/rocket/server/RocketRoutingHandler.cpp
   transport/rocket/server/RocketServerConnection.cpp
   transport/rocket/server/RefactoredRocketServerConnection.cpp
+  transport/rocket/server/RefactoredThriftRocketServerHandler.cpp
   transport/rocket/server/RocketServerConnectionPlugins.cpp
   transport/rocket/server/RocketServerFrameContext.cpp
   transport/rocket/server/RocketSinkClientCallback.cpp
@@ -452,6 +475,12 @@ add_library(
   transport/rocket/server/RocketThriftRequests.cpp
   transport/rocket/server/RocketServerConnectionFactory.cpp
   transport/rocket/server/ThriftRocketServerHandler.cpp
+  transport/rocket/server/detail/RocketContextUtils.cpp
+  transport/rocket/server/detail/RocketErrorHandler.cpp
+  transport/rocket/server/detail/RocketRequestHandler.cpp
+  transport/rocket/server/detail/RocketRequestOrchestrator.cpp
+  transport/rocket/server/detail/RocketRequestProcessor.cpp
+  transport/rocket/server/detail/RocketSetupProcessor.cpp
   transport/rocket/server/detail/WriteBatcher.cpp
   util/Checksum.cpp
   util/DebugString.cpp
@@ -468,6 +497,7 @@ add_dependencies(
   RocketUpgrade-cpp2-target
   thriftannotation
   thriftmetadata
+  thrift_path
   thrift_dynamic_value
   thrifttyperep
   thrifttype
@@ -483,6 +513,7 @@ target_link_libraries(
     rpcmetadata
     thriftannotation
     thriftmetadata
+    thrift_path
     thrift_dynamic_value
     thriftfrozen2
     thriftprotocol
@@ -528,7 +559,7 @@ install(
 )
 
 if (BUILD_SHARED_LIBS)
-  set_target_properties(rpcmetadata thriftannotation thriftmetadata
+  set_target_properties(rpcmetadata thriftannotation thriftmetadata thrift_path
     thrift_dynamic_value thriftfrozen2 thriftprotocol thriftcpp2 thrifttyperep thrifttype
     serverdbginfo
     PROPERTIES VERSION ${PACKAGE_VERSION}
@@ -539,6 +570,7 @@ install(
   TARGETS
     rpcmetadata
     thriftmetadata
+    thrift_path
     thrift_dynamic_value
     thriftfrozen2
     thrifttyperep

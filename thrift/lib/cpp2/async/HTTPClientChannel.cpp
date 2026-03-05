@@ -255,13 +255,20 @@ class HTTPTransactionCallback
       if (!body_) {
         requestError(
             folly::make_exception_wrapper<transport::TTransportException>(
+                msg_ ? fmt::format(
+                           "Empty HTTP response, {}, {}",
+                           msg_->getStatusCode(),
+                           msg_->getStatusMessage())
+                     : "Empty Header"));
+        return;
+      }
+      if (!msg_->is2xxResponse()) {
+        requestError(
+            folly::make_exception_wrapper<transport::TTransportException>(
                 fmt::format(
-                    "Empty HTTP response, {}",
-                    (msg_ ? folly::to<std::string>(
-                                msg_->getStatusCode(),
-                                ", ",
-                                msg_->getStatusMessage())
-                          : "Empty Header"))));
+                    "HTTP response error status, {}, {}",
+                    msg_->getStatusCode(),
+                    msg_->getStatusMessage())));
         return;
       }
 
@@ -451,18 +458,48 @@ void HTTPClientChannel::setRequestHeaderOptions(THeader* header) {
   header->forceClientType(true);
 }
 
+namespace {
+std::pair<std::string, std::string> encodeHeader(
+    const std::string& header, const std::string& value) {
+  static constexpr std::string_view kHeaderPrefix{"encode_"};
+  std::string encodedHeader;
+  {
+    folly::resizeWithoutInitialization(
+        encodedHeader,
+        kHeaderPrefix.size() + folly::base64URLEncodedSize(header.size()));
+    auto out = std::copy(
+        kHeaderPrefix.begin(), kHeaderPrefix.end(), encodedHeader.begin());
+    folly::base64URLEncodeRuntime(
+        header.data(), header.data() + header.size(), std::to_address(out));
+  }
+  std::string encodedValue;
+  {
+    const std::string_view encodedName{
+        encodedHeader.begin() + kHeaderPrefix.size(),
+        encodedHeader.end(),
+    };
+    folly::resizeWithoutInitialization(
+        encodedValue,
+        encodedName.size() + 1 + folly::base64URLEncodedSize(value.size()));
+    auto out =
+        std::copy(encodedName.begin(), encodedName.end(), encodedValue.begin());
+    *out++ = '_';
+    folly::base64URLEncodeRuntime(
+        value.data(), value.data() + value.size(), std::to_address(out));
+  }
+  return {std::move(encodedHeader), std::move(encodedValue)};
+}
+} // namespace
+
 void HTTPClientChannel::setHeaders(
     proxygen::HTTPHeaders& dstHeaders,
-    const transport::THeader::StringToStringMap& srcHeaders) {
-  for (const auto& header : srcHeaders) {
-    if (header.first.find(":") != std::string::npos) {
-      auto name = folly::base64URLEncode(header.first);
-      auto value = folly::base64URLEncode(header.second);
-      dstHeaders.rawSet(
-          folly::to<std::string>("encode_", name),
-          folly::to<std::string>(name, "_", value));
+    transport::THeader::StringToStringMap&& srcHeaders) {
+  for (auto&& [header, value] : srcHeaders) {
+    if (header.find(':') != std::string::npos) {
+      auto&& [encodedHeader, encodedValue] = encodeHeader(header, value);
+      dstHeaders.add(std::move(encodedHeader), std::move(encodedValue));
     } else {
-      dstHeaders.rawSet(header.first, header.second);
+      dstHeaders.add(header, std::move(value));
     }
   }
 }
@@ -475,19 +512,9 @@ proxygen::HTTPMessage HTTPClientChannel::buildHTTPMessage(THeader* header) {
   msg.setURL(httpUrl_);
   msg.setHTTPVersion(1, 1);
   msg.setIsChunked(false);
+
   auto& headers = msg.getHeaders();
-
-  {
-    auto wh = header->releaseWriteHeaders();
-    setHeaders(headers, wh);
-  }
-
-  {
-    auto eh = header->getExtraWriteHeaders();
-    if (eh) {
-      setHeaders(headers, *eh);
-    }
-  }
+  setHeaders(headers, header->extractAllWriteHeaders());
 
   headers.set(proxygen::HTTPHeaderCode::HTTP_HEADER_HOST, httpHost_);
   headers.set(

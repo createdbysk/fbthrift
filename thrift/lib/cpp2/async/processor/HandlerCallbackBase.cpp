@@ -16,6 +16,7 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/Executor.h>
+#include <folly/stop_watch.h>
 #include <thrift/lib/cpp/TApplicationException.h>
 #include <thrift/lib/cpp/concurrency/ThreadManager.h>
 #include <thrift/lib/cpp2/async/AsyncProcessorFactory.h>
@@ -25,29 +26,8 @@
 #include <thrift/lib/cpp2/async/ServerStream.h>
 #include <thrift/lib/cpp2/async/processor/HandlerCallbackBase.h>
 #include <thrift/lib/cpp2/server/LazyDynamicArguments.h>
-
-// Default to ture, so it can be used for killswitch.
-THRIFT_FLAG_DEFINE_bool(thrift_enable_streaming_tracking, false);
-#if defined(__linux__) && !FOLLY_MOBILE
-/**
- * TALK TO THE THRIFT TEAM
- * BEFORE FLIPPING THIS FLAG!
- */
-DEFINE_bool(
-    EXPERIMENTAL_thrift_enable_streaming_tracking,
-    true,
-    "Enable Thrift Streaming Tracking.");
-#else
-static constexpr bool FLAGS_EXPERIMENTAL_thrift_enable_streaming_tracking =
-    true;
-#endif
-
-namespace {
-bool isStreamTrackingEnabled() {
-  return FLAGS_EXPERIMENTAL_thrift_enable_streaming_tracking &&
-      THRIFT_FLAG(thrift_enable_streaming_tracking);
-}
-} // namespace
+#include <thrift/lib/cpp2/server/ServerConfigs.h>
+#include <thrift/lib/cpp2/server/StreamInterceptorContext.h>
 
 namespace apache::thrift {
 const folly::Executor::KeepAlive<>&
@@ -192,9 +172,6 @@ void HandlerCallbackBase::sendReply(SerializedResponse response) {
 
 void HandlerCallbackBase::sendReply(
     ResponseAndServerStreamFactory&& responseAndStream) {
-  if (!isStreamTrackingEnabled()) {
-    this->ctx_.reset();
-  }
   folly::Optional<uint32_t> crc32c =
       checksumIfNeeded(responseAndStream.response);
   auto payload = std::move(responseAndStream.response)
@@ -208,6 +185,27 @@ void HandlerCallbackBase::sendReply(
   auto& stream = responseAndStream.stream;
   stream.setInteraction(std::move(interaction_));
   stream.setContextStack(std::move(this->ctx_));
+
+  // Create and set interceptor context if service interceptors are enabled
+  if (shouldProcessServiceInterceptorsOnRequest()) {
+    const auto* server =
+        reqCtx_->getConnectionContext()->getWorkerContext()->getServerContext();
+    if (server && !server->getServiceInterceptors().empty()) {
+      auto interceptorContext =
+          std::make_shared<detail::StreamInterceptorContext>(
+              detail::generateStreamId(),
+              server->getServiceInterceptors(),
+              server->getInterceptorMetricCallback(),
+              std::string(methodNameInfo_.serviceName),
+              std::string(methodNameInfo_.methodName));
+      // Move request storage into interceptor context before request is
+      // destroyed. This ensures the storage remains valid for async stream
+      // interceptor callbacks.
+      interceptorContext->moveRequestStorage(reqCtx_);
+      stream.setInterceptorContext(std::move(interceptorContext));
+    }
+  }
+
   if (getEventBase()->isInEventBaseThread()) {
     StreamReplyInfo(
         std::move(req_), std::move(stream), std::move(payload), crc32c)();
@@ -225,9 +223,6 @@ void HandlerCallbackBase::sendReply(
     [[maybe_unused]] std::pair<
         SerializedResponse,
         apache::thrift::detail::ServerSinkFactory>&& responseAndSinkConsumer) {
-  if (!isStreamTrackingEnabled()) {
-    this->ctx_.reset();
-  }
 #if FOLLY_HAS_COROUTINES
   folly::Optional<uint32_t> crc32c =
       checksumIfNeeded(responseAndSinkConsumer.first);
@@ -386,6 +381,7 @@ HandlerCallbackBase::processServiceInterceptorsOnRequest(
     }
   }
 
+  folly::stop_watch<std::chrono::microseconds> totalTimer;
   for (std::size_t i = 0; i < serviceInterceptors.size(); ++i) {
     auto* connectionCtx = reqCtx_->getConnectionContext();
     auto connectionInfo = ServiceInterceptorBase::ConnectionInfo{
@@ -412,6 +408,8 @@ HandlerCallbackBase::processServiceInterceptorsOnRequest(
       exceptions.emplace_back(i, folly::current_exception());
     }
   }
+  server->getInterceptorMetricCallback().onRequestTotalComplete(
+      totalTimer.elapsed());
   if (!exceptions.empty()) {
     std::string message = fmt::format(
         "ServiceInterceptor::onRequest threw exceptions:\n[{}] {}\n",
@@ -440,6 +438,7 @@ HandlerCallbackBase::processServiceInterceptorsOnResponse(
       serviceInterceptors = server->getServiceInterceptors();
   std::vector<std::pair<std::size_t, std::exception_ptr>> exceptions;
 
+  folly::stop_watch<std::chrono::microseconds> totalTimer;
   for (auto i = std::ptrdiff_t(serviceInterceptors.size()) - 1; i >= 0; --i) {
     auto* connectionCtx = reqCtx_->getConnectionContext();
     auto connectionInfo = ServiceInterceptorBase::ConnectionInfo{
@@ -464,6 +463,8 @@ HandlerCallbackBase::processServiceInterceptorsOnResponse(
       exceptions.emplace_back(i, folly::current_exception());
     }
   }
+  server->getInterceptorMetricCallback().onResponseTotalComplete(
+      totalTimer.elapsed());
 
   if (!exceptions.empty()) {
     std::string message = fmt::format(

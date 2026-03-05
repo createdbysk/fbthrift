@@ -29,8 +29,26 @@ exception WhisperException {
   1: string message;
 }
 
+// Root service (grandparent) - has getMethodMetadata for sendRequest
 service ExampleService {
   ResponseStruct sendRequest(1: RequestStruct request) throws (
+    1: WhisperException ex,
+  );
+}
+
+// Middle service (parent) - extends ExampleService
+// getMethodMetadata for sendMiddleRequest, delegates to parent for sendRequest
+service ExampleMiddleService extends ExampleService {
+  ResponseStruct sendMiddleRequest(1: RequestStruct request) throws (
+    1: WhisperException ex,
+  );
+}
+
+// Child service (grandchild) - extends ExampleMiddleService
+// Tests full inheritance chain: child -> parent -> grandparent
+// getMethodMetadata for sendChildRequest, delegates to parent for inherited methods
+service ExampleChildService extends ExampleMiddleService {
+  ResponseStruct sendChildRequest(1: RequestStruct request) throws (
     1: WhisperException ex,
   );
 }
@@ -41,6 +59,9 @@ exception StreamException {
 
 service ExampleStreamingService {
   ResponseStruct, stream<string throws (1: StreamException ex)> testStream(
+    1: RequestStruct request,
+  );
+  ResponseStruct, sink<string, ResponseStruct> testSink(
     1: RequestStruct request,
   );
 }

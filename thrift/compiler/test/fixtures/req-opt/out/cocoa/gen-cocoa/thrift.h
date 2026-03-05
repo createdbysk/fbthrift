@@ -221,6 +221,18 @@ NSString* RpcPriorityToString(const RpcPriority value);
 - (BOOL) levelIsSet;
 @end
 
+@interface Sealed : TBaseStruct <TBase, NSCoding> {
+}
+
+- (id) init NS_DESIGNATED_INITIALIZER;
+- (id) initWithCoder:(NSCoder *)decoder NS_DESIGNATED_INITIALIZER;
+- (void) read: (id <TProtocol>) inProtocol;
+- (void) write: (id <TProtocol>) outProtocol;
+- (void) validate;
+- (NSDictionary *) toDict;
+
+@end
+
 @interface DeprecatedUnvalidatedAnnotations : TBaseStruct <TBase, NSCoding> {
   TBaseStructDictionary * __thrift_items;
 
@@ -334,6 +346,37 @@ NSString* RpcPriorityToString(const RpcPriority value);
 - (void) validate;
 - (NSDictionary *) toDict;
 
+@end
+
+@interface AllowUnsafeNonSealedKeyType : TBaseStruct <TBase, NSCoding> {
+}
+
+- (id) init NS_DESIGNATED_INITIALIZER;
+- (id) initWithCoder:(NSCoder *)decoder NS_DESIGNATED_INITIALIZER;
+- (void) read: (id <TProtocol>) inProtocol;
+- (void) write: (id <TProtocol>) outProtocol;
+- (void) validate;
+- (NSDictionary *) toDict;
+
+@end
+
+@interface Deprecated : TBaseStruct <TBase, NSCoding> {
+  NSString * __thrift_message;
+
+  BOOL __thrift_message_set;
+}
+
+@property (nonatomic, retain, nullable) NSString * message;
+
+- (id) init NS_DESIGNATED_INITIALIZER;
+- (id) initWithCoder:(NSCoder *)decoder NS_DESIGNATED_INITIALIZER;
+- (id) initWithMessage: (nullable NSString *) message NS_DESIGNATED_INITIALIZER;
+- (void) read: (id <TProtocol>) inProtocol;
+- (void) write: (id <TProtocol>) outProtocol;
+- (void) validate;
+- (NSDictionary *) toDict;
+
+- (BOOL) messageIsSet;
 @end
 
 

@@ -194,7 +194,6 @@ class py3_mstch_program : public mstch_program {
              &py3_mstch_program::capi_converter},
             {"program:capi_module_prefix",
              &py3_mstch_program::capi_module_prefix},
-            {"program:intercompatible?", &py3_mstch_program::intercompatible},
             {"program:auto_migrate?", &py3_mstch_program::auto_migrate},
             {"program:gen_legacy_container_converters?",
              &py3_mstch_program::legacy_container_converters},
@@ -339,8 +338,6 @@ class py3_mstch_program : public mstch_program {
   mstch::node capi_module_prefix() {
     return python::gen_capi_module_prefix_impl(program_);
   }
-
-  mstch::node intercompatible() { return has_option("intercompatible"); }
 
   mstch::node auto_migrate() { return has_option("auto_migrate"); }
 
@@ -492,7 +489,6 @@ class py3_mstch_service : public mstch_service {
             {"service:py3Namespaces", &py3_mstch_service::py3Namespaces},
             {"service:programName", &py3_mstch_service::programName},
             {"service:includePrefix", &py3_mstch_service::includePrefix},
-            {"service:cpp_name", &py3_mstch_service::cpp_name},
             {"service:qualified_name", &py3_mstch_service::qualified_name},
             {"service:supportedFunctions",
              &py3_mstch_service::get_supported_functions},
@@ -527,8 +523,6 @@ class py3_mstch_service : public mstch_service {
   mstch::node programName() { return service_->program()->name(); }
 
   mstch::node includePrefix() { return service_->program()->include_prefix(); }
-
-  mstch::node cpp_name() { return cpp2::get_name(service_); }
 
   mstch::node qualified_name() {
     return cpp2::get_gen_namespace(*service_->program()) +
@@ -569,53 +563,6 @@ class py3_mstch_service : public mstch_service {
  protected:
   const t_program* prog_;
   std::set<const t_interaction*, interaction_name_less> supported_interactions_;
-};
-
-class py3_mstch_interaction : public py3_mstch_service {
- public:
-  using ast_type = t_interaction;
-
-  py3_mstch_interaction(
-      const t_interaction* interaction,
-      mstch_context& ctx,
-      mstch_element_position pos,
-      const t_service* containing_service,
-      const t_program* prog)
-      : py3_mstch_service(interaction, ctx, pos, prog, containing_service) {
-    register_methods(
-        this,
-        {{"interaction:parent_service_cpp_name",
-          &py3_mstch_interaction::parent_service_cpp_name}});
-  }
-
-  mstch::node parent_service_cpp_name() {
-    return cpp2::get_name(containing_service_);
-  }
-};
-
-class py3_mstch_function : public mstch_function {
- public:
-  py3_mstch_function(
-      const t_function* f, mstch_context& ctx, mstch_element_position pos)
-      : mstch_function(f, ctx, pos) {
-    register_methods(
-        this,
-        {
-            {"function:eb", &py3_mstch_function::event_based},
-            {"function:stack_arguments?", &py3_mstch_function::stack_arguments},
-        });
-  }
-
-  mstch::node event_based() {
-    return function_->get_unstructured_annotation("thread") == "eb" ||
-        function_->has_structured_annotation(kCppProcessInEbThreadUri) ||
-        interface().has_unstructured_annotation("process_in_event_base") ||
-        interface().has_structured_annotation(kCppProcessInEbThreadUri);
-  }
-
-  mstch::node stack_arguments() {
-    return cpp2::is_stack_arguments(*context_.options, *function_);
-  }
 };
 
 class py3_mstch_type : public mstch_type {
@@ -661,8 +608,6 @@ class py3_mstch_type : public mstch_type {
             {"type:key_needs_convert?", &py3_mstch_type::map_key_needs_convert},
             {"type:val_needs_convert?",
              &py3_mstch_type::map_value_needs_convert},
-            {"type:resolves_to_complex_return?",
-             &py3_mstch_type::resolves_to_complex_return},
 
             {"type:need_cbinding_path?",
              {with_no_caching, &py3_mstch_type::need_cbinding_path}},
@@ -780,12 +725,6 @@ class py3_mstch_type : public mstch_type {
       return type_needs_convert(map->val_type().get_type());
     }
     return false;
-  }
-
-  mstch::node resolves_to_complex_return() {
-    return resolved_type_->is<t_container>() ||
-        resolved_type_->is_string_or_binary() ||
-        resolved_type_->is<t_structured>();
   }
 
   bool is_custom_cpp_type() const { return cached_props_.cpp_type() != ""; }
@@ -923,10 +862,7 @@ class py3_mstch_struct : public mstch_struct {
   }
 
   mstch::node isStructOrderable() {
-    return cpp2::OrderableTypeUtils::is_orderable(
-               *struct_,
-               !context_.options->contains(
-                   "disable_custom_type_ordering_if_structure_has_uri")) &&
+    return cpp2::OrderableTypeUtils::is_orderable(*struct_) &&
         !struct_->has_unstructured_annotation("no_default_comparators");
   }
 
@@ -1081,27 +1017,6 @@ class py3_mstch_field : public mstch_field {
 
   RefType ref_type_{RefType::NotRef};
   bool ref_type_cached_ = false;
-};
-
-class py3_mstch_enum : public mstch_enum {
- public:
-  py3_mstch_enum(
-      const t_enum* e, mstch_context& ctx, mstch_element_position pos)
-      : mstch_enum(e, ctx, pos) {
-    register_methods(
-        this,
-        {
-            {"enum:flags?", &py3_mstch_enum::hasFlags},
-            {"enum:cpp_name", &py3_mstch_enum::cpp_name},
-        });
-  }
-
-  mstch::node hasFlags() {
-    return enum_->has_unstructured_annotation("py3.flags") ||
-        enum_->has_structured_annotation(kPythonFlagsUri);
-  }
-
-  mstch::node cpp_name() { return cpp2::get_name(enum_); }
 };
 
 std::string py3_mstch_program::visit_type_impl(
@@ -1282,8 +1197,7 @@ class t_mstch_py3_generator : public t_mstch_generator {
 
   whisker_options render_options() const override {
     whisker_options opts;
-    opts.allowed_undefined_variables = {
-        "service:autogen_path", "function:stream?"};
+    opts.allowed_undefined_variables = {"function:stream?"};
     return opts;
   }
 
@@ -1367,13 +1281,26 @@ class t_mstch_py3_generator : public t_mstch_generator {
     return std::move(def).make();
   }
 
-  prototype<t_field>::ptr make_prototype_for_field(
+  prototype<t_function>::ptr make_prototype_for_function(
       const prototype_database& proto) const override {
-    auto base = t_whisker_generator::make_prototype_for_field(proto);
-    auto def = whisker::dsl::prototype_builder<h_field>::extends(base);
-    def.property("hasModifiedName?", [](const t_field& self) {
-      return python::get_py3_name(self) != cpp2::get_name(&self);
+    auto base = t_whisker_generator::make_prototype_for_function(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_function>::extends(std::move(base));
+
+    def.property("eb?", [this](const t_function& self) {
+      if (self.get_unstructured_annotation("thread") == "eb" ||
+          self.has_structured_annotation(kCppProcessInEbThreadUri)) {
+        return true;
+      }
+      const t_interface* parent = context().get_function_parent(&self);
+      assert(parent != nullptr);
+      return parent->has_unstructured_annotation("process_in_event_base") ||
+          parent->has_structured_annotation(kCppProcessInEbThreadUri);
     });
+    def.property("stack_arguments?", [this](const t_function& self) {
+      return cpp2::is_stack_arguments(compiler_options(), self);
+    });
+
     return std::move(def).make();
   }
 
@@ -1386,7 +1313,7 @@ class t_mstch_py3_generator : public t_mstch_generator {
       return python::get_py3_name(self) != self.name();
     });
     def.property(
-        "cppName", [](const t_named& self) { return cpp2::get_name(&self); });
+        "cpp_name", [](const t_named& self) { return cpp2::get_name(&self); });
     def.property("modulePath", [this](const t_named& self) {
       const t_program* program =
           self.program() == nullptr ? get_program() : self.program();
@@ -1429,7 +1356,7 @@ class t_mstch_py3_generator : public t_mstch_generator {
       const t_type* true_type = self.get_true_type();
       return python::get_py3_name(*true_type) != true_type->name();
     });
-    def.property("cppName", [](const t_type& self) {
+    def.property("cpp_name", [](const t_type& self) {
       return cpp2::get_name(self.get_true_type());
     });
     def.property("modulePath", [this](const t_type& self) {
@@ -1507,13 +1434,10 @@ py3_type_context::cached_properties& py3_type_context::get_cached_props(
 void t_mstch_py3_generator::set_mstch_factories() {
   mstch_context_.add<py3_mstch_program>(&type_context_);
   mstch_context_.add<py3_mstch_service>(program_);
-  mstch_context_.add<py3_mstch_interaction>(program_);
-  mstch_context_.add<py3_mstch_function>();
   mstch_context_.add<py3_mstch_type>(&type_context_);
   mstch_context_.add<py3_mstch_typedef>();
   mstch_context_.add<py3_mstch_struct>();
   mstch_context_.add<py3_mstch_field>();
-  mstch_context_.add<py3_mstch_enum>();
 }
 
 void t_mstch_py3_generator::generate_init_files() {

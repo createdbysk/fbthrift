@@ -31,6 +31,7 @@
 #include <thrift/compiler/ast/t_function.h>
 #include <thrift/compiler/ast/t_interface.h>
 #include <thrift/compiler/ast/t_named.h>
+#include <thrift/compiler/ast/t_namespace.h>
 #include <thrift/compiler/ast/t_node.h>
 #include <thrift/compiler/ast/t_service.h>
 #include <thrift/compiler/ast/t_struct.h>
@@ -399,13 +400,13 @@ void validate_python_namespaces(sema_context& ctx, const t_program& program) {
     return;
   }
 
-  const std::map<std::string, std::string>& namespaces = program.namespaces();
+  const std::map<std::string, t_namespace*>& namespaces = program.namespaces();
 
   // If there are no Python namespaces, there is nothing to do.
   if (std::none_of(
           namespaces.begin(),
           namespaces.end(),
-          [](const std::pair<const std::string, std::string>& it) {
+          [](const std::pair<const std::string, t_namespace*>& it) {
             const std::string& key = it.first;
             return key.find("py") == 0; // i.e., key.starts_with("py")
           })) {
@@ -524,11 +525,8 @@ void validate_exception_message_annotation_is_only_in_exceptions(
 
 void validate_orderable_structured_types(
     sema_context& ctx, const t_structured& node) {
-  switch (OrderableTypeUtils::get_orderable_condition(
-      node, true /* enableCustomTypeOrderingIfStructureHasUri */)) {
-    case OrderableTypeUtils::StructuredOrderableCondition::Always:
-    case OrderableTypeUtils::StructuredOrderableCondition::
-        OrderableByNestedLegacyImplicitLogicEnabledByUri: {
+  switch (OrderableTypeUtils::get_orderable_condition(node)) {
+    case OrderableTypeUtils::StructuredOrderableCondition::Always: {
       const t_const* annotation = ctx.program().inherit_annotation_or_null(
           node, kCppEnableCustomTypeOrdering);
       if (annotation == nullptr) {
@@ -546,26 +544,48 @@ void validate_orderable_structured_types(
           node.name());
       return;
     }
-    case OrderableTypeUtils::StructuredOrderableCondition::
-        OrderableByLegacyImplicitLogicEnabledByUri: {
-      // warn("Ordering enabled, add @cpp.EnableCustomTypeOrdering");
-      ctx.warning(
-          node,
-          "Type `{}` is implicitly made orderable in C++ because it has a "
-          "URI. This legacy behavior is being deprecated: enable ordering "
-          "explicitly by annotating the type with "
-          "`@cpp.EnableCustomTypeOrdering`.",
-          node.name());
-      return;
-    }
     case OrderableTypeUtils::StructuredOrderableCondition::NotOrderable:
     case OrderableTypeUtils::StructuredOrderableCondition::
         OrderableByExplicitAnnotation:
-    case OrderableTypeUtils::StructuredOrderableCondition::
-        OrderableByExplicitAnnotationAndNestedLegacyImplicitLogic:
       // Nothing to do
       return;
   }
+}
+
+/**
+ * Checks that types that are annotated with @thrift.Sealed are valid.
+ */
+void validate_sealed_structured_types(
+    sema_context& ctx, const t_structured& node) {
+  if (!node.has_structured_annotation(kSealedUri)) {
+    // Type is not marked as @thrift.Sealed => nothing to validate
+    return;
+  }
+
+  if (node.is_sealed()) {
+    // Type is marked as @thrift.Sealed, and satisfies all the conditions => OK
+    return;
+  }
+
+  // Type is markes as Sealed but does not satisfy criteria. Find which field(s)
+  // break the condition.
+
+  std::set<std::string> non_sealed_field_names;
+  for (const t_field& field : node.fields()) {
+    if (field.type()->is_sealed()) {
+      continue;
+    }
+    non_sealed_field_names.insert(field.name());
+  }
+
+  ctx.report(
+      node,
+      validation_to_diagnostic_level(
+          ctx.sema_parameters().sealed_annotation_on_non_sealed_type),
+      "Type `{}` is marked as `@thrift.Sealed`, but is not sealed. The "
+      "following fields have non-sealed types: {}",
+      node.name(),
+      non_sealed_field_names);
 }
 
 // Checks the attributes of fields in a union.
@@ -1625,6 +1645,91 @@ void validate_field_specific_annotation_scopes(
   }
 }
 
+/**
+ * Helper function used to validate a specific type against sealedness
+ * requirements, namely that map keys and set element types must be sealed.
+ *
+ * Handles the presence of the `@thrift.AllowUnsafeNonSealedKeyType` annotation
+ * - including identifying invalid or unnecessary uses.
+ *
+ * This method is typically called by the validators for specific AST nodes
+ * (fields, typedefs, function parameters, etc.).
+ */
+void validate_sealed_type(
+    sema_context& ctx, const t_type& type, const t_named& node) {
+  const bool has_annotation =
+      node.has_structured_annotation(kAllowUnsafeNonSealedKeyTypeUri);
+
+  if (const t_map* map_type = type.try_as<t_map>()) {
+    const t_type& map_key_type = map_type->key_type().deref();
+    if (map_key_type.is_sealed()) {
+      if (has_annotation) {
+        ctx.report(
+            node,
+            validation_to_diagnostic_level(
+                ctx.sema_parameters()
+                    .unnecessary_allow_unsafe_non_sealed_key_type),
+            "Unnecessary @thrift.AllowUnsafeNonSealedKeyType on map: `{}`",
+            node.name());
+      }
+      return;
+    }
+
+    // Type is map, whose key is NOT sealed
+    if (!has_annotation) {
+      ctx.report(
+          node,
+          validation_to_diagnostic_level(
+              ctx.sema_parameters().non_sealed_key_type),
+          "Map `{}` key type is not sealed: `{}`",
+          node.name(),
+          map_key_type.name());
+    }
+  } else if (const t_set* set_type = type.try_as<t_set>()) {
+    const t_type& set_elem_type = set_type->elem_type().deref();
+    if (set_elem_type.is_sealed()) {
+      if (has_annotation) {
+        ctx.report(
+            node,
+            validation_to_diagnostic_level(
+                ctx.sema_parameters()
+                    .unnecessary_allow_unsafe_non_sealed_key_type),
+            "Unnecessary @thrift.AllowUnsafeNonSealedKeyType on set: `{}`",
+            node.name());
+      }
+      return;
+    }
+
+    // Type is a set, whose elements are NOT sealed
+    if (!has_annotation) {
+      ctx.report(
+          node,
+          validation_to_diagnostic_level(
+              ctx.sema_parameters().non_sealed_key_type),
+          "Set `{}` element type is not sealed: `{}`",
+          node.name(),
+          set_elem_type.name());
+    }
+  } else if (has_annotation) {
+    ctx.report(
+        node,
+        validation_to_diagnostic_level(
+            ctx.sema_parameters().unnecessary_allow_unsafe_non_sealed_key_type),
+        "Unnecessary @thrift.AllowUnsafeNonSealedKeyType: `{}`",
+        node.name());
+  }
+}
+
+/**
+ * Checks that fields whose type require sealed types (map keys, set elements)
+ * are valid (or annotated accordingly).
+ */
+void validate_sealed_field(sema_context& ctx, const t_field& field) {
+  const t_type_ref& field_type_ref = field.type();
+  const t_type& field_type = field_type_ref.deref();
+  validate_sealed_type(ctx, field_type, field);
+}
+
 struct ValidateAnnotationPositions {
   void operator()(sema_context& ctx, const t_const& node) {
     if (owns_annotations(node.type())) {
@@ -1926,6 +2031,20 @@ void validate_nonallowed_typedef_with_uri(
       node.name());
 }
 
+void validate_sealed_typedef(sema_context& ctx, const t_typedef& node) {
+  const t_type& aliased_type = node.type().deref();
+  validate_sealed_type(ctx, aliased_type, node);
+}
+
+void validate_sealed_function_types(sema_context& ctx, const t_function& node) {
+  const t_type& return_type = node.return_type().deref();
+  validate_sealed_type(ctx, return_type, node);
+  for (const t_field& field : node.params().fields()) {
+    const t_type& field_type = field.type().deref();
+    validate_sealed_type(ctx, field_type, field);
+  }
+}
+
 // TODO (T191018859): forbid as field type too
 void forbid_exception_as_method_type(
     sema_context& ctx, const t_function& node) {
@@ -1983,6 +2102,8 @@ ast_validator standard_validator() {
       &validate_exception_message_annotation_is_only_in_exceptions);
   validator.add_structured_definition_visitor(
       &validate_orderable_structured_types);
+  validator.add_structured_definition_visitor(
+      &validate_sealed_structured_types);
 
   validator.add_union_visitor(&validate_union_field_attributes);
   validator.add_exception_visitor(&validate_exception_message_annotation);
@@ -2003,6 +2124,7 @@ ast_validator standard_validator() {
   validator.add_field_visitor(ValidateAnnotationPositions{});
   validator.add_field_visitor(&detail::validate_annotation_scopes<>);
   validator.add_field_visitor(&validate_field_specific_annotation_scopes);
+  validator.add_field_visitor(&validate_sealed_field);
 
   validator.add_enum_visitor(&validate_enum_value_name_uniqueness);
   validator.add_enum_visitor(&validate_enum_value_uniqueness);
@@ -2030,6 +2152,8 @@ ast_validator standard_validator() {
   validator.add_typedef_visitor(&deprecate_typedef_type_annotations);
   validator.add_typedef_visitor(ValidateAnnotationPositions());
   validator.add_typedef_visitor(&validate_nonallowed_typedef_with_uri);
+  validator.add_typedef_visitor(&validate_sealed_typedef);
+  validator.add_function_visitor(&validate_sealed_function_types);
 
   validator.add_container_visitor(ValidateAnnotationPositions());
   validator.add_enum_visitor(&validate_cpp_enum_type);

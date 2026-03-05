@@ -1547,7 +1547,7 @@ TEST(DynamicPatch, applyToDataFieldInsideAny) {
       type::AnyData{any1}.get<type::union_t<MyUnion>>().s().value(),
       "hello world");
 
-  dynPatch.applyObjectInAny(any2);
+  dynPatch.applyObjectInAny(badge, any2);
   EXPECT_EQ(
       type::AnyData{any2}.get<type::union_t<MyUnion>>().s().value(),
       "hello world");
@@ -1584,7 +1584,7 @@ TEST(DynamicPatch, applyAnyPatchToDataFieldInsideAny) {
       "hello world");
 
   outer = type::AnyData::toAny(any2);
-  dynPatch.applyObjectInAny(outer.toThrift());
+  dynPatch.applyObjectInAny(badge, outer.toThrift());
   outer.get(any2);
   EXPECT_EQ(
       type::AnyData{any2}.get<type::union_t<MyUnion>>().s().value(),
@@ -1735,6 +1735,132 @@ TEST(DynamicPatchTest, convertAssignPatchToFieldPatch) {
 
   check(visitor.ensureIds);
   check(visitor.patchIds);
+}
+
+// Regression test: merging an assign-based AnyPatch (entity creation) with a
+// field-update AnyPatch (child entity update) should preserve root fields when
+// extracting the DynamicPatch. Previously, the DynamicPatchExtractionVisitor
+// did not incorporate the ensureAny value after clear, causing root fields to
+// be lost.
+TEST(DynamicPatch, AnyPatchMergeThenExtractPreservesRootFields) {
+  MyUnion rootValue;
+  rootValue.s() = "root_data";
+
+  op::AnyPatch createPatch;
+  createPatch.assign(type::AnyData::toAny(rootValue).toThrift());
+
+  MyUnionPatch childModPatch;
+  childModPatch.patchIfSet<ident::i>() = 42;
+  op::AnyPatch childAnyPatch;
+  childAnyPatch.patchIfTypeIs(childModPatch);
+
+  createPatch.merge(childAnyPatch);
+  {
+    // Extract DynamicPatch for the MyUnion type
+    auto type = type::Type::create<type::union_t<MyUnion>>();
+    auto extractedPatch = createPatch.extractDynamicPatchAsIf(type);
+
+    protocol::Value emptyObject;
+    emptyObject.ensure_object();
+    extractedPatch.apply(emptyObject);
+
+    auto resultAny = protocol::detail::toAny(
+        emptyObject,
+        type,
+        type::Protocol::get<type::StandardProtocol::Compact>());
+    auto result =
+        type::AnyData{resultAny.toThrift()}.get<type::union_t<MyUnion>>();
+    EXPECT_TRUE(result.s().has_value())
+        << "Root field 's' should be preserved after merge+extract";
+    EXPECT_EQ(result.s().value(), "root_data");
+  }
+  {
+    // Use the typed extraction path
+    auto extracted = createPatch.extractPatchAsIf<MyUnionPatch>();
+
+    MyUnion val;
+    extracted.apply(val);
+
+    EXPECT_TRUE(val.s().has_value())
+        << "Root field 's' should be preserved via typed extractPatchAsIf";
+    EXPECT_EQ(val.s().value(), "root_data");
+  }
+}
+
+// Verifies that field values different from custom defaults are preserved
+// when converting DynamicPatch to TypedPatch via fromObjectStruct.
+TEST(DynamicPatchTest, CustomDefaultValuesPreservedInTypedPatchExtraction) {
+  OuterStructWithCustomDefaults src;
+  src.name() = "TestEntity";
+
+  OuterStructWithCustomDefaults dst;
+  dst.name() = "TestEntity";
+  CustomDefaultOptions opts;
+  opts.enabled() = false; // Custom default is true
+  opts.thresholdPercent() = 50; // Custom default is 90
+  opts.allowEmpty() = true; // Custom default is false
+  dst.options() = opts;
+
+  DiffVisitorBase visitor;
+  DynamicPatch dynamicPatch =
+      visitor.diff(protocol::asObject(src), protocol::asObject(dst));
+
+  auto typedPatch =
+      fromObjectStruct<type::infer_tag<OuterStructWithCustomDefaultsPatch>>(
+          dynamicPatch.toObject());
+
+  OuterStructWithCustomDefaults fresh;
+  fresh.name() = "TestEntity";
+  typedPatch.apply(fresh);
+
+  ASSERT_TRUE(fresh.options().has_value());
+  EXPECT_EQ(fresh.options()->enabled(), false);
+  EXPECT_EQ(fresh.options()->thresholdPercent(), 50);
+  EXPECT_EQ(fresh.options()->allowEmpty(), true);
+}
+
+// Verifies that intrinsic default values are preserved when they differ from
+// custom defaults during DynamicPatch to TypedPatch conversion.
+TEST(DynamicPatchTest, IntrinsicDefaultValuesPreservedWhenDifferFromCustom) {
+  OuterStructWithCustomDefaults src;
+  src.name() = "TestEntity";
+
+  OuterStructWithCustomDefaults dst;
+  dst.name() = "TestEntity";
+  CustomDefaultOptions opts;
+  opts.enabled() = false; // Intrinsic default, custom default is true
+  opts.thresholdPercent() = 0; // Intrinsic default, custom default is 90
+  opts.allowEmpty() = false;
+  dst.options() = opts;
+
+  DiffVisitorBase visitor;
+  DynamicPatch dynamicPatch =
+      visitor.diff(protocol::asObject(src), protocol::asObject(dst));
+
+  auto typedPatch =
+      fromObjectStruct<type::infer_tag<OuterStructWithCustomDefaultsPatch>>(
+          dynamicPatch.toObject());
+
+  OuterStructWithCustomDefaults fresh;
+  fresh.name() = "TestEntity";
+  typedPatch.apply(fresh);
+
+  ASSERT_TRUE(fresh.options().has_value());
+  EXPECT_EQ(fresh.options()->enabled(), false);
+  EXPECT_EQ(fresh.options()->thresholdPercent(), 0);
+  EXPECT_EQ(fresh.options()->allowEmpty(), false);
+}
+
+TEST(DynamicPatch, TypeMismatch) {
+  MyUnion v;
+  v.s() = "test";
+  auto any = type::AnyData::toAny(v).toThrift();
+
+  DynamicPatch patch;
+  patch.getStoredPatchByTag<type::struct_c>().patchIfSet<type::i64_t>(
+      FieldId{1}) += 10;
+
+  EXPECT_THROW(patch.applyObjectInAny(badge, any), std::exception);
 }
 
 } // namespace apache::thrift::protocol

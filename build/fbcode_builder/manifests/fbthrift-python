@@ -35,7 +35,7 @@ fizz-python
 fmt-python
 folly-python
 googletest
-libsodium
+libsodium-python
 wangle-python
 zstd-python
 mvfst-python
@@ -45,9 +45,8 @@ xxhash
 # dependency to avoid duplication.
 
 [dependencies.os=linux]
-libaio
+libaio-python
 libevent-python
-proxygen-python
 
 [shipit.pathmap]
 xplat/thrift/public_tld = .

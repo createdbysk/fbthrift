@@ -16,19 +16,20 @@
 
 #pragma once
 
-#if __has_include(<folly/experimental/io/IoUringBackend.h>)
-#include <folly/experimental/io/IoUringBackend.h>
+#if __has_include(<folly/io/async/IoUringBackend.h>)
+#include <folly/io/async/IoUringBackend.h>
 #endif
 
 #if FOLLY_HAS_LIBURING
 
 #include <folly/executors/IOThreadPoolExecutor.h>
+#include <folly/io/async/IoUringOptions.h>
 
 namespace apache::thrift::io_uring_util {
 
 std::unique_ptr<folly::EventBaseBackendBase> getIOUringEventbaseBackendFunc();
 
-folly::IoUringBackend::Options getDefaultIOUringOptions();
+folly::IoUringOptions getDefaultIOUringOptions();
 
 std::shared_ptr<folly::IOThreadPoolExecutorBase> getDefaultIOUringExecutor(
     bool enableThreadIdCollection = true);

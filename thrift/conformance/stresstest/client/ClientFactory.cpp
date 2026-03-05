@@ -25,9 +25,9 @@
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/experimental/io/AsyncIoUringSocket.h>
 #include <folly/experimental/io/AsyncIoUringSocketFactory.h>
-#include <folly/experimental/io/IoUringBackend.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncSocket.h>
+#include <folly/io/async/IoUringBackend.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <quic/client/QuicClientAsyncTransport.h>
 #include <quic/common/events/FollyQuicEventBase.h>
@@ -43,6 +43,14 @@
 namespace apache::thrift::stress {
 
 namespace {
+
+folly::SocketOptionMap getSocketOptions(const ClientConnectionConfig& cfg) {
+  folly::SocketOptionMap opts;
+  if (cfg.mss > 0) {
+    opts[{IPPROTO_TCP, TCP_MAXSEG}] = cfg.mss;
+  }
+  return opts;
+}
 
 std::function<std::shared_ptr<folly::SSLContext>()> customSslContextFn;
 std::function<std::shared_ptr<fizz::client::FizzClientContext>()>
@@ -232,14 +240,14 @@ folly::AsyncTransport::UniquePtr createSocket(
 folly::AsyncTransport::UniquePtr createEPollSocket(
     folly::EventBase* evb, const ClientConnectionConfig& cfg) {
   auto sock = folly::AsyncSocket::newSocket(evb);
-  sock->connect(cfg.connectCb, cfg.serverHost);
+  sock->connect(cfg.connectCb, cfg.serverHost, 0, getSocketOptions(cfg));
   return sock;
 }
 
 folly::AsyncTransport::UniquePtr createTLSSocket(
     folly::EventBase* evb, const ClientConnectionConfig& cfg) {
   auto sock = folly::AsyncSSLSocket::newSocket(getSslContext(cfg), evb);
-  sock->connect(cfg.connectCb, cfg.serverHost);
+  sock->connect(cfg.connectCb, cfg.serverHost, 0, getSocketOptions(cfg));
   return sock;
 }
 
@@ -274,7 +282,14 @@ folly::AsyncTransport::UniquePtr createFizzSocket(
                     std::move(extensions))));
 
   fizzClient->connect(
-      cfg.serverHost, cfg.connectCb, getFizzVerifier(cfg), {}, {});
+      cfg.serverHost,
+      cfg.connectCb,
+      getFizzVerifier(cfg),
+      {},
+      {},
+      std::chrono::milliseconds(0),
+      std::chrono::milliseconds(0),
+      getSocketOptions(cfg));
   return fizzClient;
 }
 
@@ -290,11 +305,15 @@ folly::AsyncIoUringSocket::Options getIoUringSocketOptions() {
 folly::AsyncTransport::UniquePtr createIOUring(
     folly::EventBase* evb, const ClientConnectionConfig& cfg) {
   auto ring = new folly::AsyncIoUringSocket(evb, getIoUringSocketOptions());
-  if (cfg.ioUringZcrx) {
+  if (cfg.ioUringZcrx && cfg.ioUringZcrxSocketBind) {
     folly::AsyncIoUringSocketFactory::bindSocketForZcRx(
         *ring, cfg.serverHost.getIPAddress(), cfg.serverHost.getPort());
   }
-  ring->connect(cfg.connectCb, cfg.serverHost);
+  ring->connect(
+      cfg.connectCb,
+      cfg.serverHost,
+      std::chrono::milliseconds(0),
+      getSocketOptions(cfg));
   return folly::AsyncTransport::UniquePtr(ring);
 }
 
@@ -303,18 +322,22 @@ folly::AsyncTransport::UniquePtr createIOUringTLS(
   auto sock = folly::AsyncSSLSocket::newSocket(getSslContext(cfg), evb);
   auto ring =
       new folly::AsyncIoUringSocket(std::move(sock), getIoUringSocketOptions());
-  if (cfg.ioUringZcrx) {
+  if (cfg.ioUringZcrx && cfg.ioUringZcrxSocketBind) {
     folly::AsyncIoUringSocketFactory::bindSocketForZcRx(
         *ring, cfg.serverHost.getIPAddress(), cfg.serverHost.getPort());
   }
-  ring->connect(cfg.connectCb, cfg.serverHost);
+  ring->connect(
+      cfg.connectCb,
+      cfg.serverHost,
+      std::chrono::milliseconds(0),
+      getSocketOptions(cfg));
   return folly::AsyncTransport::UniquePtr(ring);
 }
 
 folly::AsyncTransport::UniquePtr createIOUringFizz(
     folly::EventBase* evb, const ClientConnectionConfig& cfg) {
   auto sock = new folly::AsyncIoUringSocket(evb, getIoUringSocketOptions());
-  if (cfg.ioUringZcrx) {
+  if (cfg.ioUringZcrx && cfg.ioUringZcrxSocketBind) {
     folly::AsyncIoUringSocketFactory::bindSocketForZcRx(
         *sock, cfg.serverHost.getIPAddress(), cfg.serverHost.getPort());
   }
@@ -322,7 +345,14 @@ folly::AsyncTransport::UniquePtr createIOUringFizz(
       new fizz::client::AsyncFizzClient(
           folly::AsyncTransport::UniquePtr(sock), getFizzContext(cfg)));
   fizzClient->connect(
-      cfg.serverHost, cfg.connectCb, getFizzVerifier(cfg), {}, {});
+      cfg.serverHost,
+      cfg.connectCb,
+      getFizzVerifier(cfg),
+      {},
+      {},
+      std::chrono::milliseconds(0),
+      std::chrono::milliseconds(0),
+      getSocketOptions(cfg));
   return fizzClient;
 }
 #endif

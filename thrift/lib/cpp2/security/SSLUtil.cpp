@@ -16,7 +16,7 @@
 
 #include <thrift/lib/cpp2/security/SSLUtil.h>
 
-#include <folly/experimental/io/AsyncIoUringSocketFactory.h>
+#include <folly/io/async/AsyncIoUringSocketFactory.h>
 #include <folly/io/async/fdsock/AsyncFdSocket.h>
 #include <folly/io/async/ssl/BasicTransportCertificate.h>
 
@@ -29,6 +29,7 @@
 namespace apache::thrift {
 
 const std::string kSecurityProtocolStopTLS = "stopTLS";
+const std::string kSecurityProtocolPSPV0 = "thriftPSPV0";
 
 namespace {
 

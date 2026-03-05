@@ -136,7 +136,10 @@ func (c *serialChannel) SendRequestResponse(ctx context.Context, method string, 
 	if err != nil {
 		return err
 	}
-
+	// Declared exception (inside the response)
+	if exception := response.Exception(); exception != nil {
+		return exception
+	}
 	return nil
 }
 
@@ -160,7 +163,17 @@ func (c *serialChannel) SendRequestStream(
 	method string,
 	request WritableStruct,
 	response ReadableResult,
-	newStreamElemFn func() types.ReadableResult,
+	newStreamElemFn func() ReadableResult,
 ) (iter.Seq2[ReadableStruct, error], error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+// SendRequestSink performs a request-sink call.
+func (c *serialChannel) SendRequestSink(
+	ctx context.Context,
+	method string,
+	request WritableStruct,
+	firstResponse ReadableResult,
+) (func(sinkSeq iter.Seq2[WritableResult, error], finalResponse ReadableStruct) error, error) {
 	return nil, fmt.Errorf("not implemented")
 }

@@ -65,7 +65,12 @@ abstract class ThriftProcessorBase implements IThriftProcessor {
     mixed $handler_ctx,
   ): dynamic {
     $this->eventHandler_->preRead($handler_ctx, $request_name, dict[]);
-
+    if (ThriftSerializationHelper::useCommonRPCHelpers(get_class($this))) {
+      $args = $input->readRPCStruct($request_args_class);
+      $input->readMessageEnd();
+      $this->eventHandler_->postRead($handler_ctx, $request_name, $args);
+      return $args;
+    }
     if ($input is TBinaryProtocolAccelerated) {
       $args = thrift_protocol_read_binary_struct(
         $input,
@@ -98,6 +103,11 @@ abstract class ThriftProcessorBase implements IThriftProcessor {
     TMessageType $reply_type,
   ): void {
     $this->eventHandler_->preWrite($handler_ctx, $request_name, $result);
+    if (ThriftSerializationHelper::useCommonRPCHelpers(get_class($this))) {
+      $output->writeRPCMessage($request_name, $reply_type, $result, $seqid);
+      $this->eventHandler_->postWrite($handler_ctx, $request_name, $result);
+      return;
+    }
     if ($output is TBinaryProtocolAccelerated) {
       thrift_protocol_write_binary(
         $output,
@@ -224,7 +234,7 @@ abstract class ThriftProcessorBase implements IThriftProcessor {
         list($encoded_ex, $is_application_ex) = $payload_encode(null, $ex);
 
         // Invoke appropriate event handler based on exception type
-        if ($is_application_ex) {
+        if ($is_application_ex is nonnull && $is_application_ex) {
           $this->eventHandler_
             ->postStreamPayloadError($handler_ctx, $request_name, $ex);
         } else {
@@ -235,7 +245,7 @@ abstract class ThriftProcessorBase implements IThriftProcessor {
           $encoded_ex,
           $ex->getMessage(),
           Classnames::get($ex) as nonnull,
-          !$is_application_ex,
+          !($is_application_ex is nonnull && $is_application_ex),
         );
         return;
       }
@@ -387,7 +397,7 @@ trait GetThriftServiceMetadata {
   require extends ThriftProcessorBase;
   require implements IThriftProcessor;
 
-  private function process_getThriftServiceMetadataHelper(
+  protected function process_getThriftServiceMetadataHelper(
     int $seqid,
     TProtocol $input,
     TProtocol $output,

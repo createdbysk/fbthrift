@@ -16,50 +16,49 @@
 
 }}
 
-{{#typedef:docs?}}
+{{#if typedef:docs?}}
 #[doc = {{typedef:docs}}]
-{{/typedef:docs?}}{{!
-}}{{^typedef:newtype?}}{{!
-}}{{#typedef:has_adapter?}}
+{{/if typedef:docs?}}{{!
+}}{{#if (not typedef:newtype?)}}{{!
+}}{{#if typedef:has_adapter?}}
 pub type {{typedef:rust_name}} = {{!
-  }}{{#adapter:transitive_only?}}{{!
-    }}{{#adapter:underlying_type}}{{> lib/type}}{{/adapter:underlying_type}}{{!
-  }}{{/adapter:transitive_only?}}{{!
-  }}{{^adapter:transitive_only?}}{{!
-    }}{{> lib/adapter/qualified}}::AdaptedType{{!
-  }}{{/adapter:transitive_only?}};
-{{/typedef:has_adapter?}}{{!
-}}{{^typedef:has_adapter?}}{{!
+  }}{{#if typedef:adapter_transitive_only?}}{{!
+    }}{{#typedef:type}}{{> lib/type}}{{/typedef:type}}{{!
+  }}{{#else}}{{!
+    }}{{typedef:adapter_qualified}}::AdaptedType{{!
+  }}{{/if typedef:adapter_transitive_only?}};
+{{/if typedef:has_adapter?}}{{!
+}}{{#if (not typedef:has_adapter?)}}{{!
   }}{{#typedef:type}}
 pub type {{typedef:rust_name}} = {{!
-    }}{{#typedef:rust_type}}::{{typedef:rust_type}}{{> lib/type_generics}}{{/typedef:rust_type}}{{!
-    }}{{^typedef:rust_type}}{{> lib/type}}{{/typedef:rust_type}}{{!
+    }}{{#if (not (string.empty? typedef:rust_type))}}::{{typedef:rust_type}}{{> lib/type_generics}}{{!
+    }}{{#else}}{{> lib/type}}{{/if (not (string.empty? typedef:rust_type))}}{{!
 }};
-{{#typedef:constructor?}}
+{{#if typedef:constructor?}}
 #[doc(hidden)]
 pub use {{type:package}}::__constructors::{{type:rust_name}} as {{typedef:rust_name}};
-{{/typedef:constructor?}}
+{{/if typedef:constructor?}}
   {{/typedef:type}}{{!
-}}{{/typedef:has_adapter?}}{{!
-}}{{/typedef:newtype?}}{{!
-}}{{#typedef:newtype?}}
+}}{{/if (not typedef:has_adapter?)}}{{!
+}}{{/if (not typedef:newtype?)}}{{!
+}}{{#if typedef:newtype?}}
 #[derive({{!
-    }}{{^typedef:has_adapter?}}{{!
+    }}{{#if (not typedef:has_adapter?)}}{{!
     }}Default, {{!
-    }}{{/typedef:has_adapter?}}{{!
-    }}{{#typedef:copy?}}Copy, {{/typedef:copy?}}{{!
+    }}{{/if (not typedef:has_adapter?)}}{{!
+    }}{{#if typedef:copy?}}Copy, {{/if typedef:copy?}}{{!
     }}Clone, Debug, PartialEq{{!
-    }}{{#typedef:ord?}}, Eq, PartialOrd, Ord, Hash{{/typedef:ord?}}{{!
-    }}{{#typedef:serde?}}, ::serde_derive::Serialize, ::serde_derive::Deserialize{{/typedef:serde?}}{{!
-    }}{{#program:valuable?}}, ::valuable::Valuable{{/program:valuable?}}{{!
+    }}{{#if typedef:ord?}}, Eq, PartialOrd, Ord, Hash{{/if typedef:ord?}}{{!
+    }}{{#if typedef:serde?}}, ::serde_derive::Serialize, ::serde_derive::Deserialize{{/if typedef:serde?}}{{!
+    }}{{#if program:valuable?}}, ::valuable::Valuable{{/if program:valuable?}}{{!
 }})]
 pub struct {{typedef:rust_name}}(pub {{!
-  }}{{#typedef:has_adapter?}}{{!
-    }}{{> lib/adapter/qualified}}::AdaptedType{{!
-  }}{{/typedef:has_adapter?}}{{!
-  }}{{^typedef:has_adapter?}}{{!
-    }}{{#typedef:rust_type}}::{{typedef:rust_type}}{{/typedef:rust_type}}{{!
-    }}{{^typedef:rust_type}}{{#typedef:type}}{{> lib/type}}{{/typedef:type}}{{/typedef:rust_type}}{{!
-  }}{{/typedef:has_adapter?}}{{!
+  }}{{#if typedef:has_adapter?}}{{!
+    }}{{typedef:adapter_qualified}}::AdaptedType{{!
+  }}{{/if typedef:has_adapter?}}{{!
+  }}{{#if (not typedef:has_adapter?)}}{{!
+    }}{{#if (not (string.empty? typedef:rust_type))}}::{{typedef:rust_type}}{{!
+    }}{{#else}}{{#typedef:type}}{{> lib/type}}{{/typedef:type}}{{/if (not (string.empty? typedef:rust_type))}}{{!
+  }}{{/if (not typedef:has_adapter?)}}{{!
 }});
-{{/typedef:newtype?}}
+{{/if typedef:newtype?}}

@@ -109,7 +109,7 @@ func (p *upgradeToRocketClient) SendRequestStream(
 	method string,
 	request WritableStruct,
 	response ReadableResult,
-	newStreamElemFn func() types.ReadableResult,
+	newStreamElemFn func() ReadableResult,
 ) (iter.Seq2[ReadableStruct, error], error) {
 	p.maybeUpgrade(ctx)
 	return p.actualChannel.SendRequestStream(
@@ -119,6 +119,16 @@ func (p *upgradeToRocketClient) SendRequestStream(
 		response,
 		newStreamElemFn,
 	)
+}
+
+func (p *upgradeToRocketClient) SendRequestSink(
+	ctx context.Context,
+	method string,
+	request WritableStruct,
+	firstResponse ReadableResult,
+) (func(sinkSeq iter.Seq2[WritableResult, error], finalResponse ReadableStruct) error, error) {
+	p.maybeUpgrade(ctx)
+	return p.actualChannel.SendRequestSink(ctx, method, request, firstResponse)
 }
 
 func (p *upgradeToRocketClient) Close() error {

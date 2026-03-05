@@ -41,4 +41,52 @@ using CarbonTestDataMedium = benchmark::thrift::CarbonTestDataMedium;
 using CarbonTestDataLarge = benchmark::thrift::CarbonTestDataLarge;
 } // namespace benchmark
 
+namespace carbon {
+template <>
+struct IsCarbonStruct<::benchmark::CarbonTestDataSmall> : std::true_type {};
+
+template <>
+struct IsCarbonStruct<::benchmark::CarbonTestDataMedium> : std::true_type {};
+
+template <>
+struct IsCarbonStruct<::benchmark::CarbonTestDataLarge> : std::true_type {};
+} // namespace carbon
+
+namespace benchmark {
+namespace thrift {
+
+template <class Writer>
+void serialize(const CarbonTestDataSmall& self, Writer&& writer);
+
+void deserialize(CarbonTestDataSmall& self, carbon::CarbonProtocolReader& reader);
+
+template <class V>
+void visitFields(CarbonTestDataSmall& self, V&& v);
+
+template <class V>
+void visitFields(const CarbonTestDataSmall& self, V&& v);
+
+template <class Writer>
+void serialize(const CarbonTestDataMedium& self, Writer&& writer);
+
+void deserialize(CarbonTestDataMedium& self, carbon::CarbonProtocolReader& reader);
+
+template <class V>
+void visitFields(CarbonTestDataMedium& self, V&& v);
+
+template <class V>
+void visitFields(const CarbonTestDataMedium& self, V&& v);
+
+template <class Writer>
+void serialize(const CarbonTestDataLarge& self, Writer&& writer);
+
+void deserialize(CarbonTestDataLarge& self, carbon::CarbonProtocolReader& reader);
+
+template <class V>
+void visitFields(CarbonTestDataLarge& self, V&& v);
+
+template <class V>
+void visitFields(const CarbonTestDataLarge& self, V&& v);
+} // namespace thrift
+} // namespace benchmark
 #include "CarbonTestDataMessages-inl.h"

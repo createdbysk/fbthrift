@@ -15,6 +15,8 @@
  */
 
 #pragma once
+#include <type_traits>
+
 #include <folly/Try.h>
 #include <thrift/lib/cpp/ContextStack.h>
 #include <thrift/lib/cpp2/async/Interaction.h>
@@ -22,8 +24,37 @@
 
 namespace apache::thrift::detail {
 
+class StreamInterceptorContext;
+
+// Full function signature with StreamInterceptorContext support
+using ServerStreamFactoryFn = folly::Function<void(
+    FirstResponsePayload&&,
+    StreamClientCallback*,
+    folly::EventBase*,
+    TilePtr&&,
+    std::shared_ptr<ContextStack>,
+    std::shared_ptr<StreamInterceptorContext>)>;
+
 struct ServerStreamFactory {
-  template <typename F>
+  // Default constructor for empty/null factory
+  ServerStreamFactory() = default;
+
+  // Constructor from nullptr
+  /* implicit */ ServerStreamFactory(std::nullptr_t) : fn_(nullptr) {}
+
+  // Constructor for callables with 6-parameter signature
+  template <
+      typename F,
+      std::enable_if_t<
+          std::is_invocable_v<
+              F,
+              FirstResponsePayload&&,
+              StreamClientCallback*,
+              folly::EventBase*,
+              TilePtr&&,
+              std::shared_ptr<ContextStack>,
+              std::shared_ptr<StreamInterceptorContext>>,
+          int> = 0>
   explicit ServerStreamFactory(F&& fn) : fn_(std::forward<F>(fn)) {}
 
   void setInteraction(TilePtr&& interaction) {
@@ -36,6 +67,14 @@ struct ServerStreamFactory {
 
   std::shared_ptr<ContextStack> getContextStack() { return contextStack_; }
 
+  void setInterceptorContext(std::shared_ptr<StreamInterceptorContext> ctx) {
+    interceptorContext_ = std::move(ctx);
+  }
+
+  std::shared_ptr<StreamInterceptorContext> getInterceptorContext() const {
+    return interceptorContext_;
+  }
+
   void operator()(
       FirstResponsePayload&& payload,
       StreamClientCallback* cb,
@@ -44,21 +83,17 @@ struct ServerStreamFactory {
         cb,
         eb,
         std::move(interaction_),
-        std::move(contextStack_));
+        std::move(contextStack_),
+        std::move(interceptorContext_));
   }
 
   explicit operator bool() { return !!fn_; }
 
  private:
-  folly::Function<void(
-      FirstResponsePayload&&,
-      StreamClientCallback*,
-      folly::EventBase*,
-      TilePtr&&,
-      std::shared_ptr<ContextStack>)>
-      fn_;
+  ServerStreamFactoryFn fn_;
   TilePtr interaction_;
   std::shared_ptr<ContextStack> contextStack_;
+  std::shared_ptr<StreamInterceptorContext> interceptorContext_;
 };
 
 template <typename T>

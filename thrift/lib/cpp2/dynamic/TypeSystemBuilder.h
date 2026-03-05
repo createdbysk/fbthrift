@@ -16,11 +16,13 @@
 
 #pragma once
 
+#include <thrift/lib/cpp2/dynamic/PruneOptions.h>
 #include <thrift/lib/cpp2/dynamic/SerializableRecord.h>
 #include <thrift/lib/cpp2/dynamic/TypeSystem.h>
 #include <thrift/lib/thrift/gen-cpp2/type_system_types.h>
 
 #include <folly/container/F14Map.h>
+#include <folly/container/span.h>
 
 #include <cstdint>
 #include <memory>
@@ -75,6 +77,8 @@ namespace apache::thrift::type_system {
  */
 class TypeSystemBuilder {
  public:
+  TypeSystemBuilder() = default;
+
   /**
    * Defines a Thrift struct. See DefinitionHelper::Struct for more details.
    */
@@ -111,7 +115,84 @@ class TypeSystemBuilder {
   void addType(Uri, const SerializableTypeDefinitionEntry&);
   void addTypes(SerializableTypeSystem);
 
+  /**
+   * Builds a standalone TypeSystem from the added types.
+   */
   std::unique_ptr<TypeSystem> build() &&;
+
+  /**
+   * Builds a TypeSystem that derives from an existing base TypeSystem.
+   *
+   * The definitions added to this builder form an "overlay" on top of the
+   * provided base. If a type is not defined in the overlay, then the derivation
+   * will fall back to the base.
+   *
+   * In short:
+   *
+   *     Derivation (result) = Overlay (this) ∪ Base (argument)
+   *
+   * ──────────────────────────────────────────────────────────────────────────
+   * Derivation Semantics
+   * ──────────────────────────────────────────────────────────────────────────
+   * Types in the overlay may reference types defined in the base. For example,
+   * an newly defined struct may have a field whose type is an existing struct
+   * defined in the base.
+   *
+   * Derivation produces a single TypeSystem instance. This instance will
+   * transparently return results from either the overlay or the base as
+   * necessary.
+   *
+   * Deriviation is purely additive. The overlay cannot:
+   *   - Change the schema of existing types in the base.
+   *   - Hide types in the base (shadow an existing URI).
+   * This eliminates schema compatibility concerns, by construction.
+   *
+   * ──────────────────────────────────────────────────────────────────────────
+   * Validation
+   * ──────────────────────────────────────────────────────────────────────────
+   * URI uniqueness:
+   *   No type added to this builder may have the same URI as a type in base.
+   *
+   * Source identifier uniqueness:
+   *   No type added to this builder may have the same source identifier
+   *   (location + name) as a type in base.
+   *
+   * Throws:
+   *   - InvalidTypeError if an added type's URI conflicts with a type in base.
+   *   - InvalidTypeError if an added type's source identifier conflicts with a
+   *     type in base.
+   *   - InvalidTypeError if a TypeId referenced by an added type cannot be
+   *     resolved.
+   */
+  std::unique_ptr<TypeSystem> buildDerivedFrom(
+      std::shared_ptr<const TypeSystem> base) &&;
+
+  /**
+   * Builds a new standalone TypeSystem containing only the specified root
+   * types and their transitive dependencies from the source TypeSystem.
+   *
+   * Transitive dependencies include: field types, container element/key/value
+   * types, opaque alias targets, and annotation types.
+   *
+   * The resulting TypeSystem is fully self-contained and independent of the
+   * source.
+   *
+   * Throws:
+   *   - InvalidTypeError if any root URI is not defined in the source
+   *     TypeSystem.
+   */
+  static std::unique_ptr<TypeSystem> buildPrunedFrom(
+      const TypeSystem& source,
+      std::span<const UriView> rootUris,
+      PruneOptions options = {});
+
+  /**
+   * Overload accepting DefinitionRef objects as roots.
+   */
+  static std::unique_ptr<TypeSystem> buildPrunedFrom(
+      const TypeSystem& source,
+      std::span<const DefinitionRef> rootDefs,
+      PruneOptions options = {});
 
   /**
    * A helper class that provides a more declarative experience when defining a

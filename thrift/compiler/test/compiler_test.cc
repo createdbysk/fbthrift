@@ -2958,13 +2958,6 @@ struct UnorderableCustomType {
   1: set<i32> a;
 }
 
-@thrift.Uri{value = "facebook.com/thrift/ImplicitlyEnabledCustomType"}
-# expected-warning@-1: Type `ImplicitlyEnabledCustomType` is implicitly made orderable in C++ because it has a URI. This legacy behavior is being deprecated: enable ordering explicitly by annotating the type with `@cpp.EnableCustomTypeOrdering`.
-struct ImplicitlyEnabledCustomType {
-  @cpp.Type{name = "custom"}
-  1: set<i32> a;
-}
-
 @cpp.EnableCustomTypeOrdering
 struct ExplicitlyEnabledCustomType {
   @cpp.Type{name = "custom"}
@@ -3786,4 +3779,214 @@ TEST(CompilerTest, scoped_id_scope_name_conflicts_with_local_type) {
     }
   )";
   check_compile(name_contents_map, "main.thrift");
+}
+
+TEST(CompilerTest, sealed_type) {
+  check_compile(
+      R"(
+    package "facebook.com/thrift/test"
+    include "thrift/annotation/thrift.thrift"
+
+    @thrift.Sealed
+    struct SealedStruct {
+      1: i32 a;
+    }
+
+    typedef SealedStruct MySealedStruct;
+
+    @thrift.Sealed
+    struct NestedSealedStruct {
+      1: MySealedStruct a;
+    }
+
+
+    // Even though it only contains sealed fields, NonSealedStruct is not
+    // considered sealed because it does not have the @thrift.Sealed annotation.
+    struct NonSealedStruct {
+      1: SealedStruct a;
+    }
+
+    @thrift.Sealed # expected-warning: Type `InvalidSealedStruct` is marked as `@thrift.Sealed`, but is not sealed. The following fields have non-sealed types: {"a", "d"}
+    struct InvalidSealedStruct {
+      1: NonSealedStruct a;
+      2: SealedStruct b;
+      3: i32 c;
+      4: optional NonSealedStruct d;
+    }
+
+    @thrift.Sealed
+    union SealedUnion {
+      1: i32 a;
+    }
+
+    union NonSealedUnion {
+      1: SealedUnion a;
+    }
+
+    @thrift.Sealed # expected-warning: Type `InvalidSealedUnion` is marked as `@thrift.Sealed`, but is not sealed. The following fields have non-sealed types: {"a"}
+    union InvalidSealedUnion {
+      1: NonSealedUnion a;
+    }
+
+    @thrift.Sealed
+    exception SealedException {
+      1: SealedUnion a;
+      2: SealedStruct b;
+    }
+
+    @thrift.Sealed # expected-warning: Type `InvalidSealedException` is marked as `@thrift.Sealed`, but is not sealed. The following fields have non-sealed types: {"b"}
+    exception InvalidSealedException {
+      1: SealedException a;
+      2: NonSealedStruct b;
+    }
+
+    @thrift.Sealed # expected-error: `Sealed` cannot annotate `InvalidTypedefSealed`
+    typedef NonSealedUnion InvalidTypedefSealed;
+  )",
+      {"--extra-validation", "sealed_annotation_on_non_sealed_type=warn"});
+}
+
+TEST(CompilerTest, sealed_key_type) {
+  check_compile(
+      R"(
+    package "facebook.com/thrift/test"
+    include "thrift/annotation/thrift.thrift"
+
+    @thrift.Sealed
+    struct SealedStruct {
+      1: i32 a;
+    }
+
+    typedef SealedStruct SealedStructAlias;
+
+    typedef map<SealedStruct, string> SealedMap;
+
+    // Even though it only contains sealed fields, NonSealedStruct is not
+    // considered sealed because it does not have the @thrift.Sealed annotation.
+    struct NonSealedStruct {
+      1: SealedStruct a;
+    }
+
+    typedef NonSealedStruct NonSealedStructAlias;
+    typedef NonSealedStructAlias NonSealedStructAliasAlias;
+
+    typedef set<NonSealedStruct> InvalidNonSealedSet; # expected-error: Set `InvalidNonSealedSet` element type is not sealed: `NonSealedStruct`
+
+    @thrift.AllowUnsafeNonSealedKeyType
+    typedef set<NonSealedStructAliasAlias> NonSealedSet;
+
+    @thrift.AllowUnsafeNonSealedKeyType # expected-error: Unnecessary @thrift.AllowUnsafeNonSealedKeyType on set: `SealedSet`
+    typedef set<SealedStruct> SealedSet;
+
+    struct MyStruct {
+      1: map<SealedStruct, string> field_1; // OK: key type is sealed
+
+      2: map<NonSealedStruct, string> field_2; # expected-error: Map `field_2` key type is not sealed: `NonSealedStruct`
+
+      @thrift.AllowUnsafeNonSealedKeyType # expected-error: Unnecessary @thrift.AllowUnsafeNonSealedKeyType on map: `field_3`
+      3: map<SealedStruct, string> field_3;
+
+      @thrift.AllowUnsafeNonSealedKeyType
+      4: map<NonSealedStruct, string> field_4; // OK: key type is not sealed BUT the annotation allows it
+
+      5: set<SealedStruct>  field_5; // OK: set type is sealed
+
+      @thrift.AllowUnsafeNonSealedKeyType # expected-error: Unnecessary @thrift.AllowUnsafeNonSealedKeyType on set: `field_6`
+      6: set<SealedStruct>  field_6;
+
+      7: set<NonSealedStruct> field_7; # expected-error: Set `field_7` element type is not sealed: `NonSealedStruct`
+
+      @thrift.AllowUnsafeNonSealedKeyType
+      8: set<NonSealedStruct> field_8; // OK: set type is not sealed BUT annotation allows it.
+
+      9: i32 field_9;
+
+      @thrift.AllowUnsafeNonSealedKeyType # expected-error: Unnecessary @thrift.AllowUnsafeNonSealedKeyType: `field_10`
+      10: i32 field_10;
+
+      11: SealedMap field_11;
+
+      @thrift.AllowUnsafeNonSealedKeyType # expected-error: Unnecessary @thrift.AllowUnsafeNonSealedKeyType: `field_12`
+      12: SealedMap field_12;
+
+      13: set<SealedStructAlias> field_13;
+
+      14: set<NonSealedStructAliasAlias> field_14; # expected-error: Set `field_14` element type is not sealed: `NonSealedStructAliasAlias`
+
+      @thrift.AllowUnsafeNonSealedKeyType
+      15: set<NonSealedStructAliasAlias> field_15;
+
+      16: NonSealedSet field_16; // Despite the set not being sealed, this should not fail here (but in the typedef definition, if not annotated).
+
+      @thrift.AllowUnsafeNonSealedKeyType # expected-error: Unnecessary @thrift.AllowUnsafeNonSealedKeyType: `field_17`
+      17: NonSealedSet field_17;
+    }
+  )",
+      {"--extra-validation", "non_sealed_key_type=error"});
+}
+
+TEST(CompilerTest, sealed_key_type_in_functions) {
+  check_compile(
+      R"(
+    package "facebook.com/thrift/test"
+    include "thrift/annotation/thrift.thrift"
+
+    @thrift.Sealed
+    struct SealedStruct {
+      1: i32 a;
+    }
+
+    struct NonSealedStruct {
+      1: SealedStruct a;
+    }
+
+    @thrift.AllowUnsafeNonSealedKeyType
+    typedef set<NonSealedStruct> NonSealedSet;
+
+    service MyService {
+      // 1. Return types
+      map<SealedStruct, string> sealedReturnMapFunction(); // OK
+
+      map<NonSealedStruct, string> nonSealedReturnMapFunction(); # expected-error: Map `nonSealedReturnMapFunction` key type is not sealed: `NonSealedStruct`
+
+      set<SealedStruct> sealedReturnSetFunction(); // OK
+
+      set<NonSealedStruct> nonSealedReturnSetFunction(); # expected-error: Set `nonSealedReturnSetFunction` element type is not sealed: `NonSealedStruct`
+
+      // Applying the annotation on the function is not valid:
+      @thrift.AllowUnsafeNonSealedKeyType # expected-error: `AllowUnsafeNonSealedKeyType` cannot annotate `invalidAnnotationFunction`
+      set<NonSealedStruct> invalidAnnotationFunction();
+
+      // ... but using a typedef (that was annotated) is allowed:
+      NonSealedSet allowedNonSealedReturnSetFunction();
+
+
+      // 2. Parameter types
+      void sealedParamMapFunction(1: map<SealedStruct, string> param); // OK
+                                                               //
+      void nonSealedParamMapFunction(1: map<NonSealedStruct, string> param); # expected-error: Map `param` key type is not sealed: `NonSealedStruct`
+
+      void sealedParamSetFunction(1: set<SealedStruct> param); // OK
+
+      void nonSealedParamSetFunction(1: set<NonSealedStruct> param); # expected-error: Set `param` element type is not sealed: `NonSealedStruct`
+
+      // Annotation on parameters:
+      void allowedNonSealedParamFunction(
+        @thrift.AllowUnsafeNonSealedKeyType
+        1: map<NonSealedStruct, string> param); // OK: annotation allows it
+
+      void unnecessaryAnnotationOnParamFunction(
+        @thrift.AllowUnsafeNonSealedKeyType # expected-error: Unnecessary @thrift.AllowUnsafeNonSealedKeyType on map: `param`
+        1: map<SealedStruct, string> param);
+
+      // 3. Multiple parameters
+      void multipleParamsFunction(
+        1: map<SealedStruct, string> ok_param, // OK
+        2: set<NonSealedStruct> bad_param); # expected-error: Set `bad_param` element type is not sealed: `NonSealedStruct`
+
+      // Typedef indirection: error is on the typedef, not the function
+      void typedefParamFunction(1: NonSealedSet param); // OK: error is on the typedef
+    }
+  )",
+      {"--extra-validation", "non_sealed_key_type=error"});
 }

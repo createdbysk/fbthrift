@@ -17,7 +17,7 @@
 #include <thrift/lib/cpp2/server/IOUringUtil.h>
 
 #if FOLLY_HAS_LIBURING
-#include <folly/experimental/io/IoUringEventBaseLocal.h>
+#include <folly/io/async/IoUringEventBaseLocal.h>
 #include <folly/system/HardwareConcurrency.h>
 
 namespace apache::thrift::io_uring_util {
@@ -31,8 +31,8 @@ std::unique_ptr<folly::EventBaseBackendBase> getIOUringEventbaseBackendFunc() {
   }
 }
 
-folly::IoUringBackend::Options getDefaultIOUringOptions() {
-  folly::IoUringBackend::Options options;
+folly::IoUringOptions getDefaultIOUringOptions() {
+  folly::IoUringOptions options;
   options.setRegisterRingFd(true)
       .setInitialProvidedBuffers(2048, 2000)
       .setUseRegisteredFds(2048)

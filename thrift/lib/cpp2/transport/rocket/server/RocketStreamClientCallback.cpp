@@ -51,14 +51,11 @@ bool RocketStreamClientCallback::onFirstResponse(
 
   serverCallbackOrCancelled_ = reinterpret_cast<intptr_t>(serverCallback);
   if (UNLIKELY(connection_.areStreamsPaused())) {
-    pauseStream();
+    handlePausedByConnection();
   }
 
   DCHECK_NE(tokens_, 0u);
-  int tokens = 0;
-  if (--tokens_) {
-    tokens = std::exchange(tokens_, 0);
-  } else {
+  if (!--tokens_) {
     scheduleTimeout();
   }
 
@@ -70,8 +67,8 @@ bool RocketStreamClientCallback::onFirstResponse(
       /* complete */ false,
       /* sendCallback */ nullptr);
 
-  if (tokens) {
-    return request(tokens);
+  if (tokens_) {
+    return serverCallback->onStreamRequestN(tokens_);
   }
   return true;
 }
@@ -149,11 +146,12 @@ void RocketStreamClientCallback::resetServerCallback(
     StreamServerCallback& serverCallback) {
   serverCallbackOrCancelled_ = reinterpret_cast<intptr_t>(&serverCallback);
   if (UNLIKELY(connection_.areStreamsPaused())) {
-    pauseStream();
+    handlePausedByConnection();
   }
 }
 
-bool RocketStreamClientCallback::request(uint32_t tokens) {
+bool RocketStreamClientCallback::handle(RequestNFrame requestNFrame) {
+  auto tokens = requestNFrame.requestN();
   if (!tokens) {
     return true;
   }
@@ -163,11 +161,12 @@ bool RocketStreamClientCallback::request(uint32_t tokens) {
   return serverCallback()->onStreamRequestN(tokens);
 }
 
-void RocketStreamClientCallback::headers(HeadersPayload&& payload) {
+void RocketStreamClientCallback::handleStreamHeadersPush(
+    HeadersPayload&& payload) {
   std::ignore = serverCallback()->onSinkHeaders(std::move(payload));
 }
 
-void RocketStreamClientCallback::pauseStream() {
+void RocketStreamClientCallback::handlePausedByConnection() {
   DCHECK(connection_.areStreamsPaused());
   if (UNLIKELY(!serverCallbackReady())) {
     return;
@@ -175,7 +174,7 @@ void RocketStreamClientCallback::pauseStream() {
   serverCallback()->pauseStream();
 }
 
-void RocketStreamClientCallback::resumeStream() {
+void RocketStreamClientCallback::handleResumedByConnection() {
   DCHECK(!connection_.areStreamsPaused());
   if (UNLIKELY(!serverCallbackReady())) {
     return;
@@ -183,7 +182,35 @@ void RocketStreamClientCallback::resumeStream() {
   serverCallback()->resumeStream();
 }
 
-void RocketStreamClientCallback::onStreamCancel() {
+void RocketStreamClientCallback::handle(CancelFrame /* cancelFrame */) {
+  if (!serverCallbackReady()) {
+    DCHECK(!serverCallback());
+    serverCallbackOrCancelled_ = kCancelledFlag;
+    return;
+  }
+  serverCallback()->onStreamCancel();
+  if (contextStack_) {
+    contextStack_->onStreamFinally(details::STREAM_ENDING_TYPES::CANCEL);
+  }
+  connection_.freeStream(streamId_, true);
+}
+
+void RocketStreamClientCallback::handle(ExtFrame extFrame) {
+  if (!extFrame.hasIgnore()) {
+    connection_.close(
+        folly::make_exception_wrapper<RocketException>(
+            ErrorCode::INVALID,
+            fmt::format(
+                "Received unhandleable EXT frame type ({}) for stream (id {})",
+                static_cast<uint32_t>(extFrame.extFrameType()),
+                static_cast<uint32_t>(streamId_))));
+  }
+}
+
+void RocketStreamClientCallback::handleConnectionClose() {
+  if (!serverCallbackReady()) {
+    return;
+  }
   serverCallback()->onStreamCancel();
   if (contextStack_) {
     contextStack_->onStreamFinally(details::STREAM_ENDING_TYPES::CANCEL);

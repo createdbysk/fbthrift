@@ -18,10 +18,12 @@
 
 #include <variant>
 
+#include <folly/ExceptionWrapper.h>
 #include <folly/coro/Task.h>
 #include <folly/io/IOBuf.h>
 #include <folly/memory/not_null.h>
 
+#include <thrift/lib/cpp/StreamEventHandler.h>
 #include <thrift/lib/cpp2/schema/SyntaxGraph.h>
 #include <thrift/lib/cpp2/server/DecoratorData.h>
 #include <thrift/lib/cpp2/server/DecoratorDataRuntime.h>
@@ -183,6 +185,93 @@ class ServiceInterceptorBase {
   };
   virtual folly::coro::Task<void> internal_onResponse(
       ConnectionInfo, ResponseInfo, InterceptorMetricCallback&) = 0;
+
+  // ============ Streaming Interceptor Types ============
+
+  enum class StreamDirection {
+    ServerStream,
+    ClientSink,
+    BiDirectional,
+  };
+
+  /**
+   * Information provided when a stream begins.
+   * Interceptors can use this to initialize per-stream state.
+   */
+  struct StreamInfo {
+    detail::StreamId streamId = 0;
+    detail::ServiceInterceptorOnRequestStorage* requestStorage = nullptr;
+    StreamDirection direction = StreamDirection::ServerStream;
+    std::string_view serviceName = "";
+    std::string_view methodName = "";
+  };
+
+  /**
+   * Information provided for each streaming payload.
+   * Called BEFORE serialization with access to the typed payload.
+   */
+  struct StreamPayloadInfo {
+    detail::StreamId streamId = 0;
+    detail::ServiceInterceptorOnRequestStorage* requestStorage = nullptr;
+    /**
+     * The typed payload before serialization.
+     * Use TypeErasedRef::value<T>() to access the concrete type.
+     */
+    util::TypeErasedRef payload;
+    uint64_t sequenceNumber = 0;
+  };
+
+  /**
+   * Information provided when a stream ends.
+   * Interceptors should clean up per-stream state here.
+   */
+  struct StreamEndInfo {
+    detail::StreamId streamId = 0;
+    detail::ServiceInterceptorOnRequestStorage* requestStorage = nullptr;
+    details::STREAM_ENDING_TYPES reason =
+        details::STREAM_ENDING_TYPES::COMPLETE;
+    folly::exception_wrapper error;
+    uint64_t totalPayloads = 0;
+  };
+
+  // ============ Streaming Interceptor Methods ============
+  // These methods have default no-op implementations for backward
+  // compatibility with existing interceptors that don't need streaming.
+
+  /**
+   * Called when a stream is established (after first response sent).
+   * Interceptors can initialize per-stream state here.
+   *
+   * NOTE: Connection context is NOT available during stream callbacks because
+   * streams may outlive the connection (runs on CPU pool while connection is
+   * destroyed on IO thread). Interceptors needing connection state should
+   * capture it during onRequest and store it in RequestState.
+   */
+  virtual folly::coro::Task<void> internal_onStreamBegin(
+      StreamInfo, InterceptorMetricCallback&) {
+    co_return;
+  }
+
+  /**
+   * Called for each typed payload BEFORE serialization.
+   * This is where interceptors can inspect/process streaming data.
+   *
+   * PERFORMANCE NOTE: This is on the hot path. Implementations should
+   * be as lightweight as possible.
+   */
+  virtual folly::coro::Task<void> internal_onStreamPayload(
+      StreamPayloadInfo, InterceptorMetricCallback&) {
+    co_return;
+  }
+
+  /**
+   * Called when stream ends (complete, error, or cancelled).
+   * Interceptors should clean up per-stream state here.
+   */
+  virtual folly::coro::Task<void> internal_onStreamEnd(
+      StreamEndInfo, InterceptorMetricCallback&) {
+    co_return;
+  }
 
   /**
    * This methods is called by ThriftServer to set the module name for the

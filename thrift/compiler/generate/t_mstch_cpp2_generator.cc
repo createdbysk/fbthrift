@@ -295,13 +295,9 @@ class cpp2_generator_context {
   cpp2_generator_context(const cpp2_generator_context&) = delete;
   cpp2_generator_context& operator=(const cpp2_generator_context&) = delete;
 
-  bool is_orderable(
-      const t_structured& structured_type,
-      bool enableCustomTypeOrderingIfStructureHasUri) {
+  bool is_orderable(const t_structured& structured_type) {
     return cpp2::OrderableTypeUtils::is_orderable(
-        is_orderable_memo_,
-        structured_type,
-        enableCustomTypeOrderingIfStructureHasUri);
+        is_orderable_memo_, structured_type);
   }
 
   cpp_name_resolver& resolver() { return resolver_; }
@@ -424,15 +420,6 @@ int get_split_count(const t_mstch_generator::compiler_options_map& options) {
 class t_mstch_cpp2_generator : public t_mstch_generator {
  public:
   using t_mstch_generator::t_mstch_generator;
-
-  whisker_options render_options() const override {
-    whisker_options opts;
-    opts.allowed_undefined_variables = {
-        "program:autogen_path",
-        "service:autogen_path",
-    };
-    return opts;
-  }
 
   std::string template_prefix() const override { return "cpp2"; }
 
@@ -1064,12 +1051,13 @@ class cpp_mstch_program : public mstch_program {
   mstch::node fatal_languages() {
     mstch::array a;
     for (const auto& pair : program_->namespaces()) {
-      if (!pair.second.empty()) {
+      if (!pair.second->ns().empty()) {
         a.emplace_back(
             mstch::map{
                 {"language:safe_name", get_fatal_string_short_id(pair.first)},
                 {"language:safe_namespace",
-                 get_fatal_namespace_name_short_id(pair.first, pair.second)},
+                 get_fatal_namespace_name_short_id(
+                     pair.first, pair.second->ns())},
                 {"last?", false},
             });
       }
@@ -1099,11 +1087,11 @@ class cpp_mstch_program : public mstch_program {
     unique_names.emplace(get_fatal_string_short_id(program_), program_->name());
     // languages and namespaces
     for (const auto& pair : program_->namespaces()) {
-      if (!pair.second.empty()) {
+      if (!pair.second->ns().empty()) {
         unique_names.emplace(get_fatal_string_short_id(pair.first), pair.first);
         unique_names.emplace(
-            get_fatal_namespace_name_short_id(pair.first, pair.second),
-            get_fatal_namespace(pair.first, pair.second));
+            get_fatal_namespace_name_short_id(pair.first, pair.second->ns()),
+            get_fatal_namespace(pair.first, pair.second->ns()));
       }
     }
     // enums
@@ -1298,7 +1286,6 @@ class cpp_mstch_service : public mstch_service {
         {
             {"service:program_qualified_name",
              &cpp_mstch_service::program_qualified_name},
-            {"service:autogen_path", &cpp_mstch_service::autogen_path},
             {"service:include_prefix", &cpp_mstch_service::include_prefix},
             {"service:thrift_includes", &cpp_mstch_service::thrift_includes},
             {"service:oneway_functions", &cpp_mstch_service::oneway_functions},
@@ -1327,11 +1314,6 @@ class cpp_mstch_service : public mstch_service {
   mstch::node program_qualified_name() {
     return get_service_namespace(service_->program()) +
         "::" + service_->program()->name();
-  }
-  mstch::node autogen_path() {
-    std::string path = service_->program()->path();
-    std::replace(path.begin(), path.end(), '\\', '/');
-    return path;
   }
   mstch::node cpp_includes() {
     return t_mstch_cpp2_generator::cpp_includes(service_->program());
@@ -1755,10 +1737,7 @@ class cpp_mstch_struct : public mstch_struct {
   }
 
   mstch::node is_struct_orderable() {
-    return cpp_context_->is_orderable(
-               *struct_,
-               !context_.options->contains(
-                   "disable_custom_type_ordering_if_structure_has_uri")) &&
+    return cpp_context_->is_orderable(*struct_) &&
         !struct_->has_unstructured_annotation("no_default_comparators");
   }
   mstch::node nondefault_copy_ctor_and_assignment() {
@@ -2793,6 +2772,8 @@ void t_mstch_cpp2_generator::generate_out_of_line_services(
       context, "module_handlers_out_of_line.h", module_name + "_handlers.h");
   render_to_file(
       context, "module_clients_out_of_line.h", module_name + "_clients.h");
+  render_to_file(
+      context, "module_clients_fwd.h", module_name + "_clients_fwd.h");
 }
 
 void t_mstch_cpp2_generator::generate_inline_services(
@@ -3137,7 +3118,7 @@ THRIFT_REGISTER_GENERATOR(
       Enable deprecated terse writes, which are discouraged in favor of
       @thrift.TerseWrite. See:
       https://github.com/facebook/fbthrift/blob/main/thrift/doc/idl/field-qualifiers.md#terse-writes-compiler-option
-    disable_custom_type_ordering_if_structure_has_uri
+    disable_custom_type_ordering_if_structure_has_uri (IGNORED - ALWAYS SET)
       Without this option, custom set/map are considered orderable if parent structure has uri.
     frozen[=packed]
       Enable frozen structs. If the packed parameter is given, structure members

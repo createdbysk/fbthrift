@@ -18,9 +18,11 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 #include <variant>
 
 #include <folly/GLog.h>
+#include <folly/Overload.h>
 #include <folly/Portability.h>
 #include <folly/coro/AsyncGenerator.h>
 #include <folly/coro/Baton.h>
@@ -28,6 +30,7 @@
 #include <folly/io/async/fdsock/SocketFds.h>
 #include <folly/synchronization/Baton.h>
 #include <thrift/lib/cpp2/async/ClientStreamBridge.h>
+#include <thrift/lib/cpp2/async/ClientStreamInterceptorContext.h>
 
 namespace yarpl::flowable {
 class ThriftStreamShim;
@@ -48,6 +51,14 @@ class ClientBufferedStream {
       : streamBridge_(std::move(streamBridge)),
         decode_(decode),
         bufferOptions_(bufferOptions) {}
+
+  // Set the interceptor context for automatic stream interception.
+  // When set, toAsyncGenerator() passes the context to the generator
+  // functions which invoke interceptor callbacks inline.
+  void setInterceptorContext(
+      std::shared_ptr<ClientStreamInterceptorContext> ctx) {
+    interceptorContext_ = std::move(ctx);
+  }
 
   // onNextTry may return bool or void; false cancels the subscription.
   template <typename OnNextTry>
@@ -87,28 +98,38 @@ class ClientBufferedStream {
       }
 
       {
-        auto& payload = queue.front();
-        if (payload.hasValue()) {
-          if (!payload->payload) {
-            FB_LOG_EVERY_MS(WARNING, 1000)
-                << "Dropping unhandled stream header frame";
-            queue.pop();
-            continue;
-          }
-          payloadDataSize += payload->payload->computeChainDataLength();
-        }
-        auto value = decode_(std::move(payload));
-        queue.pop();
-        bool done = !value.hasValue();
-        using Res = std::invoke_result_t<OnNextTry, folly::Try<T>>;
-        if constexpr (std::is_same_v<Res, bool>) {
-          done |= !onNextTry(std::move(value));
-        } else {
-          static_assert(
-              std::is_void_v<Res>, "onNextTry must return bool or void");
-          onNextTry(std::move(value));
-        }
-        if (done) {
+        auto& message = queue.front();
+        bool completed = folly::variant_match(
+            message,
+            [&](StreamMessage::PayloadOrError& payloadOrError) {
+              auto& payload = payloadOrError.streamPayloadTry;
+              if (payload.hasValue()) {
+                if (!payload->payload) {
+                  FB_LOG_EVERY_MS(WARNING, 1000)
+                      << "Dropping unhandled stream header frame";
+                  queue.pop();
+                  return false;
+                }
+                payloadDataSize += payload->payload->computeChainDataLength();
+              }
+              auto value = decode_(std::move(payload));
+              queue.pop();
+              bool done = !value.hasValue();
+              using Res = std::invoke_result_t<OnNextTry, folly::Try<T>>;
+              if constexpr (std::is_same_v<Res, bool>) {
+                done |= !onNextTry(std::move(value));
+              } else {
+                static_assert(
+                    std::is_void_v<Res>, "onNextTry must return bool or void");
+                onNextTry(std::move(value));
+              }
+              return done;
+            },
+            [&](StreamMessage::Complete) {
+              onNextTry(folly::Try<T>());
+              return true;
+            });
+        if (completed) {
           break;
         }
       }
@@ -129,15 +150,18 @@ class ClientBufferedStream {
   [[clang::annotate("not_coroutine")]] folly::coro::AsyncGenerator<T&&>
   toAsyncGenerator() && {
     FOLLY_POP_WARNING
-    return bufferOptions_.memSize
-        ? toAsyncGeneratorWithSizeTarget(
-              std::move(streamBridge_),
-              bufferOptions_.chunkSize,
-              decode_,
-              bufferOptions_.memSize,
-              bufferOptions_.maxChunkSize)
-        : toAsyncGeneratorImpl<false>(
-              std::move(streamBridge_), bufferOptions_.chunkSize, decode_);
+    return bufferOptions_.memSize ? toAsyncGeneratorWithSizeTarget(
+                                        std::move(streamBridge_),
+                                        bufferOptions_.chunkSize,
+                                        decode_,
+                                        bufferOptions_.memSize,
+                                        bufferOptions_.maxChunkSize,
+                                        std::move(interceptorContext_))
+                                  : toAsyncGeneratorImpl<false>(
+                                        std::move(streamBridge_),
+                                        bufferOptions_.chunkSize,
+                                        decode_,
+                                        std::move(interceptorContext_));
   }
 
   struct RichPayloadReceived { // sent as `RichPayloadToSend` from server
@@ -190,7 +214,8 @@ class ClientBufferedStream {
   toAsyncGeneratorImpl(
       apache::thrift::detail::ClientStreamBridge::ClientPtr streamBridge,
       int32_t chunkBufferSize,
-      folly::Try<T> (*decode)(folly::Try<StreamPayload>&&)) {
+      folly::Try<T> (*decode)(folly::Try<StreamPayload>&&),
+      std::shared_ptr<ClientStreamInterceptorContext> ctx = nullptr) {
     if (chunkBufferSize == 0) {
       streamBridge->requestN(1);
       ++chunkBufferSize;
@@ -218,6 +243,10 @@ class ClientBufferedStream {
       folly::coro::Baton baton;
     };
 
+    if (ctx) {
+      ctx->onStreamBegin();
+    }
+
     while (true) {
       co_await folly::coro::co_safe_point;
       if (queue.empty()) {
@@ -231,17 +260,25 @@ class ClientBufferedStream {
         queue = streamBridge->getMessages();
         if (queue.empty()) {
           // we've been cancelled
+          if (ctx) {
+            ctx->onStreamEnd(details::STREAM_ENDING_TYPES::CANCEL);
+          }
           apache::thrift::detail::ClientStreamBridge::Ptr(
               streamBridge.release());
-          co_yield folly::coro::co_cancelled;
+          co_yield folly::coro::co_stopped_may_throw;
         }
       }
 
       {
-        auto& payload = queue.front();
-        if (!payload.hasValue() && !payload.hasException()) {
+        auto& message = queue.front();
+        if (std::holds_alternative<StreamMessage::Complete>(message)) {
+          if (ctx) {
+            ctx->onStreamEnd(details::STREAM_ENDING_TYPES::COMPLETE);
+          }
           break;
         }
+        auto& payloadOrError = std::get<StreamMessage::PayloadOrError>(message);
+        auto& payload = payloadOrError.streamPayloadTry;
         const size_t payloadSize = payload.hasValue() && payload->payload
             ? payload->payload->computeChainDataLength()
             : 0;
@@ -297,6 +334,15 @@ class ClientBufferedStream {
         } else {
           auto value = decode(std::move(payload));
           queue.pop();
+          if (ctx) {
+            if (value.hasValue()) {
+              ctx->onStreamPayload(*value);
+            } else {
+              ctx->onStreamEnd(
+                  details::STREAM_ENDING_TYPES::ERROR,
+                  folly::exception_wrapper(value.exception()));
+            }
+          }
           co_yield folly::coro::co_result(std::move(value));
         }
         updateCredits();
@@ -309,7 +355,8 @@ class ClientBufferedStream {
       int32_t chunkBufferSize,
       folly::Try<T> (*decode)(folly::Try<StreamPayload>&&),
       size_t memBufferTarget,
-      int32_t maxChunkBufferSize) {
+      int32_t maxChunkBufferSize,
+      std::shared_ptr<ClientStreamInterceptorContext> ctx = nullptr) {
     if (chunkBufferSize == 0) {
       streamBridge->requestN(1);
       ++chunkBufferSize;
@@ -321,7 +368,7 @@ class ClientBufferedStream {
     // Use a circular buffer with the latest payload sizes to estimate the
     // recent average payload size.
     constexpr size_t kEstimationWindowSize = 128;
-    std::array<size_t, kEstimationWindowSize> payloadSizesWindow;
+    std::array<size_t, kEstimationWindowSize> payloadSizesWindow{};
     std::fill(payloadSizesWindow.begin(), payloadSizesWindow.end(), 0);
 
     size_t windowSum = 0;
@@ -372,6 +419,10 @@ class ClientBufferedStream {
       folly::coro::Baton baton;
     };
 
+    if (ctx) {
+      ctx->onStreamBegin();
+    }
+
     while (true) {
       co_await folly::coro::co_safe_point;
 
@@ -389,9 +440,12 @@ class ClientBufferedStream {
           incoming = streamBridge->getMessages();
           if (incoming.empty()) {
             // we've been cancelled
+            if (ctx) {
+              ctx->onStreamEnd(details::STREAM_ENDING_TYPES::CANCEL);
+            }
             apache::thrift::detail::ClientStreamBridge::Ptr(
                 streamBridge.release());
-            co_yield folly::coro::co_cancelled;
+            co_yield folly::coro::co_stopped_may_throw;
           }
         } else {
           incoming = streamBridge->getMessages();
@@ -400,18 +454,29 @@ class ClientBufferedStream {
         // Sum sizes of new buffered messages and append to queue
         queue.append(
             apache::thrift::detail::ClientStreamBridge::ClientQueueWithTailPtr(
-                std::move(incoming), [&](auto& payload) {
-                  if (payload.hasValue() && payload->payload) {
-                    bufferMemSize += payload->payload->computeChainDataLength();
+                std::move(incoming), [&](auto& message) {
+                  if (auto* payloadOrError =
+                          std::get_if<StreamMessage::PayloadOrError>(
+                              &message)) {
+                    auto& payload = payloadOrError->streamPayloadTry;
+                    if (payload.hasValue() && payload->payload) {
+                      bufferMemSize +=
+                          payload->payload->computeChainDataLength();
+                    }
                   }
                 }));
       }
 
       {
-        auto& payload = queue.front();
-        if (!payload.hasValue() && !payload.hasException()) {
+        auto& message = queue.front();
+        if (std::holds_alternative<StreamMessage::Complete>(message)) {
+          if (ctx) {
+            ctx->onStreamEnd(details::STREAM_ENDING_TYPES::COMPLETE);
+          }
           break;
         }
+        auto& payloadOrError = std::get<StreamMessage::PayloadOrError>(message);
+        auto& payload = payloadOrError.streamPayloadTry;
         const size_t payloadSize = payload.hasValue() && payload->payload
             ? payload->payload->computeChainDataLength()
             : 0;
@@ -435,6 +500,15 @@ class ClientBufferedStream {
         }
         auto value = decode(std::move(payload));
         queue.pop();
+        if (ctx) {
+          if (value.hasValue()) {
+            ctx->onStreamPayload(*value);
+          } else {
+            ctx->onStreamEnd(
+                details::STREAM_ENDING_TYPES::ERROR,
+                folly::exception_wrapper(value.exception()));
+          }
+        }
         co_yield folly::coro::co_result(std::move(value));
         updateCredits();
       }
@@ -457,12 +531,14 @@ class ClientBufferedStream {
 
    public:
     Subscription(Subscription&& s) = default;
-    Subscription& operator=(Subscription&& s) {
+    Subscription& operator=(Subscription&& s) noexcept {
       if (std::exchange(state_, std::move(s.state_))) {
         LOG(FATAL) << "Subscription has to be joined/detached";
       }
       return *this;
     }
+    Subscription(const Subscription&) = delete;
+    Subscription& operator=(const Subscription&) = delete;
     ~Subscription() {
       if (state_) {
         LOG(FATAL) << "Subscription has to be joined/detached";
@@ -499,7 +575,7 @@ class ClientBufferedStream {
         apache::thrift::detail::ClientStreamBridge::ClientPtr streamBridge,
         folly::Try<T> (*decode)(folly::Try<StreamPayload>&&),
         int32_t chunkBufferSize)
-        : e_(e),
+        : e_(std::move(e)),
           onNextTry_(std::move(onNextTry)),
           decode_(decode),
           chunkBufferSize_(chunkBufferSize),
@@ -508,6 +584,10 @@ class ClientBufferedStream {
     }
 
     ~Continuation() override { state_->promise.setValue(); }
+    Continuation(const Continuation&) = delete;
+    Continuation& operator=(const Continuation&) = delete;
+    Continuation(Continuation&&) = delete;
+    Continuation& operator=(Continuation&&) = delete;
 
     // takes ownership of pointer on success
     static bool wait(std::unique_ptr<Continuation>& cb) {
@@ -544,25 +624,32 @@ class ClientBufferedStream {
         }
 
         {
-          auto& payload = queue.front();
-          if (!payload.hasValue() && !payload.hasException()) {
-            onNextTry_(folly::Try<T>());
-            return;
-          }
-          if (payload.hasValue()) {
-            if (!payload->payload) {
-              FB_LOG_EVERY_MS(WARNING, 1000)
-                  << "Dropping unhandled stream header frame";
-              queue.pop();
-              continue;
-            }
-            payloadDataSize_ += payload->payload->computeChainDataLength();
-          }
-          auto value = decode_(std::move(payload));
-          queue.pop();
-          const auto hasException = value.hasException();
-          onNextTry_(std::move(value));
-          if (hasException) {
+          auto& message = queue.front();
+          bool completed = folly::variant_match(
+              message,
+              [&](StreamMessage::PayloadOrError& payloadOrError) {
+                auto& payload = payloadOrError.streamPayloadTry;
+                if (payload.hasValue()) {
+                  if (!payload->payload) {
+                    FB_LOG_EVERY_MS(WARNING, 1000)
+                        << "Dropping unhandled stream header frame";
+                    queue.pop();
+                    return false;
+                  }
+                  payloadDataSize_ +=
+                      payload->payload->computeChainDataLength();
+                }
+                auto value = decode_(std::move(payload));
+                queue.pop();
+                const auto hasException = value.hasException();
+                onNextTry_(std::move(value));
+                return hasException;
+              },
+              [&](StreamMessage::Complete) {
+                onNextTry_(folly::Try<T>());
+                return true;
+              });
+          if (completed) {
             return;
           }
         }
@@ -590,6 +677,7 @@ class ClientBufferedStream {
   apache::thrift::detail::ClientStreamBridge::ClientPtr streamBridge_;
   folly::Try<T> (*decode_)(folly::Try<StreamPayload>&&) = nullptr;
   BufferOptions bufferOptions_;
+  std::shared_ptr<ClientStreamInterceptorContext> interceptorContext_{};
   static constexpr size_t kRequestCreditPayloadSize = 16384;
 
   friend class yarpl::flowable::ThriftStreamShim;

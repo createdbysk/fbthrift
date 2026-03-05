@@ -15,7 +15,7 @@
   limitations under the License.
 
 }}
-{{#service:rustFunctions}}{{^function:starts_interaction?}}
+{{#service:rustFunctions}}{{#if (not function:starts_interaction?)}}
 
 struct Args_{{service:rust_name}}_{{function:name}} {
     {{#function:args}}
@@ -28,9 +28,9 @@ impl<P: ::fbthrift::ProtocolReader> ::fbthrift::Deserialize<P> for self::Args_{{
     #[::tracing::instrument(skip_all, level = "trace", name = "deserialize_args", fields(method = "{{service:name}}.{{function:name}}"))]
     fn rs_thrift_read(p: &mut P) -> ::anyhow::Result<Self> {
         static ARGS: &[::fbthrift::Field] = &[
-            {{#function:args_by_name}}
-            ::fbthrift::Field::new("{{field:name}}", {{#field:type}}{{> lib/ttype}}{{/field:type}}, {{field:id}}),
-            {{/function:args_by_name}}
+            {{#each function:args_by_name as |field|}}
+            ::fbthrift::Field::new("{{field.name}}", {{#field.type}}{{> lib/ttype}}{{/field.type}}, {{field.id}}),
+            {{/each}}
         ];
         {{#function:args}}
         let mut field_{{field:name}} = ::std::option::Option::None;
@@ -43,9 +43,9 @@ impl<P: ::fbthrift::ProtocolReader> ::fbthrift::Deserialize<P> for self::Args_{{
                 }}{{#function:args}}
                 ({{#field:type}}{{> lib/ttype}}{{/field:type}}, {{field:id}}) => {{!
                     }}field_{{field:name}} = ::std::option::Option::Some({{!
-                    }}{{#field:has_adapter?}}{{> lib/adapter/qualified}}::from_thrift_field::<fbthrift::metadata::NoThriftAnnotations>({{/field:has_adapter?}}{{!
-                    }}{{#field:type}}::anyhow::Context::context({{#field:type_annotation?}}{{> lib/annfieldread}}{{/field:type_annotation?}}{{^field:type_annotation?}}{{> lib/read}}{{/field:type_annotation?}}{{/field:type}}(p), ::fbthrift::errors::DeserializingArgError { arg: "{{field:name}}", function: "{{function:name}}"})?{{!
-                    }}{{#field:has_adapter?}}, {{field:id}})?{{/field:has_adapter?}}{{!
+                    }}{{#if field:has_adapter?}}{{field:adapter_qualified}}::from_thrift_field::<fbthrift::metadata::NoThriftAnnotations>({{/if field:has_adapter?}}{{!
+                    }}{{#field:type}}::anyhow::Context::context({{#if field:type_annotation?}}{{> lib/annfieldread}}{{#else}}{{> lib/read}}{{/if field:type_annotation?}}{{/field:type}}(p), ::fbthrift::errors::DeserializingArgError { arg: "{{field:name}}", function: "{{function:name}}"})?{{!
+                    }}{{#if field:has_adapter?}}, {{field:id}})?{{/if field:has_adapter?}}{{!
                     }}),{{!
                 }}{{/function:args}}
                 (fty, _) => p.skip(fty)?,
@@ -62,4 +62,4 @@ impl<P: ::fbthrift::ProtocolReader> ::fbthrift::Deserialize<P> for self::Args_{{
     }
 }
 
-{{/function:starts_interaction?}}{{/service:rustFunctions}}
+{{/if (not function:starts_interaction?)}}{{/service:rustFunctions}}

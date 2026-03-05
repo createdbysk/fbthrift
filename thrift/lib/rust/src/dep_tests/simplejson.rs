@@ -720,6 +720,251 @@ fn test_invalid_floating_point(#[case] json: &str) {
     assert!(res.is_err(), "Expected error, got {:?}", res);
 }
 
+#[test]
+fn test_map_end_detection() -> Result<()> {
+    let c = Containers {
+        m: [("k1".into(), "v1".into()), ("k2".into(), "v2".into())]
+            .into_iter()
+            .collect(),
+        ..Default::default()
+    };
+    let s = serialize(&c);
+    assert_eq!(c, deserialize(s).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_single_entry_map() -> Result<()> {
+    let c = Containers {
+        m: [("only".into(), "one".into())].into_iter().collect(),
+        ..Default::default()
+    };
+    let s = serialize(&c);
+    assert_eq!(c, deserialize(s).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_empty_map() -> Result<()> {
+    let c = Containers {
+        m: Default::default(),
+        ..Default::default()
+    };
+    let s = serialize(&c);
+    assert_eq!(c, deserialize(s).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_list_end_detection() -> Result<()> {
+    let c = Containers {
+        l: vec!["a".into(), "b".into(), "c".into()],
+        ..Default::default()
+    };
+    let s = serialize(&c);
+    assert_eq!(c, deserialize(s).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_single_entry_list() -> Result<()> {
+    let c = Containers {
+        l: vec!["only".into()],
+        ..Default::default()
+    };
+    let s = serialize(&c);
+    assert_eq!(c, deserialize(s).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_empty_list() -> Result<()> {
+    let c = Containers {
+        l: Default::default(),
+        ..Default::default()
+    };
+    let s = serialize(&c);
+    assert_eq!(c, deserialize(s).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_struct_field_end_detection() -> Result<()> {
+    let s = Small {
+        num: 42,
+        two: 100,
+        ..Default::default()
+    };
+    let serialized = serialize(&s);
+    assert_eq!(s, deserialize(serialized).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_nested_containers_end_detection() -> Result<()> {
+    let mut m = BTreeMap::new();
+    m.insert("a".to_string(), 1);
+    m.insert("b".to_string(), 2);
+    let r = MainStruct {
+        m,
+        l: vec![
+            Small {
+                num: 1,
+                two: 2,
+                ..Default::default()
+            },
+            Small {
+                num: 3,
+                two: 4,
+                ..Default::default()
+            },
+        ],
+        int_keys: [(10, 20), (30, 40)].into_iter().collect(),
+        ..Default::default()
+    };
+    let serialized = serialize(&r);
+    assert_eq!(r, deserialize(serialized).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_map_with_whitespace_before_end() -> Result<()> {
+    let input = r#"{"m":{"k1":"v1" , "k2":"v2"  }}"#;
+    let c: Containers = deserialize(input).unwrap();
+    assert_eq!(c.m.len(), 2);
+    assert_eq!(c.m.get("k1"), Some(&"v1".to_string()));
+    assert_eq!(c.m.get("k2"), Some(&"v2".to_string()));
+    Ok(())
+}
+
+#[test]
+fn test_list_with_whitespace_before_end() -> Result<()> {
+    let input = r#"{"l":["a" , "b"  ]}"#;
+    let c: Containers = deserialize(input).unwrap();
+    assert_eq!(c.l, vec!["a".to_string(), "b".to_string()]);
+    Ok(())
+}
+
+#[test]
+fn test_bool_peek_based_parsing() -> Result<()> {
+    let b = Basic {
+        b: true,
+        b2: false,
+        ..Default::default()
+    };
+    let s = serialize(&b);
+    assert_eq!(b, deserialize(s).unwrap());
+
+    let b2 = Basic {
+        b: false,
+        b2: true,
+        ..Default::default()
+    };
+    let s2 = serialize(&b2);
+    assert_eq!(b2, deserialize(s2).unwrap());
+    Ok(())
+}
+
+#[test]
+fn test_bool_with_whitespace() -> Result<()> {
+    let input = r#"{"b":  true  ,"b2":  false  }"#;
+    let b: Basic = deserialize(input).unwrap();
+    assert!(b.b);
+    assert!(!b.b2);
+    Ok(())
+}
+
+#[test]
+fn test_bool_invalid_value() {
+    let input = r#"{"b": 1}"#;
+    assert!(deserialize::<Basic, _, _>(input).is_err());
+}
+
+#[test]
+fn test_missing_comma_between_map_entries() {
+    let input = r#"{"m":{"k1":"v1""k2":"v2"}}"#;
+    assert!(deserialize::<Containers, _, _>(input).is_err());
+}
+
+#[test]
+fn test_missing_comma_between_list_entries() {
+    let input = r#"{"l":["a""b"]}"#;
+    assert!(deserialize::<Containers, _, _>(input).is_err());
+}
+
+#[test]
+fn test_trailing_comma_in_map() {
+    let input = r#"{"m":{"k1":"v1",}}"#;
+    assert!(deserialize::<Containers, _, _>(input).is_err());
+}
+
+#[test]
+fn test_trailing_comma_in_list() {
+    let input = r#"{"l":["a",]}"#;
+    assert!(deserialize::<Containers, _, _>(input).is_err());
+}
+
+#[test]
+fn test_unquoted_number_followed_by_quote_integer() {
+    // Malformed input: unquoted number followed by quote should fail
+    // The parser should stop at the quote, not include it in the number
+    let input = r#"{"num":123"}"#;
+    assert!(deserialize::<Small, _, _>(input).is_err());
+}
+
+#[test]
+fn test_unquoted_number_followed_by_quote_float() {
+    // Malformed input: unquoted float followed by quote should fail
+    let input = r#"{"f32":123.45"}"#;
+    assert!(deserialize::<FloatingPoint, _, _>(input).is_err());
+}
+
+#[test]
+fn test_unquoted_number_followed_by_quote_in_list() {
+    // Malformed input: unquoted number followed by quote in a list
+    let input = r#"{"l":[123"]}"#;
+    // This should fail because the list expects Small structs, not bare numbers
+    assert!(deserialize::<MainStruct, _, _>(input).is_err());
+}
+
+#[test]
+fn test_unquoted_number_followed_by_quote_as_map_value() {
+    // Malformed input: unquoted number followed by quote as map value
+    let input = r#"{"m":{"key":123"}}"#;
+    assert!(deserialize::<MainStruct, _, _>(input).is_err());
+}
+
+#[test]
+fn test_valid_quoted_number() {
+    // Valid input: quoted numbers are accepted by SimpleJSON protocol
+    let input = r#"{"num":"123"}"#;
+    let result = deserialize::<Small, _, _>(input);
+    assert!(result.is_ok());
+    let s = result.unwrap();
+    assert_eq!(s.num, 123);
+}
+
+#[test]
+fn test_unquoted_number_with_comma() {
+    // Valid input: unquoted number followed by comma should work
+    let input = r#"{"num":123,"two":456}"#;
+    let result = deserialize::<Small, _, _>(input);
+    assert!(result.is_ok());
+    let s = result.unwrap();
+    assert_eq!(s.num, 123);
+    assert_eq!(s.two, 456);
+}
+
+#[test]
+fn test_unquoted_number_with_closing_brace() {
+    // Valid input: unquoted number followed by closing brace should work
+    let input = r#"{"num":123}"#;
+    let result = deserialize::<Small, _, _>(input);
+    assert!(result.is_ok());
+    let s = result.unwrap();
+    assert_eq!(s.num, 123);
+}
+
 proptest! {
 #[test]
 fn test_prop_serialize_deserialize(s in gen_main_struct()) {

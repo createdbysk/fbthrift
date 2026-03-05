@@ -24,6 +24,7 @@
 #include <thrift/lib/cpp2/async/StreamCallbacks.h>
 #include <thrift/lib/cpp2/transport/rocket/Types.h>
 #include <thrift/lib/cpp2/transport/rocket/compression/CompressionManager.h>
+#include <thrift/lib/cpp2/transport/rocket/framing/Frames.h>
 #include <thrift/lib/cpp2/transport/rocket/server/IRocketServerConnection.h>
 
 THRIFT_FLAG_DECLARE(rocket_server_disable_send_callback, bool);
@@ -53,11 +54,13 @@ class RocketStreamClientCallback final : public StreamClientCallback {
 
   void resetServerCallback(StreamServerCallback&) override;
 
-  bool request(uint32_t n);
-  void onStreamCancel();
-  void headers(HeadersPayload&& payload);
-  void pauseStream();
-  void resumeStream();
+  bool handle(RequestNFrame requestNFrame);
+  void handle(CancelFrame cancelFrame);
+  void handle(ExtFrame extFrame);
+  void handleStreamHeadersPush(HeadersPayload&& payload);
+  void handleConnectionClose();
+  void handlePausedByConnection();
+  void handleResumedByConnection();
 
   StreamServerCallback& getStreamServerCallback();
   void timeoutExpired() noexcept;
@@ -65,10 +68,6 @@ class RocketStreamClientCallback final : public StreamClientCallback {
   void setCompressionConfig(CompressionConfig compressionConfig);
   bool serverCallbackReady() const {
     return serverCallbackOrCancelled_ != kCancelledFlag && serverCallback();
-  }
-  void earlyCancelled() {
-    DCHECK(!serverCallbackReady());
-    serverCallbackOrCancelled_ = kCancelledFlag;
   }
 
   void setRpcMethodName(std::string rpcMethodName) {

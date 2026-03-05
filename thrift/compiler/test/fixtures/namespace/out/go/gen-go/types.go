@@ -43,6 +43,7 @@ func (x *Foo) SetMyInt(value int64) *Foo {
     return x
 }
 
+
 func (x *Foo) writeField1(p thrift.Encoder) error {  // MyInt
     if err := p.WriteFieldBegin("MyInt", thrift.I64, 1); err != nil {
         return thrift.PrependError("Foo write field begin error: ", err)
@@ -68,6 +69,8 @@ func (x *Foo) readField1(p thrift.Decoder) error {  // MyInt
     x.MyInt = result
     return nil
 }
+
+
 
 
 
@@ -169,6 +172,7 @@ func (x *reqTestServiceInit) SetInt1(value int64) *reqTestServiceInit {
     return x
 }
 
+
 func (x *reqTestServiceInit) writeField1(p thrift.Encoder) error {  // Int1
     if err := p.WriteFieldBegin("int1", thrift.I64, 1); err != nil {
         return thrift.PrependError("reqTestServiceInit write field begin error: ", err)
@@ -194,6 +198,8 @@ func (x *reqTestServiceInit) readField1(p thrift.Decoder) error {  // Int1
     x.Int1 = result
     return nil
 }
+
+
 
 
 
@@ -328,6 +334,7 @@ func (x *respTestServiceInit) readField0(p thrift.Decoder) error {  // Success
     x.Success = &result
     return nil
 }
+
 
 
 

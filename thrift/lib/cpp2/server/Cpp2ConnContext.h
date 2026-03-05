@@ -53,7 +53,9 @@ class FunctionNode;
 
 namespace rocket {
 class ThriftRocketServerHandler;
-}
+class RefactoredThriftRocketServerHandler;
+class RocketSetupProcessor;
+} // namespace rocket
 
 using ClientIdentityHook = std::function<std::unique_ptr<void, void (*)(void*)>(
     const folly::AsyncTransport* transport,
@@ -480,7 +482,11 @@ class Cpp2ConnContext : public apache::thrift::server::TConnectionContext {
   void setClientMetadata(const ClientMetadata& md) { clientMetadata_ = md; }
 
   friend class Cpp2Connection;
-  friend class rocket::ThriftRocketServerHandler;
+  friend class ThriftServerRequestResponse;
+  friend class ThriftServerRequestFnf;
+  friend class apache::thrift::rocket::ThriftRocketServerHandler;
+  friend class apache::thrift::rocket::RefactoredThriftRocketServerHandler;
+  friend class rocket::RocketSetupProcessor;
   friend class HTTP2RoutingHandler;
   friend class SingleRpcChannel;
   friend class detail::Cpp2ConnContextInternalAPI;
@@ -601,10 +607,26 @@ class Cpp2ConnContextInternalAPI {
     return connContext_.findTile(interactionId);
   }
 
+  template <typename Func>
+  void forEachTile(Func&& fn) const {
+    for (const auto& [id, tilePtr] : connContext_.tiles_) {
+      fn(id, *tilePtr);
+    }
+  }
+
+  size_t getNumTiles() const { return connContext_.tiles_.size(); }
+
  private:
   Cpp2ConnContext& connContext_;
 };
 class Cpp2RequestContextUnsafeAPI;
+
+// Returns the security policy for this connection.
+// Default implementation returns empty optional.
+THRIFT_PLUGGABLE_FUNC_DECLARE(
+    std::optional<SecurityPolicy>,
+    getConnectionSecurityPolicy,
+    const Cpp2ConnContext& connContext);
 } // namespace detail
 
 // Request-specific context

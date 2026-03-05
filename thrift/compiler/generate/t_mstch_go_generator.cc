@@ -14,36 +14,38 @@
  * limitations under the License.
  */
 
-#include <filesystem>
-#include <memory>
-#include <set>
 #include <string>
 #include <boost/algorithm/string/erase.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <fmt/format.h>
-#include <thrift/compiler/ast/t_struct.h>
 #include <thrift/compiler/generate/go/util.h>
-#include <thrift/compiler/generate/t_mstch_generator.h>
+#include <thrift/compiler/generate/t_whisker_generator.h>
+#include <thrift/compiler/generate/templates.h>
 
 namespace apache::thrift::compiler {
 
 namespace {
 
-class t_mstch_go_generator : public t_mstch_generator {
+class t_mstch_go_generator : public t_whisker_generator {
  public:
-  using t_mstch_generator::t_mstch_generator;
-
-  whisker_options render_options() const override {
-    whisker_options opts;
-    opts.allowed_undefined_variables = {
-        "service:autogen_path",
-    };
-    return opts;
-  }
+  using t_whisker_generator::t_whisker_generator;
 
   std::string template_prefix() const override { return "go"; }
 
+  whisker::source_manager template_source_manager() const final {
+    return whisker::source_manager{
+        std::make_unique<in_memory_source_manager_backend>(
+            create_templates_by_path())};
+  }
+
   void generate_program() override;
+
+  strictness_options strictness() const override {
+    strictness_options strict;
+    strict.boolean_conditional = false;
+    strict.printable_types = false;
+    return strict;
+  }
 
  private:
   void initialize_context(context_visitor& visitor) override {
@@ -53,13 +55,13 @@ class t_mstch_go_generator : public t_mstch_generator {
     data_.compute_req_resp_structs();
     data_.compute_thrift_metadata_types();
 
-    if (auto gen_metadata = get_option("gen_metadata")) {
+    if (auto gen_metadata = get_compiler_option("gen_metadata")) {
       data_.gen_metadata = (gen_metadata.value() == "true");
     }
-    if (auto gen_default_get = get_option("gen_default_get")) {
+    if (auto gen_default_get = get_compiler_option("gen_default_get")) {
       data_.gen_default_get = (gen_default_get.value() == "true");
     }
-    if (auto use_reflect_codec = get_option("use_reflect_codec")) {
+    if (auto use_reflect_codec = get_compiler_option("use_reflect_codec")) {
       data_.use_reflect_codec = (use_reflect_codec.value() == "true");
     }
 
@@ -139,6 +141,20 @@ class t_mstch_go_generator : public t_mstch_generator {
       return go::get_go_package_dir(&self) == go::THRIFT_METADATA_IMPORT
           ? whisker::make::string("")
           : whisker::make::string("metadata.");
+    });
+    def.property("thrift_imports", [&proto](const t_program& self) {
+      return to_array(self.get_includes_for_codegen(), proto.of<t_program>());
+    });
+    def.property("req_resp_structs", [this, &proto](const t_program&) {
+      return to_array(data_.req_resp_structs, proto.of<t_struct>());
+    });
+    def.property("thrift_metadata_types", [this, &proto](const t_program&) {
+      whisker::array::raw result;
+      result.reserve(data_.thrift_metadata_types.size());
+      for (const t_type* type : data_.thrift_metadata_types) {
+        result.emplace_back(resolve_derived_t_type(proto, *type));
+      }
+      return whisker::array::of(std::move(result));
     });
 
     return std::move(def).make();
@@ -292,6 +308,20 @@ class t_mstch_go_generator : public t_mstch_generator {
     auto base = t_whisker_generator::make_prototype_for_structured(proto);
     auto def = whisker::dsl::prototype_builder<h_structured>::extends(base);
 
+    def.property("go_name", [this](const t_structured& self) {
+      if (data_.is_req_resp_struct(self)) {
+        // Unexported/lowercase for request/response structs
+        return go::munge_ident(self.name(), /*exported=*/false);
+      }
+      return go::go_name(self);
+    });
+    def.property("go_qualified_name", [this](const t_structured& self) {
+      auto prefix = data_.go_package_alias_prefix(self.program());
+      if (data_.is_req_resp_struct(self)) {
+        return prefix + go::munge_ident(self.name(), /*exported=*/false);
+      }
+      return prefix + go::go_name(self);
+    });
     def.property("go_public_req_name", [](const t_structured& self) {
       return boost::algorithm::erase_first_copy(self.name(), "req") +
           "ArgsDeprecated";
@@ -317,6 +347,35 @@ class t_mstch_go_generator : public t_mstch_generator {
           data_.go_package_alias_prefix(self.program()),
           data_.is_req_resp_struct(self) ? "new" : "New",
           go::munge_ident(self.name(), /*exported=*/true));
+    });
+    def.property("req_resp?", [this](const t_structured& self) {
+      // Whether this is a helper request or response struct.
+      return data_.is_req_resp_struct(self);
+    });
+    def.property("req?", [this](const t_structured& self) {
+      // Whether this is a helper request struct.
+      return data_.is_req_resp_struct(self) && self.name().starts_with("req");
+    });
+    def.property("resp?", [this](const t_structured& self) {
+      // Whether this is a helper response struct.
+      return data_.is_req_resp_struct(self) && self.name().starts_with("resp");
+    });
+    def.property("stream?", [this](const t_structured& self) {
+      // Whether this is a helper stream struct.
+      return data_.is_req_resp_struct(self) &&
+          self.name().starts_with("stream");
+    });
+    def.property("sink?", [this](const t_structured& self) {
+      // Whether this is a helper sink struct.
+      return data_.is_req_resp_struct(self) && self.name().starts_with("sink");
+    });
+    def.property("fields_sorted", [&proto](const t_structured& self) {
+      // Fields (optionally) in the most optimal (memory-saving) layout order.
+      std::vector<const t_field*> fields = self.fields_id_order();
+      if (self.has_structured_annotation(kGoMinimizePaddingUri)) {
+        go::optimize_fields_layout(fields, self.is<t_union>());
+      }
+      return to_array(fields, proto.of<t_field>());
     });
 
     return std::move(def).make();
@@ -409,13 +468,12 @@ class t_mstch_go_generator : public t_mstch_generator {
       return self.qualifier() == t_field_qualifier::optional ||
           is_field_inside_union(self);
     });
-
     return std::move(def).make();
   }
 
   prototype<t_const>::ptr make_prototype_for_const(
       const prototype_database& proto) const override {
-    auto base = t_mstch_generator::make_prototype_for_const(proto);
+    auto base = t_whisker_generator::make_prototype_for_const(proto);
     auto def = whisker::dsl::prototype_builder<h_const>::extends(base);
 
     def.property("var?", [](const t_const& self) {
@@ -431,7 +489,7 @@ class t_mstch_go_generator : public t_mstch_generator {
 
   prototype<t_const_value>::ptr make_prototype_for_const_value(
       const prototype_database& proto) const override {
-    auto base = t_mstch_generator::make_prototype_for_const_value(proto);
+    auto base = t_whisker_generator::make_prototype_for_const_value(proto);
     auto def = whisker::dsl::prototype_builder<h_const_value>::extends(base);
 
     def.property("go_quoted_value", [](const t_const_value& self) {
@@ -461,138 +519,16 @@ class t_mstch_go_generator : public t_mstch_generator {
   }
 };
 
-class mstch_go_program : public mstch_program {
- public:
-  mstch_go_program(
-      const t_program* p,
-      mstch_context& ctx,
-      mstch_element_position pos,
-      go::codegen_data* data)
-      : mstch_program(p, ctx, pos), data_(*data) {
-    register_methods(
-        this,
-        {
-            {"program:thrift_imports", &mstch_go_program::thrift_imports},
-            {"program:thrift_metadata_types",
-             &mstch_go_program::thrift_metadata_types},
-            {"program:req_resp_structs", &mstch_go_program::req_resp_structs},
-        });
-  }
-
-  mstch::node thrift_imports() {
-    mstch::array a;
-    for (const auto* program : program_->get_includes_for_codegen()) {
-      a.emplace_back(make_mstch_program_cached(program, context_));
-    }
-    return a;
-  }
-  mstch::node thrift_metadata_types() {
-    return make_mstch_array(
-        data_.thrift_metadata_types, *context_.type_factory);
-  }
-  mstch::node req_resp_structs() {
-    return make_mstch_array(data_.req_resp_structs, *context_.struct_factory);
-  }
-
- private:
-  go::codegen_data& data_;
-};
-
-class mstch_go_struct : public mstch_struct {
- public:
-  mstch_go_struct(
-      const t_structured* s,
-      mstch_context& ctx,
-      mstch_element_position pos,
-      go::codegen_data* data)
-      : mstch_struct(s, ctx, pos), data_(*data) {
-    register_methods(
-        this,
-        {
-            {"struct:go_name", &mstch_go_struct::go_name},
-            {"struct:go_qualified_name", &mstch_go_struct::go_qualified_name},
-            {"struct:req_resp?", &mstch_go_struct::is_req_resp_struct},
-            {"struct:resp?", &mstch_go_struct::is_resp_struct},
-            {"struct:req?", &mstch_go_struct::is_req_struct},
-            {"struct:stream?", &mstch_go_struct::is_stream_struct},
-            {"struct:sink?", &mstch_go_struct::is_sink_struct},
-            {"struct:fields_sorted", &mstch_go_struct::fields_sorted},
-        });
-  }
-
-  mstch::node go_name() { return go_name_(); }
-  mstch::node go_qualified_name() {
-    auto prefix = data_.go_package_alias_prefix(struct_->program());
-    return prefix + go_name_();
-  }
-  mstch::node is_req_resp_struct() {
-    // Whether this is a helper request or response struct.
-    return data_.is_req_resp_struct(*struct_);
-  }
-  mstch::node is_resp_struct() {
-    // Whether this is a helper response struct.
-    return data_.is_req_resp_struct(*struct_) &&
-        struct_->name().starts_with("resp");
-  }
-  mstch::node is_req_struct() {
-    // Whether this is a helper request struct.
-    return data_.is_req_resp_struct(*struct_) &&
-        struct_->name().starts_with("req");
-  }
-  mstch::node is_stream_struct() {
-    // Whether this is a helper stream struct.
-    return data_.is_req_resp_struct(*struct_) &&
-        struct_->name().starts_with("stream");
-  }
-  mstch::node is_sink_struct() {
-    // Whether this is a helper sink struct.
-    return data_.is_req_resp_struct(*struct_) &&
-        struct_->name().starts_with("sink");
-  }
-  mstch::node fields_sorted() {
-    // Fields (optionally) in the most optimal (memory-saving) layout order.
-    if (struct_->has_structured_annotation(kGoMinimizePaddingUri)) {
-      std::vector<const t_field*> fields_in_layout_order =
-          struct_->fields_id_order();
-      go::optimize_fields_layout(
-          fields_in_layout_order, struct_->is<t_union>());
-      return make_mstch_fields(fields_in_layout_order);
-    }
-    return make_mstch_fields(struct_->fields_id_order());
-  }
-
- private:
-  go::codegen_data& data_;
-
-  std::string go_name_() {
-    auto name = struct_->name();
-    if (data_.is_req_resp_struct(*struct_)) {
-      // Unexported/lowercase
-      return go::munge_ident(name, false);
-    } else {
-      auto name_override = go::get_go_name_annotation(struct_);
-      if (name_override != nullptr) {
-        return *name_override;
-      }
-      // Exported/uppercase
-      return go::munge_ident(name, true);
-    }
-  }
-};
-
 void t_mstch_go_generator::generate_program() {
   out_dir_base_ = "gen-go";
 
-  mstch_context_.add<mstch_go_program>(&data_);
-  mstch_context_.add<mstch_go_struct>(&data_);
-
-  const auto& prog = cached_program(program_);
-  render_to_file(prog, "const.go", "const.go");
-  render_to_file(prog, "types.go", "types.go");
-  render_to_file(prog, "svcs.go", "svcs.go");
-  render_to_file(prog, "codec.go", "codec.go");
+  whisker::object context = whisker::make::map();
+  render_to_file("const.go", "const.go", context);
+  render_to_file("types.go", "types.go", context);
+  render_to_file("svcs.go", "svcs.go", context);
+  render_to_file("codec.go", "codec.go", context);
   if (data_.gen_metadata) {
-    render_to_file(prog, "metadata.go", "metadata.go");
+    render_to_file("metadata.go", "metadata.go", context);
   }
 }
 

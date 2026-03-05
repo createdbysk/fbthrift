@@ -16,9 +16,7 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <memory>
 #include <set>
-#include <stdexcept>
 #include <string>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -27,44 +25,35 @@
 #include <thrift/compiler/ast/t_program.h>
 #include <thrift/compiler/ast/t_type.h>
 #include <thrift/compiler/generate/common.h>
-#include <thrift/compiler/generate/mstch_objects.h>
 #include <thrift/compiler/generate/python/util.h>
-#include <thrift/compiler/generate/t_mstch_generator.h>
+#include <thrift/compiler/generate/t_whisker_generator.h>
+#include <thrift/compiler/generate/templates.h>
 
 namespace apache::thrift::compiler {
 
 namespace {
 
-// Reserved Python keywords that are not blocked by thrift grammar - note that
-// this is actually a longer list than what t_py_generator checks, but may
-// as well fix up more of them here.
-const std::unordered_set<std::string> kKeywords = {
-    "async",
-    "await",
-    "from",
-    "nonlocal",
-    "DEF",
-    "ELIF",
-    "ELSE",
-    "False",
-    "IF",
-    "None",
-    "True",
-};
+std::string get_filtered_name(const t_named& node) {
+  // Reserved Python keywords that are not blocked by thrift grammar - note that
+  // this is actually a longer list than what t_py_generator checks, but may
+  // as well fix up more of them here.
+  static const std::unordered_set<std::string> kKeywords = {
+      "async",
+      "await",
+      "from",
+      "nonlocal",
+      "DEF",
+      "ELIF",
+      "ELSE",
+      "False",
+      "IF",
+      "None",
+      "True",
+  };
 
-// TO-DO: remove duplicate in py3
-mstch::array create_string_array(const std::vector<std::string>& values) {
-  mstch::array mstch_array;
-  for (auto it = values.begin(); it != values.end(); ++it) {
-    mstch_array.emplace_back(
-        mstch::map{
-            {"value", *it},
-            {"first?", it == values.begin()},
-            {"last?", std::next(it) == values.end()},
-        });
-  }
-
-  return mstch_array;
+  return kKeywords.contains(node.name())
+      ? fmt::format("{}_PY_RESERVED_KEYWORD", node.name())
+      : node.name();
 }
 
 // TO-DO: remove duplicate in py3
@@ -95,42 +84,6 @@ std::vector<std::string> get_py_namespaces_raw(
   }
 
   return ns;
-}
-
-std::string to_flat_type_name(const t_type* type) {
-  assert(type != nullptr);
-
-  const auto* true_type = type->get_true_type();
-  assert(true_type != nullptr);
-
-  if (const t_list* listType = true_type->try_as<t_list>()) {
-    assert(listType != nullptr);
-
-    return fmt::format(
-        "List__{}", to_flat_type_name(listType->elem_type().get_type()));
-  }
-
-  if (const t_set* setType = true_type->try_as<t_set>()) {
-    assert(setType != nullptr);
-
-    return fmt::format(
-        "Set__{}", to_flat_type_name(setType->elem_type().get_type()));
-  }
-
-  if (const t_map* mapType = true_type->try_as<t_map>()) {
-    assert(mapType != nullptr);
-
-    return fmt::format(
-        "Map__{}_{}",
-        to_flat_type_name(&mapType->key_type().deref()),
-        to_flat_type_name(&mapType->val_type().deref()));
-  }
-
-  if (true_type->is_binary()) {
-    return "binary";
-  }
-
-  return true_type->name();
 }
 
 const std::string* get_py_adapter(const t_type* type) {
@@ -198,372 +151,11 @@ std::vector<std::string> gather_import_modules(
   return import_modules;
 }
 
-// Program
-
-class pyi_mstch_program : public mstch_program {
- public:
-  pyi_mstch_program(
-      const t_program* program,
-      mstch_context& context,
-      mstch_element_position position)
-      : mstch_program(program, context, position) {
-    register_methods(
-        this,
-        {
-            {"program:returnTypes", &pyi_mstch_program::get_return_types},
-            {"program:pyNamespaces", &pyi_mstch_program::get_py_namespaces},
-            {"program:pythonNamespaces",
-             &pyi_mstch_program::get_python_namespaces},
-            {"program:py3Namespaces", &pyi_mstch_program::get_py3_namespaces},
-            {"program:importModules", &pyi_mstch_program::get_import_modules},
-            {"program:containerTypes", &pyi_mstch_program::get_containers},
-            {"program:moveContainerTypes",
-             &pyi_mstch_program::get_move_containers},
-            {"program:enablePosArgs?", &pyi_mstch_program::get_enable_pos_args},
-        });
-
-    this->visit_import_modules();
-    this->visit_return_types();
-    this->visit_containers();
-  }
-
-  mstch::node get_return_types() {
-    return make_mstch_types(this->return_types_);
-  }
-
-  mstch::node get_py_namespaces() {
-    return create_string_array(get_py_namespaces_raw(
-        mstch_program::program_, mstch_base::has_option("asyncio")));
-  }
-
-  mstch::node get_python_namespaces() {
-    // TODO: take root_module_prefix into account
-    return create_string_array(
-        ::apache::thrift::compiler::get_py3_namespace(mstch_program::program_));
-  }
-
-  mstch::node get_py3_namespaces() {
-    return create_string_array(
-        ::apache::thrift::compiler::get_py3_namespace(mstch_program::program_));
-  }
-
-  mstch::node get_import_modules() {
-    mstch::array mstch_array;
-    for (const auto& module : this->import_modules_) {
-      mstch_array.emplace_back(module);
-    }
-    return mstch_array;
-  }
-
-  mstch::node get_containers() { return make_mstch_types(this->containers_); }
-
-  mstch::node get_move_containers() {
-    return make_mstch_types(this->move_containers_);
-  }
-
-  mstch::node get_enable_pos_args() {
-    return this->context_.options->contains("enable_pos_args");
-  }
-
- private:
-  std::vector<const t_type*> return_types_;
-  std::vector<std::string> import_modules_;
-  std::vector<const t_type*> containers_;
-  std::vector<const t_type*> move_containers_;
-
-  void visit_import_modules() {
-    this->import_modules_ = gather_import_modules(
-        mstch_program::program_, mstch_base::has_option("asyncio"));
-  }
-
-  void visit_return_types() {
-    std::set<std::string> visited;
-    for (const auto* service : mstch_program::program_->services()) {
-      for (const auto& function : service->functions()) {
-        const auto* return_type = function.return_type().get_type();
-        std::string name = to_flat_type_name(return_type);
-
-        if (visited.find(name) == visited.end()) {
-          visited.insert(name);
-          this->return_types_.push_back(return_type);
-        }
-      }
-    }
-  }
-
-  void visit_containers() {
-    std::set<std::string> visited;
-
-    for (const auto* service : mstch_program::program_->services()) {
-      for (const auto& function : service->functions()) {
-        for (const auto& param : function.params().fields()) {
-          this->add_containers(visited, param.type().get_type());
-        }
-        this->add_containers(visited, function.return_type().get_type());
-      }
-    }
-
-    for (const t_structured* object :
-         mstch_program::program_->structured_definitions()) {
-      for (const auto& field : object->fields()) {
-        this->add_containers(visited, field.type().get_type());
-      }
-    }
-
-    for (const auto* constant : mstch_program::program_->consts()) {
-      const auto* const_type = constant->type();
-      this->add_containers(visited, const_type);
-    }
-
-    // Collecting move containers within found containers
-    visited.clear();
-    for (const auto* container : this->containers_) {
-      auto name = to_flat_type_name(container);
-      boost::algorithm::replace_all(name, "binary", "string");
-
-      if (visited.find(name) == visited.end()) {
-        visited.insert(name);
-        this->move_containers_.push_back(container);
-      }
-    }
-  }
-
-  void add_containers(std::set<std::string>& visited, const t_type* type) {
-    assert(type != nullptr);
-
-    if (!type->is<t_container>()) {
-      return;
-    }
-
-    std::string name = to_flat_type_name(type);
-    if (visited.find(name) != visited.end()) {
-      return;
-    }
-
-    if (const t_list* list = type->try_as<t_list>()) {
-      const auto* listType = list->elem_type().get_type();
-      add_containers(visited, listType);
-    } else if (const t_set* set = type->try_as<t_set>()) {
-      const auto* setType = set->elem_type().get_type();
-      add_containers(visited, setType);
-    } else if (const t_map* mapType = type->try_as<t_map>()) {
-      add_containers(visited, &mapType->key_type().deref());
-      add_containers(visited, &mapType->val_type().deref());
-    }
-
-    visited.insert(name);
-    this->containers_.push_back(type);
-  }
-};
-
-// Field
-
-class pyi_mstch_field : public mstch_field {
- public:
-  pyi_mstch_field(
-      const t_field* field,
-      mstch_context& context,
-      mstch_element_position position)
-      : mstch_field(field, context, position) {
-    register_methods(
-        this,
-        {
-            {"field:requireValue?", &pyi_mstch_field::get_require_value},
-            {"field:PEP484Optional?", &pyi_mstch_field::get_PEP484_optional},
-            {"field:origName", &pyi_mstch_field::get_original_name},
-            {"field:capitalizedName", &pyi_mstch_field::get_capitalized_name},
-            {"field:py_name", &pyi_mstch_field::get_filtered_name},
-        });
-
-    auto field_type = mstch_field::field_->qualifier();
-    bool is_required = (field_type == t_field_qualifier::required);
-    bool is_optional = (field_type == t_field_qualifier::optional);
-    bool is_unqualified = !is_required && !is_optional;
-    bool has_value = (mstch_field::field_->default_value() != nullptr);
-    bool has_default_value = has_value || is_unqualified;
-
-    this->require_value_ = is_required && !has_default_value;
-    this->pep484_optional_ =
-        (is_optional || (!has_default_value && !is_required));
-
-    auto filteredName = mstch_field::field_->name();
-    if (kKeywords.find(filteredName) != kKeywords.end()) {
-      filteredName += "_PY_RESERVED_KEYWORD";
-    }
-    this->filtered_name_ = filteredName;
-  }
-
-  mstch::node get_require_value() { return this->require_value_; }
-
-  mstch::node get_PEP484_optional() { return this->pep484_optional_; }
-
-  mstch::node get_filtered_name() { return this->filtered_name_; }
-
-  mstch::node get_original_name() { return mstch_field::field_->name(); }
-
-  mstch::node get_capitalized_name() {
-    std::string name(this->filtered_name_);
-    std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-
-    return name;
-  }
-
- private:
-  bool require_value_;
-  bool pep484_optional_;
-  std::string filtered_name_;
-};
-
-// Type
-
-class pyi_mstch_type : public mstch_type {
- public:
-  pyi_mstch_type(
-      const t_type* type,
-      mstch_context& context,
-      mstch_element_position position,
-      const t_program* program)
-      : mstch_type(type, context, position), program_(program) {
-    register_methods(
-        this,
-        {
-            {"type:modulePath", &pyi_mstch_type::get_module_path},
-            {"type:externalProgram?", &pyi_mstch_type::is_external_program},
-            {"type:flat_name", &pyi_mstch_type::get_flat_name},
-            {"type:adapter", &pyi_mstch_type::get_adapter},
-            {"type:has_adapter?", &pyi_mstch_type::has_adapter},
-        });
-  }
-
-  mstch::node get_module_path() {
-    return create_string_array(get_py_namespaces_raw(
-        this->get_type_program(), mstch_base::has_option("asyncio"), "ttypes"));
-  }
-
-  mstch::node is_external_program() {
-    return (this->get_type_program()->path() != this->program_->path());
-  }
-
-  mstch::node get_flat_name() { return to_flat_type_name(mstch_type::type_); }
-
-  mstch::node get_adapter() {
-    return std::string(*get_py_adapter(mstch_type::type_));
-  }
-
-  mstch::node has_adapter() {
-    return (get_py_adapter(mstch_type::type_) != nullptr);
-  }
-
- private:
-  const t_program* program_;
-
-  const t_program* get_type_program() const {
-    const auto* typeProgram = mstch_type::resolved_type_->program();
-    return (typeProgram != nullptr) ? typeProgram : this->program_;
-  }
-};
-
-// Service
-
-class pyi_mstch_service : public mstch_service {
- public:
-  pyi_mstch_service(
-      const t_service* service,
-      mstch_context& context,
-      mstch_element_position position,
-      const t_program* program)
-      : mstch_service(service, context, position), program_(program) {
-    register_methods(
-        this,
-        {
-            {"service:externalProgram?",
-             &pyi_mstch_service::is_external_program},
-            {"service:pyNamespaces", &pyi_mstch_service::get_py_namespaces},
-            {"service:programName", &pyi_mstch_service::getProgramName},
-            {"program:pyNamespaces",
-             &pyi_mstch_service::get_program_py_namespaces},
-            {"program:importModules",
-             &pyi_mstch_service::get_program_import_modules},
-        });
-
-    this->visit_program_import_modules();
-  }
-
-  mstch::node is_external_program() {
-    const auto& programPath = mstch_service::service_->program()->path();
-    return (programPath != this->program_->path());
-  }
-
-  mstch::node get_py_namespaces() {
-    return create_string_array(get_py_namespaces_raw(
-        mstch_service::service_->program(), mstch_base::has_option("asyncio")));
-  }
-
-  mstch::node getProgramName() {
-    return mstch_service::service_->program()->name();
-  }
-
-  mstch::node get_program_py_namespaces() {
-    return create_string_array(get_py_namespaces_raw(
-        this->program_, mstch_base::has_option("asyncio")));
-  }
-
-  mstch::node get_program_import_modules() {
-    mstch::array mstch_array;
-    for (const auto& module : this->program_import_modules_) {
-      mstch_array.emplace_back(module);
-    }
-    return mstch_array;
-  }
-
- private:
-  const t_program* program_;
-  std::vector<std::string> program_import_modules_;
-
-  void visit_program_import_modules() {
-    this->program_import_modules_ = gather_import_modules(
-        this->program_, mstch_base::has_option("asyncio"));
-  }
-};
-
-// Function
-
-class pyi_mstch_function : public mstch_function {
- public:
-  pyi_mstch_function(
-      const t_function* function,
-      mstch_context& context,
-      mstch_element_position position)
-      : mstch_function(function, context, position) {
-    register_methods(
-        this,
-        {
-            {"function:isSupported?", &pyi_mstch_function::is_supported},
-        });
-  }
-
-  mstch::node is_supported() {
-    // Stream and sink functions are not supported, see
-    // t_py_generator::get_functions.
-    return !function_->sink_or_stream() &&
-        !function_->is_interaction_constructor();
-  }
-};
-
 // Generator
 
-class t_mstch_pyi_generator : public t_mstch_generator {
+class t_mstch_pyi_generator : public t_whisker_generator {
  public:
-  using t_mstch_generator::t_mstch_generator;
-
-  whisker_options render_options() const override {
-    whisker_options opts;
-    opts.allowed_undefined_variables = {
-        "service:autogen_path",
-        "program:autogen_path",
-    };
-    return opts;
-  }
+  using t_whisker_generator::t_whisker_generator;
 
   std::string template_prefix() const override { return "pyi"; }
 
@@ -572,7 +164,19 @@ class t_mstch_pyi_generator : public t_mstch_generator {
  private:
   std::filesystem::path root_path_;
 
-  void create_factories();
+  whisker::source_manager template_source_manager() const final {
+    return whisker::source_manager{
+        std::make_unique<in_memory_source_manager_backend>(
+            create_templates_by_path())};
+  }
+
+  strictness_options strictness() const final {
+    return strictness_options{
+        // Templates still have non-boolean conditionals and implicit loops
+        .boolean_conditional = false,
+    };
+  }
+
   void generate_init_files();
   void generate_constants();
   void generate_ttypes();
@@ -582,13 +186,116 @@ class t_mstch_pyi_generator : public t_mstch_generator {
       const std::filesystem::path& path,
       const t_service* service = nullptr);
   std::filesystem::path get_root_path() const;
+
+  const t_program* get_true_type_program(const t_type& type) const {
+    const t_program* prog = type.get_true_type()->program();
+    return prog != nullptr ? prog : program_;
+  }
+
+  prototype<t_field>::ptr make_prototype_for_field(
+      const prototype_database& proto) const override {
+    auto base = t_whisker_generator::make_prototype_for_field(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_field>::extends(std::move(base));
+
+    def.property("py_name", &get_filtered_name);
+    def.property("capitalizedName", [](const t_field& self) {
+      std::string name = get_filtered_name(self);
+      std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+      return name;
+    });
+
+    return std::move(def).make();
+  }
+
+  prototype<t_function>::ptr make_prototype_for_function(
+      const prototype_database& proto) const override {
+    auto base = t_whisker_generator::make_prototype_for_function(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_function>::extends(std::move(base));
+
+    def.property("isSupported?", [](const t_function& self) {
+      // Stream and sink functions are not supported, see
+      // t_py_generator::get_functions.
+      return !self.is_interaction_constructor() &&
+          self.sink_or_stream() == nullptr;
+    });
+
+    return std::move(def).make();
+  }
+
+  prototype<t_program>::ptr make_prototype_for_program(
+      const prototype_database& proto) const override {
+    auto base = t_whisker_generator::make_prototype_for_program(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_program>::extends(std::move(base));
+
+    def.property("pyNamespace", [this](const t_program& self) {
+      std::vector<std::string> namespaces =
+          get_py_namespaces_raw(&self, has_compiler_option("asyncio"));
+      return namespaces.empty()
+          ? ""
+          : fmt::format("{}.", fmt::join(namespaces, "."));
+    });
+    def.property("py3Namespace", [](const t_program& self) {
+      std::vector<std::string> namespaces = get_py3_namespace(&self);
+      return namespaces.empty()
+          ? ""
+          : fmt::format("{}.", fmt::join(namespaces, "."));
+    });
+    def.property("pythonNamespace", [](const t_program& self) {
+      // TODO: take root_module_prefix into account
+      std::vector<std::string> namespaces = get_py3_namespace(&self);
+      return namespaces.empty()
+          ? ""
+          : fmt::format("{}.", fmt::join(namespaces, "."));
+    });
+    def.property("importModules", [this](const t_program& self) {
+      std::vector<std::string> modules =
+          gather_import_modules(&self, has_compiler_option("asyncio"));
+      whisker::array::raw a;
+      a.insert(
+          a.end(),
+          std::make_move_iterator(modules.begin()),
+          std::make_move_iterator(modules.end()));
+      return whisker::make::array(std::move(a));
+    });
+    def.property("enablePosArgs?", [this](const t_program&) {
+      return has_compiler_option("enable_pos_args");
+    });
+
+    return std::move(def).make();
+  }
+
+  prototype<t_type>::ptr make_prototype_for_type(
+      const prototype_database& proto) const override {
+    auto base = t_whisker_generator::make_prototype_for_type(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_type>::extends(std::move(base));
+
+    def.property("modulePath", [this](const t_type& self) {
+      std::vector<std::string> namespaces = get_py_namespaces_raw(
+          get_true_type_program(self),
+          has_compiler_option("asyncio"),
+          "ttypes");
+      return fmt::format("{}", fmt::join(namespaces, "."));
+    });
+    def.property("externalProgram?", [this](const t_type& self) {
+      return get_true_type_program(self) != program_;
+    });
+    def.property("adapter", [](const t_type& self) {
+      const std::string* adapter = get_py_adapter(&self);
+      return adapter == nullptr ? whisker::make::null
+                                : whisker::make::string(*adapter);
+    });
+
+    return std::move(def).make();
+  }
 };
 
 void t_mstch_pyi_generator::generate_program() {
   this->root_path_ = this->get_root_path();
   this->out_dir_base_ = "gen-py";
-
-  this->create_factories();
 
   this->generate_init_files();
   this->generate_constants();
@@ -596,20 +303,12 @@ void t_mstch_pyi_generator::generate_program() {
   this->generate_services();
 }
 
-void t_mstch_pyi_generator::create_factories() {
-  t_mstch_generator::mstch_context_.add<pyi_mstch_program>();
-  t_mstch_generator::mstch_context_.add<pyi_mstch_field>();
-  t_mstch_generator::mstch_context_.add<pyi_mstch_type>(this->get_program());
-  t_mstch_generator::mstch_context_.add<pyi_mstch_service>(this->get_program());
-  t_mstch_generator::mstch_context_.add<pyi_mstch_function>();
-}
-
 void t_mstch_pyi_generator::generate_init_files() {
   std::filesystem::path directory;
   for (const auto& part : this->root_path_) {
     directory /= part;
 
-    this->render_file("common/AutoGeneratedPy", directory / "__init__.pyi");
+    this->render_file("__init__.pyi", directory / "__init__.pyi");
   }
 }
 
@@ -636,20 +335,21 @@ void t_mstch_pyi_generator::render_file(
     const std::string& template_name,
     const std::filesystem::path& path,
     const t_service* service) {
-  auto mstchObject = (service == nullptr)
-      ? make_mstch_program_cached(
-            this->get_program(), t_mstch_generator::mstch_context_)
-      : make_mstch_service_cached(
-            service->program(), service, t_mstch_generator::mstch_context_);
-
-  t_mstch_generator::render_to_file(mstchObject, template_name, path);
+  whisker::object context = service == nullptr
+      ? whisker::make::native_handle(
+            render_state().prototypes->create<t_program>(*program_))
+      : whisker::make::native_handle(
+            render_state().prototypes->create<t_service>(*service));
+  render_to_file(/*output_file=*/path,
+                 /*template_file=*/template_name,
+                 /*context=*/context);
 }
 
 std::filesystem::path t_mstch_pyi_generator::get_root_path() const {
   std::filesystem::path path;
 
   auto namespaces = get_py_namespaces_raw(
-      this->get_program(), t_mstch_generator::has_option("asyncio"));
+      this->get_program(), has_compiler_option("asyncio"));
   for (const auto& ns : namespaces) {
     path /= ns;
   }

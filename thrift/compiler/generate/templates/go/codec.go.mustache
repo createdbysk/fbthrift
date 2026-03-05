@@ -24,14 +24,16 @@
 
 }}
 {{#import "common/constants" as constants}}
+{{#import "codec/codec" as codec}}
+{{#import "spec/spec" as spec}}
 {{> common/auto_generated_go}}
 
-package {{program:go_pkg_name}}
+package {{root_program.go_pkg_name}}
 
 import (
-    {{#program:thrift_imports}}
-    {{program:go_package_alias}} "{{program:go_import_path}}"
-    {{/program:thrift_imports}}
+    {{#each root_program.thrift_imports as |program|}}
+    {{program.go_package_alias}} "{{program.go_import_path}}"
+    {{/each}}
     thrift "{{constants.thrift_lib_import}}"
 )
 
@@ -41,34 +43,34 @@ var _ = thrift.VOID
 
 // Premade codec specs
 var (
-    {{#program:thrift_metadata_types}}
-    {{type:codec_type_spec_name}} = &thrift.TypeSpec{
-        FullName: "{{type:full_name}}",
-        {{> spec/codec_type_spec_setter}}:
-            {{> spec/codec_type_spec_instance}}
+    {{#each root_program.thrift_metadata_types as |type|}}
+    {{type.codec_type_spec_name}} = &thrift.TypeSpec{
+        FullName: "{{type.full_name}}",
+        {{#partial spec.codec_type_spec_setter type=type}}:
+            {{#partial spec.codec_type_spec_instance type=type}}
     }
-    {{/program:thrift_metadata_types}}
+    {{/each}}
 )
 
 // Premade struct specs
 var (
-    {{#program:structs}}
-    {{struct:struct_spec_name}} =
-        {{> spec/codec_struct_spec}}
-    {{/program:structs}}
-    {{#program:req_resp_structs}}
-    {{struct:struct_spec_name}} =
-        {{> spec/codec_struct_spec}}
-    {{/program:req_resp_structs}}
+    {{#each root_program.structured_definitions as |s|}}
+    {{s.struct_spec_name}} =
+        {{#partial spec.codec_struct_spec struct=s}}
+    {{/each}}
+    {{#each root_program.req_resp_structs as |s|}}
+    {{s.struct_spec_name}} =
+        {{#partial spec.codec_struct_spec struct=s}}
+    {{/each}}
 )
 
 var premadeCodecSpecsMap = func() map[string]*thrift.TypeSpec {
     fbthriftTypeSpecsMap := make(map[string]*thrift.TypeSpec)
-    {{#program:thrift_metadata_types}}
-    {{#type:named?}}
-    fbthriftTypeSpecsMap[{{type:codec_type_spec_name}}.FullName] = {{type:codec_type_spec_name}}
-    {{/type:named?}}
-    {{/program:thrift_metadata_types}}
+    {{#each root_program.thrift_metadata_types as |type|}}
+    {{#if type.named?}}
+    fbthriftTypeSpecsMap[{{type.codec_type_spec_name}}.FullName] = {{type.codec_type_spec_name}}
+    {{/if type.named?}}
+    {{/each}}
     return fbthriftTypeSpecsMap
 }()
 

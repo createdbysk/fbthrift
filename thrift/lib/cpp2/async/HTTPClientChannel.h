@@ -193,9 +193,9 @@ class HTTPClientChannel : public ClientChannel,
   ~HTTPClientChannel() override;
 
  private:
-  void setHeaders(
+  static void setHeaders(
       proxygen::HTTPHeaders& dstHeaders,
-      const transport::THeader::StringToStringMap& srcHeaders);
+      transport::THeader::StringToStringMap&& srcHeaders);
 
   proxygen::HTTPMessage buildHTTPMessage(transport::THeader* header);
 

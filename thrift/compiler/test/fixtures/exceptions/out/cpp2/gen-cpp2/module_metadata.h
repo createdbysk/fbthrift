@@ -8,9 +8,4 @@
 
 #include <vector>
 
-#include <thrift/lib/cpp2/gen/module_metadata_h.h>
 #include "thrift/compiler/test/fixtures/exceptions/gen-cpp2/module_types.h"
-
-namespace cpp2 {
-class Raiser;
-} // namespace cpp2

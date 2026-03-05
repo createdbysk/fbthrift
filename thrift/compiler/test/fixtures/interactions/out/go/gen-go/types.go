@@ -46,6 +46,7 @@ func (x *CustomException) SetMessage(value string) *CustomException {
     return x
 }
 
+
 func (x *CustomException) writeField1(p thrift.Encoder) error {  // Message
     if err := p.WriteFieldBegin("message", thrift.STRING, 1); err != nil {
         return thrift.PrependError("CustomException write field begin error: ", err)
@@ -71,6 +72,8 @@ func (x *CustomException) readField1(p thrift.Decoder) error {  // Message
     x.Message = result
     return nil
 }
+
+
 
 
 
@@ -177,6 +180,7 @@ func (x *ShouldBeBoxed) SetSessionId(value string) *ShouldBeBoxed {
     return x
 }
 
+
 func (x *ShouldBeBoxed) writeField1(p thrift.Encoder) error {  // SessionId
     if err := p.WriteFieldBegin("sessionId", thrift.STRING, 1); err != nil {
         return thrift.PrependError("ShouldBeBoxed write field begin error: ", err)
@@ -202,6 +206,8 @@ func (x *ShouldBeBoxed) readField1(p thrift.Decoder) error {  // SessionId
     x.SessionId = result
     return nil
 }
+
+
 
 
 
@@ -290,6 +296,7 @@ func newReqMyServiceFoo() *reqMyServiceFoo {
 
 
 
+
 func (x *reqMyServiceFoo) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("reqMyServiceFoo"); err != nil {
         return thrift.PrependError("reqMyServiceFoo write struct begin error: ", err)
@@ -363,6 +370,7 @@ type MyServiceFooResultDeprecated = respMyServiceFoo
 func newRespMyServiceFoo() *respMyServiceFoo {
     return (&respMyServiceFoo{}).setDefaults()
 }
+
 
 
 
@@ -458,6 +466,7 @@ func (x *reqMyServiceInteract) SetArg(value int32) *reqMyServiceInteract {
     return x
 }
 
+
 func (x *reqMyServiceInteract) writeField1(p thrift.Encoder) error {  // Arg
     if err := p.WriteFieldBegin("arg", thrift.I32, 1); err != nil {
         return thrift.PrependError("reqMyServiceInteract write field begin error: ", err)
@@ -483,6 +492,8 @@ func (x *reqMyServiceInteract) readField1(p thrift.Decoder) error {  // Arg
     x.Arg = result
     return nil
 }
+
+
 
 
 
@@ -568,6 +579,7 @@ func newRespMyServiceInteract() *respMyServiceInteract {
 
 
 
+
 func (x *respMyServiceInteract) Exception() thrift.WritableException {
     return nil
 }
@@ -644,6 +656,7 @@ type MyServiceInteractFastArgsDeprecated = reqMyServiceInteractFast
 func newReqMyServiceInteractFast() *reqMyServiceInteractFast {
     return (&reqMyServiceInteractFast{}).setDefaults()
 }
+
 
 
 
@@ -776,6 +789,7 @@ func (x *respMyServiceInteractFast) readField0(p thrift.Decoder) error {  // Suc
 
 
 
+
 func (x *respMyServiceInteractFast) Exception() thrift.WritableException {
     return nil
 }
@@ -857,6 +871,7 @@ type MyServiceSerializeArgsDeprecated = reqMyServiceSerialize
 func newReqMyServiceSerialize() *reqMyServiceSerialize {
     return (&reqMyServiceSerialize{}).setDefaults()
 }
+
 
 
 
@@ -985,6 +1000,7 @@ func (x *respMyServiceSerialize) readField0(p thrift.Decoder) error {  // Succes
     x.Success = &result
     return nil
 }
+
 
 
 
@@ -1127,6 +1143,7 @@ func (x *streamMyServiceSerialize) readField0(p thrift.Decoder) error {  // Succ
 
 
 
+
 func (x *streamMyServiceSerialize) Exception() thrift.WritableException {
     return nil
 }
@@ -1211,6 +1228,7 @@ func newReqFactoriesFoo() *reqFactoriesFoo {
 
 
 
+
 func (x *reqFactoriesFoo) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("reqFactoriesFoo"); err != nil {
         return thrift.PrependError("reqFactoriesFoo write struct begin error: ", err)
@@ -1284,6 +1302,7 @@ type FactoriesFooResultDeprecated = respFactoriesFoo
 func newRespFactoriesFoo() *respFactoriesFoo {
     return (&respFactoriesFoo{}).setDefaults()
 }
+
 
 
 
@@ -1379,6 +1398,7 @@ func (x *reqFactoriesInteract) SetArg(value int32) *reqFactoriesInteract {
     return x
 }
 
+
 func (x *reqFactoriesInteract) writeField1(p thrift.Encoder) error {  // Arg
     if err := p.WriteFieldBegin("arg", thrift.I32, 1); err != nil {
         return thrift.PrependError("reqFactoriesInteract write field begin error: ", err)
@@ -1404,6 +1424,8 @@ func (x *reqFactoriesInteract) readField1(p thrift.Decoder) error {  // Arg
     x.Arg = result
     return nil
 }
+
+
 
 
 
@@ -1489,6 +1511,7 @@ func newRespFactoriesInteract() *respFactoriesInteract {
 
 
 
+
 func (x *respFactoriesInteract) Exception() thrift.WritableException {
     return nil
 }
@@ -1565,6 +1588,7 @@ type FactoriesInteractFastArgsDeprecated = reqFactoriesInteractFast
 func newReqFactoriesInteractFast() *reqFactoriesInteractFast {
     return (&reqFactoriesInteractFast{}).setDefaults()
 }
+
 
 
 
@@ -1697,6 +1721,7 @@ func (x *respFactoriesInteractFast) readField0(p thrift.Decoder) error {  // Suc
 
 
 
+
 func (x *respFactoriesInteractFast) Exception() thrift.WritableException {
     return nil
 }
@@ -1778,6 +1803,7 @@ type FactoriesSerializeArgsDeprecated = reqFactoriesSerialize
 func newReqFactoriesSerialize() *reqFactoriesSerialize {
     return (&reqFactoriesSerialize{}).setDefaults()
 }
+
 
 
 
@@ -1906,6 +1932,7 @@ func (x *respFactoriesSerialize) readField0(p thrift.Decoder) error {  // Succes
     x.Success = &result
     return nil
 }
+
 
 
 
@@ -2048,6 +2075,7 @@ func (x *streamFactoriesSerialize) readField0(p thrift.Decoder) error {  // Succ
 
 
 
+
 func (x *streamFactoriesSerialize) Exception() thrift.WritableException {
     return nil
 }
@@ -2132,6 +2160,7 @@ func newReqPerformFoo() *reqPerformFoo {
 
 
 
+
 func (x *reqPerformFoo) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("reqPerformFoo"); err != nil {
         return thrift.PrependError("reqPerformFoo write struct begin error: ", err)
@@ -2205,6 +2234,7 @@ type PerformFooResultDeprecated = respPerformFoo
 func newRespPerformFoo() *respPerformFoo {
     return (&respPerformFoo{}).setDefaults()
 }
+
 
 
 
@@ -2284,6 +2314,7 @@ type InteractWithSharedDoSomeSimilarThingsArgsDeprecated = reqInteractWithShared
 func newReqInteractWithSharedDoSomeSimilarThings() *reqInteractWithSharedDoSomeSimilarThings {
     return (&reqInteractWithSharedDoSomeSimilarThings{}).setDefaults()
 }
+
 
 
 
@@ -2413,6 +2444,7 @@ func (x *respInteractWithSharedDoSomeSimilarThings) readField0(p thrift.Decoder)
     x.Success = result
     return nil
 }
+
 
 
 
@@ -2555,6 +2587,7 @@ func (x *reqBoxServiceGetABoxSession) readField1(p thrift.Decoder) error {  // R
 
 
 
+
 func (x *reqBoxServiceGetABoxSession) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("reqBoxServiceGetABoxSession"); err != nil {
         return thrift.PrependError("reqBoxServiceGetABoxSession write struct begin error: ", err)
@@ -2691,6 +2724,7 @@ func (x *respBoxServiceGetABoxSession) readField0(p thrift.Decoder) error {  // 
 
 
 
+
 func (x *respBoxServiceGetABoxSession) Exception() thrift.WritableException {
     return nil
 }
@@ -2772,6 +2806,7 @@ type MyInteractionFrobnicateArgsDeprecated = reqMyInteractionFrobnicate
 func newReqMyInteractionFrobnicate() *reqMyInteractionFrobnicate {
     return (&reqMyInteractionFrobnicate{}).setDefaults()
 }
+
 
 
 
@@ -2858,13 +2893,6 @@ func (x *respMyInteractionFrobnicate) GetSuccess() int32 {
     return *x.Success
 }
 
-func (x *respMyInteractionFrobnicate) GetEx() *CustomException {
-    if !x.IsSetEx() {
-        return nil
-    }
-    return x.Ex
-}
-
 func (x *respMyInteractionFrobnicate) SetSuccessNonCompat(value int32) *respMyInteractionFrobnicate {
     x.Success = &value
     return x
@@ -2875,22 +2903,8 @@ func (x *respMyInteractionFrobnicate) SetSuccess(value *int32) *respMyInteractio
     return x
 }
 
-func (x *respMyInteractionFrobnicate) SetExNonCompat(value *CustomException) *respMyInteractionFrobnicate {
-    x.Ex = value
-    return x
-}
-
-func (x *respMyInteractionFrobnicate) SetEx(value *CustomException) *respMyInteractionFrobnicate {
-    x.Ex = value
-    return x
-}
-
 func (x *respMyInteractionFrobnicate) IsSetSuccess() bool {
     return x != nil && x.Success != nil
-}
-
-func (x *respMyInteractionFrobnicate) IsSetEx() bool {
-    return x != nil && x.Ex != nil
 }
 
 func (x *respMyInteractionFrobnicate) writeField0(p thrift.Encoder) error {  // Success
@@ -2913,6 +2927,38 @@ func (x *respMyInteractionFrobnicate) writeField0(p thrift.Encoder) error {  // 
     return nil
 }
 
+func (x *respMyInteractionFrobnicate) readField0(p thrift.Decoder) error {  // Success
+    result, err := p.ReadI32()
+    if err != nil {
+        return err
+    }
+
+    x.Success = &result
+    return nil
+}
+
+
+func (x *respMyInteractionFrobnicate) GetEx() *CustomException {
+    if !x.IsSetEx() {
+        return nil
+    }
+    return x.Ex
+}
+
+func (x *respMyInteractionFrobnicate) SetExNonCompat(value *CustomException) *respMyInteractionFrobnicate {
+    x.Ex = value
+    return x
+}
+
+func (x *respMyInteractionFrobnicate) SetEx(value *CustomException) *respMyInteractionFrobnicate {
+    x.Ex = value
+    return x
+}
+
+func (x *respMyInteractionFrobnicate) IsSetEx() bool {
+    return x != nil && x.Ex != nil
+}
+
 func (x *respMyInteractionFrobnicate) writeField1(p thrift.Encoder) error {  // Ex
     if !x.IsSetEx() {
         return nil
@@ -2930,16 +2976,6 @@ func (x *respMyInteractionFrobnicate) writeField1(p thrift.Encoder) error {  // 
     if err := p.WriteFieldEnd(); err != nil {
         return thrift.PrependError("respMyInteractionFrobnicate write field end error: ", err)
     }
-    return nil
-}
-
-func (x *respMyInteractionFrobnicate) readField0(p thrift.Decoder) error {  // Success
-    result, err := p.ReadI32()
-    if err != nil {
-        return err
-    }
-
-    x.Success = &result
     return nil
 }
 
@@ -3050,6 +3086,7 @@ func newReqMyInteractionPing() *reqMyInteractionPing {
 
 
 
+
 func (x *reqMyInteractionPing) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("reqMyInteractionPing"); err != nil {
         return thrift.PrependError("reqMyInteractionPing write struct begin error: ", err)
@@ -3123,6 +3160,7 @@ type MyInteractionPingResultDeprecated = respMyInteractionPing
 func newRespMyInteractionPing() *respMyInteractionPing {
     return (&respMyInteractionPing{}).setDefaults()
 }
+
 
 
 
@@ -3205,6 +3243,7 @@ func newReqMyInteractionTruthify() *reqMyInteractionTruthify {
 
 
 
+
 func (x *reqMyInteractionTruthify) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("reqMyInteractionTruthify"); err != nil {
         return thrift.PrependError("reqMyInteractionTruthify write struct begin error: ", err)
@@ -3278,6 +3317,7 @@ type MyInteractionTruthifyResultDeprecated = respMyInteractionTruthify
 func newRespMyInteractionTruthify() *respMyInteractionTruthify {
     return (&respMyInteractionTruthify{}).setDefaults()
 }
+
 
 
 
@@ -3414,6 +3454,7 @@ func (x *streamMyInteractionTruthify) readField0(p thrift.Decoder) error {  // S
 
 
 
+
 func (x *streamMyInteractionTruthify) Exception() thrift.WritableException {
     return nil
 }
@@ -3484,6 +3525,528 @@ func (x *streamMyInteractionTruthify) setDefaults() *streamMyInteractionTruthify
     return x
 }
 
+type reqMyInteractionEncode struct {
+}
+// Compile time interface enforcer
+var _ thrift.Struct = (*reqMyInteractionEncode)(nil)
+
+// Deprecated: MyInteractionEncodeArgsDeprecated is deprecated, since it is supposed to be internal.
+type MyInteractionEncodeArgsDeprecated = reqMyInteractionEncode
+
+func newReqMyInteractionEncode() *reqMyInteractionEncode {
+    return (&reqMyInteractionEncode{}).setDefaults()
+}
+
+
+
+
+func (x *reqMyInteractionEncode) Write(p thrift.Encoder) error {
+    if err := p.WriteStructBegin("reqMyInteractionEncode"); err != nil {
+        return thrift.PrependError("reqMyInteractionEncode write struct begin error: ", err)
+    }
+
+
+    if err := p.WriteFieldStop(); err != nil {
+        return thrift.PrependError("reqMyInteractionEncode write field stop error: ", err)
+    }
+
+    if err := p.WriteStructEnd(); err != nil {
+        return thrift.PrependError("reqMyInteractionEncode write struct end error: ", err)
+    }
+    return nil
+}
+
+func (x *reqMyInteractionEncode) Read(p thrift.Decoder) error {
+    if _, err := p.ReadStructBegin(); err != nil {
+        return thrift.PrependError("reqMyInteractionEncode read error: ", err)
+    }
+
+    for {
+        fieldName, wireType, id, err := p.ReadFieldBegin()
+        if err != nil {
+            return thrift.PrependError(fmt.Sprintf("reqMyInteractionEncode field %d ('%s') read error: ", id, fieldName), err)
+        }
+
+        if wireType == thrift.STOP {
+            break;
+        }
+
+        var fieldReadErr error
+        switch {
+        default:
+            fieldReadErr = p.Skip(wireType)
+        }
+
+        if fieldReadErr != nil {
+            return fieldReadErr
+        }
+
+        if err := p.ReadFieldEnd(); err != nil {
+            return err
+        }
+    }
+
+    if err := p.ReadStructEnd(); err != nil {
+        return thrift.PrependError("reqMyInteractionEncode read struct end error: ", err)
+    }
+
+    return nil
+}
+
+func (x *reqMyInteractionEncode) String() string {
+    return thrift.StructToString(reflect.ValueOf(x))
+}
+
+func (x *reqMyInteractionEncode) setDefaults() *reqMyInteractionEncode {
+    return x
+}
+
+type respMyInteractionEncode struct {
+    Success []int32 `thrift:"success,0,optional" json:"success,omitempty" db:"success"`
+}
+// Compile time interface enforcer
+var _ thrift.Struct = (*respMyInteractionEncode)(nil)
+var _ thrift.WritableResult = (*respMyInteractionEncode)(nil)
+
+// Deprecated: MyInteractionEncodeResultDeprecated is deprecated, since it is supposed to be internal.
+type MyInteractionEncodeResultDeprecated = respMyInteractionEncode
+
+func newRespMyInteractionEncode() *respMyInteractionEncode {
+    return (&respMyInteractionEncode{}).setDefaults()
+}
+
+func (x *respMyInteractionEncode) GetSuccess() []int32 {
+    if !x.IsSetSuccess() {
+        return make([]int32, 0)
+    }
+    return x.Success
+}
+
+func (x *respMyInteractionEncode) SetSuccessNonCompat(value []int32) *respMyInteractionEncode {
+    x.Success = value
+    return x
+}
+
+func (x *respMyInteractionEncode) SetSuccess(value []int32) *respMyInteractionEncode {
+    x.Success = value
+    return x
+}
+
+func (x *respMyInteractionEncode) IsSetSuccess() bool {
+    return x != nil && x.Success != nil
+}
+
+func (x *respMyInteractionEncode) writeField0(p thrift.Encoder) error {  // Success
+    if !x.IsSetSuccess() {
+        return nil
+    }
+
+    if err := p.WriteFieldBegin("success", thrift.SET, 0); err != nil {
+        return thrift.PrependError("respMyInteractionEncode write field begin error: ", err)
+    }
+
+    item := x.Success
+    if err := p.WriteSetBegin(thrift.I32, len(item)); err != nil {
+        return thrift.PrependError("error writing set begin: ", err)
+    }
+    for _, v := range item {
+        {
+            item := v
+            if err := p.WriteI32(item); err != nil {
+                return err
+            }
+        }
+    }
+    if err := p.WriteSetEnd(); err != nil {
+        return thrift.PrependError("error writing set end: ", err)
+    }
+
+    if err := p.WriteFieldEnd(); err != nil {
+        return thrift.PrependError("respMyInteractionEncode write field end error: ", err)
+    }
+    return nil
+}
+
+func (x *respMyInteractionEncode) readField0(p thrift.Decoder) error {  // Success
+    _ /* elemType */, size, err := p.ReadSetBegin()
+    if err != nil {
+        return thrift.PrependError("error reading set begin: ", err)
+    }
+    
+    setResult := make([]int32, 0, size)
+    for i := 0; i < size; i++ {
+        var elem int32
+        {
+            result, err := p.ReadI32()
+            if err != nil {
+                return err
+            }
+            elem = result
+        }
+        setResult = append(setResult, elem)
+    }
+    
+    if err := p.ReadSetEnd(); err != nil {
+        return thrift.PrependError("error reading set end: ", err)
+    }
+    result := setResult
+
+    x.Success = result
+    return nil
+}
+
+
+
+
+
+func (x *respMyInteractionEncode) Exception() thrift.WritableException {
+    return nil
+}
+
+func (x *respMyInteractionEncode) Write(p thrift.Encoder) error {
+    if err := p.WriteStructBegin("respMyInteractionEncode"); err != nil {
+        return thrift.PrependError("respMyInteractionEncode write struct begin error: ", err)
+    }
+
+    if err := x.writeField0(p); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldStop(); err != nil {
+        return thrift.PrependError("respMyInteractionEncode write field stop error: ", err)
+    }
+
+    if err := p.WriteStructEnd(); err != nil {
+        return thrift.PrependError("respMyInteractionEncode write struct end error: ", err)
+    }
+    return nil
+}
+
+func (x *respMyInteractionEncode) Read(p thrift.Decoder) error {
+    if _, err := p.ReadStructBegin(); err != nil {
+        return thrift.PrependError("respMyInteractionEncode read error: ", err)
+    }
+
+    for {
+        fieldName, wireType, id, err := p.ReadFieldBegin()
+        if err != nil {
+            return thrift.PrependError(fmt.Sprintf("respMyInteractionEncode field %d ('%s') read error: ", id, fieldName), err)
+        }
+
+        if wireType == thrift.STOP {
+            break;
+        }
+
+        var fieldReadErr error
+        switch {
+        case ((id == 0 && wireType == thrift.SET) || (id == thrift.NO_FIELD_ID && fieldName == "success")):  // success
+            fieldReadErr = x.readField0(p)
+        default:
+            fieldReadErr = p.Skip(wireType)
+        }
+
+        if fieldReadErr != nil {
+            return fieldReadErr
+        }
+
+        if err := p.ReadFieldEnd(); err != nil {
+            return err
+        }
+    }
+
+    if err := p.ReadStructEnd(); err != nil {
+        return thrift.PrependError("respMyInteractionEncode read struct end error: ", err)
+    }
+
+    return nil
+}
+
+func (x *respMyInteractionEncode) String() string {
+    return thrift.StructToString(reflect.ValueOf(x))
+}
+
+func (x *respMyInteractionEncode) setDefaults() *respMyInteractionEncode {
+    return x
+}
+
+type sinkMyInteractionEncode struct {
+    Success *string `thrift:"success,0,optional" json:"success,omitempty" db:"success"`
+}
+// Compile time interface enforcer
+var _ thrift.Struct = (*sinkMyInteractionEncode)(nil)
+var _ thrift.WritableResult = (*sinkMyInteractionEncode)(nil)
+
+// Deprecated: sinkMyInteractionEncodeResultDeprecated is deprecated, since it is supposed to be internal.
+type sinkMyInteractionEncodeResultDeprecated = sinkMyInteractionEncode
+
+func newSinkMyInteractionEncode() *sinkMyInteractionEncode {
+    return (&sinkMyInteractionEncode{}).setDefaults()
+}
+
+func (x *sinkMyInteractionEncode) GetSuccess() string {
+    if !x.IsSetSuccess() {
+        return ""
+    }
+    return *x.Success
+}
+
+func (x *sinkMyInteractionEncode) SetSuccessNonCompat(value string) *sinkMyInteractionEncode {
+    x.Success = &value
+    return x
+}
+
+func (x *sinkMyInteractionEncode) SetSuccess(value *string) *sinkMyInteractionEncode {
+    x.Success = value
+    return x
+}
+
+func (x *sinkMyInteractionEncode) IsSetSuccess() bool {
+    return x != nil && x.Success != nil
+}
+
+func (x *sinkMyInteractionEncode) writeField0(p thrift.Encoder) error {  // Success
+    if !x.IsSetSuccess() {
+        return nil
+    }
+
+    if err := p.WriteFieldBegin("success", thrift.STRING, 0); err != nil {
+        return thrift.PrependError("sinkMyInteractionEncode write field begin error: ", err)
+    }
+
+    item := *x.Success
+    if err := p.WriteString(item); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldEnd(); err != nil {
+        return thrift.PrependError("sinkMyInteractionEncode write field end error: ", err)
+    }
+    return nil
+}
+
+func (x *sinkMyInteractionEncode) readField0(p thrift.Decoder) error {  // Success
+    result, err := p.ReadString()
+    if err != nil {
+        return err
+    }
+
+    x.Success = &result
+    return nil
+}
+
+
+
+
+
+func (x *sinkMyInteractionEncode) Exception() thrift.WritableException {
+    return nil
+}
+
+func (x *sinkMyInteractionEncode) Write(p thrift.Encoder) error {
+    if err := p.WriteStructBegin("sinkMyInteractionEncode"); err != nil {
+        return thrift.PrependError("sinkMyInteractionEncode write struct begin error: ", err)
+    }
+
+    if err := x.writeField0(p); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldStop(); err != nil {
+        return thrift.PrependError("sinkMyInteractionEncode write field stop error: ", err)
+    }
+
+    if err := p.WriteStructEnd(); err != nil {
+        return thrift.PrependError("sinkMyInteractionEncode write struct end error: ", err)
+    }
+    return nil
+}
+
+func (x *sinkMyInteractionEncode) Read(p thrift.Decoder) error {
+    if _, err := p.ReadStructBegin(); err != nil {
+        return thrift.PrependError("sinkMyInteractionEncode read error: ", err)
+    }
+
+    for {
+        fieldName, wireType, id, err := p.ReadFieldBegin()
+        if err != nil {
+            return thrift.PrependError(fmt.Sprintf("sinkMyInteractionEncode field %d ('%s') read error: ", id, fieldName), err)
+        }
+
+        if wireType == thrift.STOP {
+            break;
+        }
+
+        var fieldReadErr error
+        switch {
+        case ((id == 0 && wireType == thrift.STRING) || (id == thrift.NO_FIELD_ID && fieldName == "success")):  // success
+            fieldReadErr = x.readField0(p)
+        default:
+            fieldReadErr = p.Skip(wireType)
+        }
+
+        if fieldReadErr != nil {
+            return fieldReadErr
+        }
+
+        if err := p.ReadFieldEnd(); err != nil {
+            return err
+        }
+    }
+
+    if err := p.ReadStructEnd(); err != nil {
+        return thrift.PrependError("sinkMyInteractionEncode read struct end error: ", err)
+    }
+
+    return nil
+}
+
+func (x *sinkMyInteractionEncode) String() string {
+    return thrift.StructToString(reflect.ValueOf(x))
+}
+
+func (x *sinkMyInteractionEncode) setDefaults() *sinkMyInteractionEncode {
+    return x
+}
+
+type respFinalMyInteractionEncode struct {
+    Success []byte `thrift:"success,0,optional" json:"success,omitempty" db:"success"`
+}
+// Compile time interface enforcer
+var _ thrift.Struct = (*respFinalMyInteractionEncode)(nil)
+var _ thrift.WritableResult = (*respFinalMyInteractionEncode)(nil)
+
+// Deprecated: FinalMyInteractionEncodeResultDeprecated is deprecated, since it is supposed to be internal.
+type FinalMyInteractionEncodeResultDeprecated = respFinalMyInteractionEncode
+
+func newRespFinalMyInteractionEncode() *respFinalMyInteractionEncode {
+    return (&respFinalMyInteractionEncode{}).setDefaults()
+}
+
+func (x *respFinalMyInteractionEncode) GetSuccess() []byte {
+    if !x.IsSetSuccess() {
+        return []byte("")
+    }
+    return x.Success
+}
+
+func (x *respFinalMyInteractionEncode) SetSuccessNonCompat(value []byte) *respFinalMyInteractionEncode {
+    x.Success = value
+    return x
+}
+
+func (x *respFinalMyInteractionEncode) SetSuccess(value []byte) *respFinalMyInteractionEncode {
+    x.Success = value
+    return x
+}
+
+func (x *respFinalMyInteractionEncode) IsSetSuccess() bool {
+    return x != nil && x.Success != nil
+}
+
+func (x *respFinalMyInteractionEncode) writeField0(p thrift.Encoder) error {  // Success
+    if !x.IsSetSuccess() {
+        return nil
+    }
+
+    if err := p.WriteFieldBegin("success", thrift.STRING, 0); err != nil {
+        return thrift.PrependError("respFinalMyInteractionEncode write field begin error: ", err)
+    }
+
+    item := x.Success
+    if err := p.WriteBinary(item); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldEnd(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionEncode write field end error: ", err)
+    }
+    return nil
+}
+
+func (x *respFinalMyInteractionEncode) readField0(p thrift.Decoder) error {  // Success
+    result, err := p.ReadBinary()
+    if err != nil {
+        return err
+    }
+
+    x.Success = result
+    return nil
+}
+
+
+
+
+
+func (x *respFinalMyInteractionEncode) Exception() thrift.WritableException {
+    return nil
+}
+
+func (x *respFinalMyInteractionEncode) Write(p thrift.Encoder) error {
+    if err := p.WriteStructBegin("respFinalMyInteractionEncode"); err != nil {
+        return thrift.PrependError("respFinalMyInteractionEncode write struct begin error: ", err)
+    }
+
+    if err := x.writeField0(p); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldStop(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionEncode write field stop error: ", err)
+    }
+
+    if err := p.WriteStructEnd(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionEncode write struct end error: ", err)
+    }
+    return nil
+}
+
+func (x *respFinalMyInteractionEncode) Read(p thrift.Decoder) error {
+    if _, err := p.ReadStructBegin(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionEncode read error: ", err)
+    }
+
+    for {
+        fieldName, wireType, id, err := p.ReadFieldBegin()
+        if err != nil {
+            return thrift.PrependError(fmt.Sprintf("respFinalMyInteractionEncode field %d ('%s') read error: ", id, fieldName), err)
+        }
+
+        if wireType == thrift.STOP {
+            break;
+        }
+
+        var fieldReadErr error
+        switch {
+        case ((id == 0 && wireType == thrift.STRING) || (id == thrift.NO_FIELD_ID && fieldName == "success")):  // success
+            fieldReadErr = x.readField0(p)
+        default:
+            fieldReadErr = p.Skip(wireType)
+        }
+
+        if fieldReadErr != nil {
+            return fieldReadErr
+        }
+
+        if err := p.ReadFieldEnd(); err != nil {
+            return err
+        }
+    }
+
+    if err := p.ReadStructEnd(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionEncode read struct end error: ", err)
+    }
+
+    return nil
+}
+
+func (x *respFinalMyInteractionEncode) String() string {
+    return thrift.StructToString(reflect.ValueOf(x))
+}
+
+func (x *respFinalMyInteractionEncode) setDefaults() *respFinalMyInteractionEncode {
+    return x
+}
+
 type reqMyInteractionFastFrobnicate struct {
 }
 // Compile time interface enforcer
@@ -3495,6 +4058,7 @@ type MyInteractionFastFrobnicateArgsDeprecated = reqMyInteractionFastFrobnicate
 func newReqMyInteractionFastFrobnicate() *reqMyInteractionFastFrobnicate {
     return (&reqMyInteractionFastFrobnicate{}).setDefaults()
 }
+
 
 
 
@@ -3627,6 +4191,7 @@ func (x *respMyInteractionFastFrobnicate) readField0(p thrift.Decoder) error {  
 
 
 
+
 func (x *respMyInteractionFastFrobnicate) Exception() thrift.WritableException {
     return nil
 }
@@ -3711,6 +4276,7 @@ func newReqMyInteractionFastPing() *reqMyInteractionFastPing {
 
 
 
+
 func (x *reqMyInteractionFastPing) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("reqMyInteractionFastPing"); err != nil {
         return thrift.PrependError("reqMyInteractionFastPing write struct begin error: ", err)
@@ -3784,6 +4350,7 @@ type MyInteractionFastPingResultDeprecated = respMyInteractionFastPing
 func newRespMyInteractionFastPing() *respMyInteractionFastPing {
     return (&respMyInteractionFastPing{}).setDefaults()
 }
+
 
 
 
@@ -3866,6 +4433,7 @@ func newReqMyInteractionFastTruthify() *reqMyInteractionFastTruthify {
 
 
 
+
 func (x *reqMyInteractionFastTruthify) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("reqMyInteractionFastTruthify"); err != nil {
         return thrift.PrependError("reqMyInteractionFastTruthify write struct begin error: ", err)
@@ -3939,6 +4507,7 @@ type MyInteractionFastTruthifyResultDeprecated = respMyInteractionFastTruthify
 func newRespMyInteractionFastTruthify() *respMyInteractionFastTruthify {
     return (&respMyInteractionFastTruthify{}).setDefaults()
 }
+
 
 
 
@@ -4075,6 +4644,7 @@ func (x *streamMyInteractionFastTruthify) readField0(p thrift.Decoder) error {  
 
 
 
+
 func (x *streamMyInteractionFastTruthify) Exception() thrift.WritableException {
     return nil
 }
@@ -4145,6 +4715,528 @@ func (x *streamMyInteractionFastTruthify) setDefaults() *streamMyInteractionFast
     return x
 }
 
+type reqMyInteractionFastEncode struct {
+}
+// Compile time interface enforcer
+var _ thrift.Struct = (*reqMyInteractionFastEncode)(nil)
+
+// Deprecated: MyInteractionFastEncodeArgsDeprecated is deprecated, since it is supposed to be internal.
+type MyInteractionFastEncodeArgsDeprecated = reqMyInteractionFastEncode
+
+func newReqMyInteractionFastEncode() *reqMyInteractionFastEncode {
+    return (&reqMyInteractionFastEncode{}).setDefaults()
+}
+
+
+
+
+func (x *reqMyInteractionFastEncode) Write(p thrift.Encoder) error {
+    if err := p.WriteStructBegin("reqMyInteractionFastEncode"); err != nil {
+        return thrift.PrependError("reqMyInteractionFastEncode write struct begin error: ", err)
+    }
+
+
+    if err := p.WriteFieldStop(); err != nil {
+        return thrift.PrependError("reqMyInteractionFastEncode write field stop error: ", err)
+    }
+
+    if err := p.WriteStructEnd(); err != nil {
+        return thrift.PrependError("reqMyInteractionFastEncode write struct end error: ", err)
+    }
+    return nil
+}
+
+func (x *reqMyInteractionFastEncode) Read(p thrift.Decoder) error {
+    if _, err := p.ReadStructBegin(); err != nil {
+        return thrift.PrependError("reqMyInteractionFastEncode read error: ", err)
+    }
+
+    for {
+        fieldName, wireType, id, err := p.ReadFieldBegin()
+        if err != nil {
+            return thrift.PrependError(fmt.Sprintf("reqMyInteractionFastEncode field %d ('%s') read error: ", id, fieldName), err)
+        }
+
+        if wireType == thrift.STOP {
+            break;
+        }
+
+        var fieldReadErr error
+        switch {
+        default:
+            fieldReadErr = p.Skip(wireType)
+        }
+
+        if fieldReadErr != nil {
+            return fieldReadErr
+        }
+
+        if err := p.ReadFieldEnd(); err != nil {
+            return err
+        }
+    }
+
+    if err := p.ReadStructEnd(); err != nil {
+        return thrift.PrependError("reqMyInteractionFastEncode read struct end error: ", err)
+    }
+
+    return nil
+}
+
+func (x *reqMyInteractionFastEncode) String() string {
+    return thrift.StructToString(reflect.ValueOf(x))
+}
+
+func (x *reqMyInteractionFastEncode) setDefaults() *reqMyInteractionFastEncode {
+    return x
+}
+
+type respMyInteractionFastEncode struct {
+    Success []int32 `thrift:"success,0,optional" json:"success,omitempty" db:"success"`
+}
+// Compile time interface enforcer
+var _ thrift.Struct = (*respMyInteractionFastEncode)(nil)
+var _ thrift.WritableResult = (*respMyInteractionFastEncode)(nil)
+
+// Deprecated: MyInteractionFastEncodeResultDeprecated is deprecated, since it is supposed to be internal.
+type MyInteractionFastEncodeResultDeprecated = respMyInteractionFastEncode
+
+func newRespMyInteractionFastEncode() *respMyInteractionFastEncode {
+    return (&respMyInteractionFastEncode{}).setDefaults()
+}
+
+func (x *respMyInteractionFastEncode) GetSuccess() []int32 {
+    if !x.IsSetSuccess() {
+        return make([]int32, 0)
+    }
+    return x.Success
+}
+
+func (x *respMyInteractionFastEncode) SetSuccessNonCompat(value []int32) *respMyInteractionFastEncode {
+    x.Success = value
+    return x
+}
+
+func (x *respMyInteractionFastEncode) SetSuccess(value []int32) *respMyInteractionFastEncode {
+    x.Success = value
+    return x
+}
+
+func (x *respMyInteractionFastEncode) IsSetSuccess() bool {
+    return x != nil && x.Success != nil
+}
+
+func (x *respMyInteractionFastEncode) writeField0(p thrift.Encoder) error {  // Success
+    if !x.IsSetSuccess() {
+        return nil
+    }
+
+    if err := p.WriteFieldBegin("success", thrift.SET, 0); err != nil {
+        return thrift.PrependError("respMyInteractionFastEncode write field begin error: ", err)
+    }
+
+    item := x.Success
+    if err := p.WriteSetBegin(thrift.I32, len(item)); err != nil {
+        return thrift.PrependError("error writing set begin: ", err)
+    }
+    for _, v := range item {
+        {
+            item := v
+            if err := p.WriteI32(item); err != nil {
+                return err
+            }
+        }
+    }
+    if err := p.WriteSetEnd(); err != nil {
+        return thrift.PrependError("error writing set end: ", err)
+    }
+
+    if err := p.WriteFieldEnd(); err != nil {
+        return thrift.PrependError("respMyInteractionFastEncode write field end error: ", err)
+    }
+    return nil
+}
+
+func (x *respMyInteractionFastEncode) readField0(p thrift.Decoder) error {  // Success
+    _ /* elemType */, size, err := p.ReadSetBegin()
+    if err != nil {
+        return thrift.PrependError("error reading set begin: ", err)
+    }
+    
+    setResult := make([]int32, 0, size)
+    for i := 0; i < size; i++ {
+        var elem int32
+        {
+            result, err := p.ReadI32()
+            if err != nil {
+                return err
+            }
+            elem = result
+        }
+        setResult = append(setResult, elem)
+    }
+    
+    if err := p.ReadSetEnd(); err != nil {
+        return thrift.PrependError("error reading set end: ", err)
+    }
+    result := setResult
+
+    x.Success = result
+    return nil
+}
+
+
+
+
+
+func (x *respMyInteractionFastEncode) Exception() thrift.WritableException {
+    return nil
+}
+
+func (x *respMyInteractionFastEncode) Write(p thrift.Encoder) error {
+    if err := p.WriteStructBegin("respMyInteractionFastEncode"); err != nil {
+        return thrift.PrependError("respMyInteractionFastEncode write struct begin error: ", err)
+    }
+
+    if err := x.writeField0(p); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldStop(); err != nil {
+        return thrift.PrependError("respMyInteractionFastEncode write field stop error: ", err)
+    }
+
+    if err := p.WriteStructEnd(); err != nil {
+        return thrift.PrependError("respMyInteractionFastEncode write struct end error: ", err)
+    }
+    return nil
+}
+
+func (x *respMyInteractionFastEncode) Read(p thrift.Decoder) error {
+    if _, err := p.ReadStructBegin(); err != nil {
+        return thrift.PrependError("respMyInteractionFastEncode read error: ", err)
+    }
+
+    for {
+        fieldName, wireType, id, err := p.ReadFieldBegin()
+        if err != nil {
+            return thrift.PrependError(fmt.Sprintf("respMyInteractionFastEncode field %d ('%s') read error: ", id, fieldName), err)
+        }
+
+        if wireType == thrift.STOP {
+            break;
+        }
+
+        var fieldReadErr error
+        switch {
+        case ((id == 0 && wireType == thrift.SET) || (id == thrift.NO_FIELD_ID && fieldName == "success")):  // success
+            fieldReadErr = x.readField0(p)
+        default:
+            fieldReadErr = p.Skip(wireType)
+        }
+
+        if fieldReadErr != nil {
+            return fieldReadErr
+        }
+
+        if err := p.ReadFieldEnd(); err != nil {
+            return err
+        }
+    }
+
+    if err := p.ReadStructEnd(); err != nil {
+        return thrift.PrependError("respMyInteractionFastEncode read struct end error: ", err)
+    }
+
+    return nil
+}
+
+func (x *respMyInteractionFastEncode) String() string {
+    return thrift.StructToString(reflect.ValueOf(x))
+}
+
+func (x *respMyInteractionFastEncode) setDefaults() *respMyInteractionFastEncode {
+    return x
+}
+
+type sinkMyInteractionFastEncode struct {
+    Success *string `thrift:"success,0,optional" json:"success,omitempty" db:"success"`
+}
+// Compile time interface enforcer
+var _ thrift.Struct = (*sinkMyInteractionFastEncode)(nil)
+var _ thrift.WritableResult = (*sinkMyInteractionFastEncode)(nil)
+
+// Deprecated: sinkMyInteractionFastEncodeResultDeprecated is deprecated, since it is supposed to be internal.
+type sinkMyInteractionFastEncodeResultDeprecated = sinkMyInteractionFastEncode
+
+func newSinkMyInteractionFastEncode() *sinkMyInteractionFastEncode {
+    return (&sinkMyInteractionFastEncode{}).setDefaults()
+}
+
+func (x *sinkMyInteractionFastEncode) GetSuccess() string {
+    if !x.IsSetSuccess() {
+        return ""
+    }
+    return *x.Success
+}
+
+func (x *sinkMyInteractionFastEncode) SetSuccessNonCompat(value string) *sinkMyInteractionFastEncode {
+    x.Success = &value
+    return x
+}
+
+func (x *sinkMyInteractionFastEncode) SetSuccess(value *string) *sinkMyInteractionFastEncode {
+    x.Success = value
+    return x
+}
+
+func (x *sinkMyInteractionFastEncode) IsSetSuccess() bool {
+    return x != nil && x.Success != nil
+}
+
+func (x *sinkMyInteractionFastEncode) writeField0(p thrift.Encoder) error {  // Success
+    if !x.IsSetSuccess() {
+        return nil
+    }
+
+    if err := p.WriteFieldBegin("success", thrift.STRING, 0); err != nil {
+        return thrift.PrependError("sinkMyInteractionFastEncode write field begin error: ", err)
+    }
+
+    item := *x.Success
+    if err := p.WriteString(item); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldEnd(); err != nil {
+        return thrift.PrependError("sinkMyInteractionFastEncode write field end error: ", err)
+    }
+    return nil
+}
+
+func (x *sinkMyInteractionFastEncode) readField0(p thrift.Decoder) error {  // Success
+    result, err := p.ReadString()
+    if err != nil {
+        return err
+    }
+
+    x.Success = &result
+    return nil
+}
+
+
+
+
+
+func (x *sinkMyInteractionFastEncode) Exception() thrift.WritableException {
+    return nil
+}
+
+func (x *sinkMyInteractionFastEncode) Write(p thrift.Encoder) error {
+    if err := p.WriteStructBegin("sinkMyInteractionFastEncode"); err != nil {
+        return thrift.PrependError("sinkMyInteractionFastEncode write struct begin error: ", err)
+    }
+
+    if err := x.writeField0(p); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldStop(); err != nil {
+        return thrift.PrependError("sinkMyInteractionFastEncode write field stop error: ", err)
+    }
+
+    if err := p.WriteStructEnd(); err != nil {
+        return thrift.PrependError("sinkMyInteractionFastEncode write struct end error: ", err)
+    }
+    return nil
+}
+
+func (x *sinkMyInteractionFastEncode) Read(p thrift.Decoder) error {
+    if _, err := p.ReadStructBegin(); err != nil {
+        return thrift.PrependError("sinkMyInteractionFastEncode read error: ", err)
+    }
+
+    for {
+        fieldName, wireType, id, err := p.ReadFieldBegin()
+        if err != nil {
+            return thrift.PrependError(fmt.Sprintf("sinkMyInteractionFastEncode field %d ('%s') read error: ", id, fieldName), err)
+        }
+
+        if wireType == thrift.STOP {
+            break;
+        }
+
+        var fieldReadErr error
+        switch {
+        case ((id == 0 && wireType == thrift.STRING) || (id == thrift.NO_FIELD_ID && fieldName == "success")):  // success
+            fieldReadErr = x.readField0(p)
+        default:
+            fieldReadErr = p.Skip(wireType)
+        }
+
+        if fieldReadErr != nil {
+            return fieldReadErr
+        }
+
+        if err := p.ReadFieldEnd(); err != nil {
+            return err
+        }
+    }
+
+    if err := p.ReadStructEnd(); err != nil {
+        return thrift.PrependError("sinkMyInteractionFastEncode read struct end error: ", err)
+    }
+
+    return nil
+}
+
+func (x *sinkMyInteractionFastEncode) String() string {
+    return thrift.StructToString(reflect.ValueOf(x))
+}
+
+func (x *sinkMyInteractionFastEncode) setDefaults() *sinkMyInteractionFastEncode {
+    return x
+}
+
+type respFinalMyInteractionFastEncode struct {
+    Success []byte `thrift:"success,0,optional" json:"success,omitempty" db:"success"`
+}
+// Compile time interface enforcer
+var _ thrift.Struct = (*respFinalMyInteractionFastEncode)(nil)
+var _ thrift.WritableResult = (*respFinalMyInteractionFastEncode)(nil)
+
+// Deprecated: FinalMyInteractionFastEncodeResultDeprecated is deprecated, since it is supposed to be internal.
+type FinalMyInteractionFastEncodeResultDeprecated = respFinalMyInteractionFastEncode
+
+func newRespFinalMyInteractionFastEncode() *respFinalMyInteractionFastEncode {
+    return (&respFinalMyInteractionFastEncode{}).setDefaults()
+}
+
+func (x *respFinalMyInteractionFastEncode) GetSuccess() []byte {
+    if !x.IsSetSuccess() {
+        return []byte("")
+    }
+    return x.Success
+}
+
+func (x *respFinalMyInteractionFastEncode) SetSuccessNonCompat(value []byte) *respFinalMyInteractionFastEncode {
+    x.Success = value
+    return x
+}
+
+func (x *respFinalMyInteractionFastEncode) SetSuccess(value []byte) *respFinalMyInteractionFastEncode {
+    x.Success = value
+    return x
+}
+
+func (x *respFinalMyInteractionFastEncode) IsSetSuccess() bool {
+    return x != nil && x.Success != nil
+}
+
+func (x *respFinalMyInteractionFastEncode) writeField0(p thrift.Encoder) error {  // Success
+    if !x.IsSetSuccess() {
+        return nil
+    }
+
+    if err := p.WriteFieldBegin("success", thrift.STRING, 0); err != nil {
+        return thrift.PrependError("respFinalMyInteractionFastEncode write field begin error: ", err)
+    }
+
+    item := x.Success
+    if err := p.WriteBinary(item); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldEnd(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionFastEncode write field end error: ", err)
+    }
+    return nil
+}
+
+func (x *respFinalMyInteractionFastEncode) readField0(p thrift.Decoder) error {  // Success
+    result, err := p.ReadBinary()
+    if err != nil {
+        return err
+    }
+
+    x.Success = result
+    return nil
+}
+
+
+
+
+
+func (x *respFinalMyInteractionFastEncode) Exception() thrift.WritableException {
+    return nil
+}
+
+func (x *respFinalMyInteractionFastEncode) Write(p thrift.Encoder) error {
+    if err := p.WriteStructBegin("respFinalMyInteractionFastEncode"); err != nil {
+        return thrift.PrependError("respFinalMyInteractionFastEncode write struct begin error: ", err)
+    }
+
+    if err := x.writeField0(p); err != nil {
+        return err
+    }
+
+    if err := p.WriteFieldStop(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionFastEncode write field stop error: ", err)
+    }
+
+    if err := p.WriteStructEnd(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionFastEncode write struct end error: ", err)
+    }
+    return nil
+}
+
+func (x *respFinalMyInteractionFastEncode) Read(p thrift.Decoder) error {
+    if _, err := p.ReadStructBegin(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionFastEncode read error: ", err)
+    }
+
+    for {
+        fieldName, wireType, id, err := p.ReadFieldBegin()
+        if err != nil {
+            return thrift.PrependError(fmt.Sprintf("respFinalMyInteractionFastEncode field %d ('%s') read error: ", id, fieldName), err)
+        }
+
+        if wireType == thrift.STOP {
+            break;
+        }
+
+        var fieldReadErr error
+        switch {
+        case ((id == 0 && wireType == thrift.STRING) || (id == thrift.NO_FIELD_ID && fieldName == "success")):  // success
+            fieldReadErr = x.readField0(p)
+        default:
+            fieldReadErr = p.Skip(wireType)
+        }
+
+        if fieldReadErr != nil {
+            return fieldReadErr
+        }
+
+        if err := p.ReadFieldEnd(); err != nil {
+            return err
+        }
+    }
+
+    if err := p.ReadStructEnd(); err != nil {
+        return thrift.PrependError("respFinalMyInteractionFastEncode read struct end error: ", err)
+    }
+
+    return nil
+}
+
+func (x *respFinalMyInteractionFastEncode) String() string {
+    return thrift.StructToString(reflect.ValueOf(x))
+}
+
+func (x *respFinalMyInteractionFastEncode) setDefaults() *respFinalMyInteractionFastEncode {
+    return x
+}
+
 type reqSerialInteractionFrobnicate struct {
 }
 // Compile time interface enforcer
@@ -4156,6 +5248,7 @@ type SerialInteractionFrobnicateArgsDeprecated = reqSerialInteractionFrobnicate
 func newReqSerialInteractionFrobnicate() *reqSerialInteractionFrobnicate {
     return (&reqSerialInteractionFrobnicate{}).setDefaults()
 }
+
 
 
 
@@ -4235,6 +5328,7 @@ func newRespSerialInteractionFrobnicate() *respSerialInteractionFrobnicate {
 
 
 
+
 func (x *respSerialInteractionFrobnicate) Exception() thrift.WritableException {
     return nil
 }
@@ -4311,6 +5405,7 @@ type BoxedInteractionGetABoxArgsDeprecated = reqBoxedInteractionGetABox
 func newReqBoxedInteractionGetABox() *reqBoxedInteractionGetABox {
     return (&reqBoxedInteractionGetABox{}).setDefaults()
 }
+
 
 
 
@@ -4440,6 +5535,7 @@ func (x *respBoxedInteractionGetABox) readField0(p thrift.Decoder) error {  // S
     x.Success = result
     return nil
 }
+
 
 
 

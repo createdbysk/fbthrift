@@ -233,6 +233,11 @@ prototype<t_structured>::ptr t_whisker_generator::make_prototype_for_structured(
             ? to_array(self.fields_id_order(), proto.of<t_field>())
             : to_array(self.fields(), proto.of<t_field>());
       });
+  def.property(
+      "has_serialize_in_field_id_order_annotation?",
+      [](const t_structured& self) {
+        return self.has_structured_annotation(kSerializeInFieldIdOrderUri);
+      });
   return std::move(def).make();
 }
 
@@ -328,6 +333,22 @@ prototype<t_field>::ptr t_whisker_generator::make_prototype_for_field(
   });
   def.property("terse?", [](const t_field& self) {
     return self.qualifier() == t_field_qualifier::terse;
+  });
+  def.property("deprecated?", [](const t_field& self) {
+    return self.has_structured_annotation(kDeprecatedUri);
+  });
+  def.property("deprecation_message", [](const t_field& self) {
+    if (const t_const* deprecated_annotation =
+            self.find_structured_annotation_or_null(kDeprecatedUri)) {
+      if (const t_const_value* msg_value =
+              deprecated_annotation
+                  ->get_value_from_structured_annotation_or_null("message")) {
+        return whisker::make::string(
+            get_escaped_string(msg_value->get_string()));
+      }
+      return whisker::make::string("This field is deprecated");
+    }
+    return whisker::make::null;
   });
   return std::move(def).make();
 }
@@ -574,7 +595,7 @@ prototype<t_program>::ptr t_whisker_generator::make_prototype_for_program(
   def.property("namespaces", [&](const t_program& self) -> map::ptr {
     map::raw result;
     for (const auto& [language, value] : self.namespaces()) {
-      result[language] = string(value);
+      result[language] = string(value->ns());
     }
     return map::of(std::move(result));
   });

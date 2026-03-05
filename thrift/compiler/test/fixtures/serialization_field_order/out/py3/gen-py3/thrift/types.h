@@ -126,6 +126,13 @@ inline void reset_field<::facebook::thrift::annotation::Priority>(
 }
 
 template<>
+inline void reset_field<::facebook::thrift::annotation::Sealed>(
+    ::facebook::thrift::annotation::Sealed& obj, uint16_t index) {
+  switch (index) {
+  }
+}
+
+template<>
 inline void reset_field<::facebook::thrift::annotation::DeprecatedUnvalidatedAnnotations>(
     ::facebook::thrift::annotation::DeprecatedUnvalidatedAnnotations& obj, uint16_t index) {
   switch (index) {
@@ -188,6 +195,23 @@ template<>
 inline void reset_field<::facebook::thrift::annotation::AllowLegacyMissingUris>(
     ::facebook::thrift::annotation::AllowLegacyMissingUris& obj, uint16_t index) {
   switch (index) {
+  }
+}
+
+template<>
+inline void reset_field<::facebook::thrift::annotation::AllowUnsafeNonSealedKeyType>(
+    ::facebook::thrift::annotation::AllowUnsafeNonSealedKeyType& obj, uint16_t index) {
+  switch (index) {
+  }
+}
+
+template<>
+inline void reset_field<::facebook::thrift::annotation::Deprecated>(
+    ::facebook::thrift::annotation::Deprecated& obj, uint16_t index) {
+  switch (index) {
+    case 0:
+      obj.message_ref().copy_from(default_inst<::facebook::thrift::annotation::Deprecated>().message_ref());
+      return;
   }
 }
 
@@ -323,6 +347,16 @@ inline const std::unordered_map<std::string_view, std::string_view>& PyStructTra
 
 template<>
 inline const std::unordered_map<std::string_view, std::string_view>& PyStructTraits<
+    ::facebook::thrift::annotation::Sealed>::namesmap() {
+  static const folly::Indestructible<NamesMap> map {
+    {
+    }
+  };
+  return *map;
+}
+
+template<>
+inline const std::unordered_map<std::string_view, std::string_view>& PyStructTraits<
     ::facebook::thrift::annotation::DeprecatedUnvalidatedAnnotations>::namesmap() {
   static const folly::Indestructible<NamesMap> map {
     {
@@ -404,6 +438,26 @@ inline const std::unordered_map<std::string_view, std::string_view>& PyStructTra
 template<>
 inline const std::unordered_map<std::string_view, std::string_view>& PyStructTraits<
     ::facebook::thrift::annotation::AllowLegacyMissingUris>::namesmap() {
+  static const folly::Indestructible<NamesMap> map {
+    {
+    }
+  };
+  return *map;
+}
+
+template<>
+inline const std::unordered_map<std::string_view, std::string_view>& PyStructTraits<
+    ::facebook::thrift::annotation::AllowUnsafeNonSealedKeyType>::namesmap() {
+  static const folly::Indestructible<NamesMap> map {
+    {
+    }
+  };
+  return *map;
+}
+
+template<>
+inline const std::unordered_map<std::string_view, std::string_view>& PyStructTraits<
+    ::facebook::thrift::annotation::Deprecated>::namesmap() {
   static const folly::Indestructible<NamesMap> map {
     {
     }

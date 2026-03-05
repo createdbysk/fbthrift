@@ -30,6 +30,7 @@ func NewEmpty() *Empty {
 
 
 
+
 func (x *Empty) Write(p thrift.Encoder) error {
     if err := p.WriteStructBegin("Empty"); err != nil {
         return thrift.PrependError("Empty write struct begin error: ", err)
@@ -104,19 +105,15 @@ func NewNada() *Nada {
     return (&Nada{}).setDefaults()
 }
 
-func (x *Nada) countSetFields() int {
+
+func (x *Nada) CountSetFields() int {
     count := int(0)
     return count
 }
 
-func (x *Nada) CountSetFieldsNada() int {
-    return x.countSetFields()
-}
-
-
 
 func (x *Nada) Write(p thrift.Encoder) error {
-    if countSet := x.countSetFields(); countSet > 1 {
+    if countSet := x.CountSetFields(); countSet > 1 {
         return fmt.Errorf("Nada write union: no more than one field must be set (%d set).", countSet)
     }
     if err := p.WriteStructBegin("Nada"); err != nil {

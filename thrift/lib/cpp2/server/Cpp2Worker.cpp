@@ -19,14 +19,16 @@
 #include <vector>
 
 #include <folly/GLog.h>
-#include <folly/experimental/io/AsyncIoUringSocketFactory.h>
+#include <folly/io/async/AsyncIoUringSocketFactory.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBaseLocal.h>
 #include <folly/io/async/fdsock/AsyncFdSocket.h>
 #include <folly/portability/Sockets.h>
+#include <folly/stop_watch.h>
 #include <thrift/lib/cpp2/Flags.h>
 #include <thrift/lib/cpp2/async/ResponseChannel.h>
+#include <thrift/lib/cpp2/security/PSP.h>
 #include <thrift/lib/cpp2/security/extensions/ThriftParametersContext.h>
 #include <thrift/lib/cpp2/security/extensions/ThriftParametersServerExtension.h>
 #include <thrift/lib/cpp2/server/Cpp2Connection.h>
@@ -208,29 +210,39 @@ void Cpp2Worker::invokeServiceInterceptorsOnConnectionForHeader(
   bool didServiceInterceptorOnConnectionThrow = false;
 
   // First, invoke onConnectionAttempted for all interceptors
-  for (std::size_t i = 0; i < serviceInterceptors.size(); ++i) {
-    ServiceInterceptorBase::ConnectionInfo connectionInfo{
-        &context,
-        context.getStorageForServiceInterceptorOnConnectionByIndex(i)};
-    try {
-      serviceInterceptors[i]->internal_onConnectionAttempted(
-          std::move(connectionInfo), server_->getInterceptorMetricCallback());
-    } catch (...) {
-      didServiceInterceptorOnConnectionThrow = true;
+  {
+    folly::stop_watch<std::chrono::microseconds> totalTimer;
+    for (std::size_t i = 0; i < serviceInterceptors.size(); ++i) {
+      ServiceInterceptorBase::ConnectionInfo connectionInfo{
+          &context,
+          context.getStorageForServiceInterceptorOnConnectionByIndex(i)};
+      try {
+        serviceInterceptors[i]->internal_onConnectionAttempted(
+            std::move(connectionInfo), server_->getInterceptorMetricCallback());
+      } catch (...) {
+        didServiceInterceptorOnConnectionThrow = true;
+      }
     }
+    server_->getInterceptorMetricCallback().onConnectionAttemptedTotalComplete(
+        totalTimer.elapsed());
   }
 
   // Then, invoke onConnectionEstablished for all interceptors
-  for (std::size_t i = 0; i < serviceInterceptors.size(); ++i) {
-    ServiceInterceptorBase::ConnectionInfo connectionInfo{
-        &context,
-        context.getStorageForServiceInterceptorOnConnectionByIndex(i)};
-    try {
-      serviceInterceptors[i]->internal_onConnectionEstablished(
-          std::move(connectionInfo), server_->getInterceptorMetricCallback());
-    } catch (...) {
-      didServiceInterceptorOnConnectionThrow = true;
+  {
+    folly::stop_watch<std::chrono::microseconds> totalTimer;
+    for (std::size_t i = 0; i < serviceInterceptors.size(); ++i) {
+      ServiceInterceptorBase::ConnectionInfo connectionInfo{
+          &context,
+          context.getStorageForServiceInterceptorOnConnectionByIndex(i)};
+      try {
+        serviceInterceptors[i]->internal_onConnectionEstablished(
+            std::move(connectionInfo), server_->getInterceptorMetricCallback());
+      } catch (...) {
+        didServiceInterceptorOnConnectionThrow = true;
+      }
     }
+    server_->getInterceptorMetricCallback().onConnectionTotalComplete(
+        totalTimer.elapsed());
   }
 
   // Unfortunately, header transport does not have a way to provide an error
@@ -434,12 +446,28 @@ Cpp2Worker::makeThriftServerExtension(const folly::SocketAddress& clientAddr) {
     return nullptr;
   }
 
+  auto effectivePspPolicy = [&] {
+    if (thriftConfig->pspUpgradePolicy.has_value()) {
+      return *thriftConfig->pspUpgradePolicy;
+    }
+    return **ThriftServer::pspUpgradePolicy();
+  }();
+
   auto thriftParametersContext = std::make_shared<ThriftParametersContext>();
+  thriftParametersContext->setPeerAddress(clientAddr);
   thriftParametersContext->setUseStopTLS(
       clientAddr.getFamily() == AF_UNIX || thriftConfig->enableStopTLS ||
       **ThriftServer::enableStopTLS());
   thriftParametersContext->setUseStopTLSV2(
       thriftConfig->enableStopTLSV2 || **ThriftServer::enableStopTLSV2());
+  if (effectivePspPolicy == PSPUpgradePolicy::ALWAYS) {
+    constexpr uint64_t kSupportedPSPPolicies = (THRIFT_PSP_V0);
+
+    thriftParametersContext->setSupportedPSPVersionsPolicy(
+        [](const folly::SocketAddress&) -> uint64_t {
+          return kSupportedPSPPolicies;
+        });
+  }
   return std::make_shared<ThriftParametersServerExtension>(
       thriftParametersContext);
 }

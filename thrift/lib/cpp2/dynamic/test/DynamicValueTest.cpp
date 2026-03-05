@@ -20,9 +20,17 @@
 
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
+#include <thrift/lib/cpp2/dynamic/List.h>
+#include <thrift/lib/cpp2/dynamic/Map.h>
+#include <thrift/lib/cpp2/dynamic/Path.h>
 #include <thrift/lib/cpp2/dynamic/Serialization.h>
+#include <thrift/lib/cpp2/dynamic/Set.h>
+#include <thrift/lib/cpp2/dynamic/Struct.h>
+#include <thrift/lib/cpp2/dynamic/TypeSystemBuilder.h>
+#include <thrift/lib/cpp2/dynamic/Union.h>
 #include <thrift/lib/cpp2/dynamic/detail/ConcreteList.h>
 #include <thrift/lib/cpp2/protocol/CompactProtocol.h>
+#include <thrift/lib/cpp2/protocol/SimpleJSONProtocol.h>
 
 #include <limits>
 
@@ -384,6 +392,813 @@ TEST(DynamicRefTest, DebugString) {
 
   std::string debugStr = ref.debugString();
   EXPECT_FALSE(debugStr.empty());
+}
+
+// Helper to create a list type
+inline type_system::TypeRef::List makeListType(
+    type_system::TypeRef elementType) {
+  static type_system::detail::ContainerTypeCache cache;
+  return type_system::TypeRef::List::of(elementType, cache);
+}
+
+// Tests for DynamicConstRef equality with mixed Datum/concrete pointer cases
+TEST(DynamicConstRefTest, EqualityDatumVsConcrete) {
+  // Create a list to get concrete pointers
+  auto list = makeList(makeListType(type_system::TypeSystem::I32()));
+  list.push_back(DynamicValue::makeI32(42));
+  list.push_back(DynamicValue::makeI32(99));
+
+  // list[i] returns DynamicConstRef with concrete int32_t* pointer
+  DynamicConstRef concreteRef1 = list[0];
+  DynamicConstRef concreteRef2 = list[1];
+
+  // Create DynamicValue which stores Datum internally
+  auto val1 = DynamicValue::makeI32(42);
+  auto val2 = DynamicValue::makeI32(99);
+
+  // DynamicConstRef from DynamicValue has Datum* pointer
+  DynamicConstRef datumRef1(val1);
+  DynamicConstRef datumRef2(val2);
+
+  // Datum vs Datum (both have Datum pointers)
+  EXPECT_TRUE(datumRef1 == datumRef1);
+  EXPECT_TRUE(datumRef1 == DynamicConstRef(DynamicValue::makeI32(42)));
+  EXPECT_FALSE(datumRef1 == datumRef2);
+
+  // Concrete vs Concrete (both have concrete pointers)
+  EXPECT_TRUE(concreteRef1 == concreteRef1);
+  EXPECT_FALSE(concreteRef1 == concreteRef2);
+
+  // Datum vs Concrete (mixed pointer types, same values)
+  EXPECT_TRUE(datumRef1 == concreteRef1);
+  EXPECT_TRUE(concreteRef1 == datumRef1);
+  EXPECT_FALSE(datumRef1 == concreteRef2);
+  EXPECT_FALSE(concreteRef2 == datumRef1);
+
+  // Datum vs Concrete (mixed pointer types, different values)
+  EXPECT_TRUE(datumRef2 == concreteRef2);
+  EXPECT_TRUE(concreteRef2 == datumRef2);
+  EXPECT_FALSE(datumRef2 == concreteRef1);
+  EXPECT_FALSE(concreteRef1 == datumRef2);
+}
+
+TEST(DynamicConstRefTest, EqualityTypeMismatch) {
+  // Create values of different types
+  auto i32Val = DynamicValue::makeI32(42);
+  auto i64Val = DynamicValue::makeI64(42);
+  auto boolVal = DynamicValue::makeBool(true);
+  auto floatVal = DynamicValue::makeFloat(42.0f);
+
+  DynamicConstRef i32Ref(i32Val);
+  DynamicConstRef i64Ref(i64Val);
+  DynamicConstRef boolRef(boolVal);
+  DynamicConstRef floatRef(floatVal);
+
+  // Different types should not be equal even if numeric value is same
+  EXPECT_FALSE(i32Ref == i64Ref);
+  EXPECT_FALSE(i64Ref == i32Ref);
+  EXPECT_FALSE(i32Ref == floatRef);
+  EXPECT_FALSE(floatRef == i32Ref);
+  EXPECT_FALSE(boolRef == i32Ref);
+  EXPECT_FALSE(i32Ref == boolRef);
+}
+
+TEST(DynamicConstRefTest, EqualityTypeMismatchWithConcretePointers) {
+  // Create lists of different element types to get concrete pointers
+  auto i32List = makeList(makeListType(type_system::TypeSystem::I32()));
+  i32List.push_back(DynamicValue::makeI32(42));
+
+  auto i64List = makeList(makeListType(type_system::TypeSystem::I64()));
+  i64List.push_back(DynamicValue::makeI64(42));
+
+  auto boolList = makeList(makeListType(type_system::TypeSystem::Bool()));
+  boolList.push_back(DynamicValue::makeBool(true));
+
+  // Get concrete pointer refs
+  DynamicConstRef i32ConcreteRef = i32List[0];
+  DynamicConstRef i64ConcreteRef = i64List[0];
+  DynamicConstRef boolConcreteRef = boolList[0];
+
+  // Different types with concrete pointers should not be equal
+  EXPECT_FALSE(i32ConcreteRef == i64ConcreteRef);
+  EXPECT_FALSE(i64ConcreteRef == i32ConcreteRef);
+  EXPECT_FALSE(boolConcreteRef == i32ConcreteRef);
+  EXPECT_FALSE(i32ConcreteRef == boolConcreteRef);
+
+  // Also test mixed Datum vs Concrete with type mismatch
+  auto i64Val = DynamicValue::makeI64(42);
+  DynamicConstRef i64DatumRef(i64Val);
+
+  // Datum (i64) vs Concrete (i32) - type mismatch
+  EXPECT_FALSE(i64DatumRef == i32ConcreteRef);
+  EXPECT_FALSE(i32ConcreteRef == i64DatumRef);
+}
+
+TEST(DynamicConstRefTest, EqualityRefVsConstRef) {
+  auto val1 = DynamicValue::makeI32(42);
+  auto val2 = DynamicValue::makeI32(42);
+  auto val3 = DynamicValue::makeI32(99);
+
+  DynamicRef ref1(val1);
+  DynamicConstRef constRef2(val2);
+  DynamicConstRef constRef3(val3);
+
+  // DynamicRef converts to DynamicConstRef for comparison
+  EXPECT_TRUE(ref1 == constRef2);
+  EXPECT_TRUE(constRef2 == ref1);
+  EXPECT_FALSE(ref1 == constRef3);
+  EXPECT_FALSE(constRef3 == ref1);
+
+  // Also test with concrete pointers from list
+  auto list = makeList(makeListType(type_system::TypeSystem::I32()));
+  list.push_back(DynamicValue::makeI32(42));
+  list.push_back(DynamicValue::makeI32(99));
+
+  DynamicConstRef concreteRef1 = list[0];
+  DynamicConstRef concreteRef2 = list[1];
+
+  // DynamicRef (Datum) vs DynamicConstRef (concrete pointer)
+  EXPECT_TRUE(ref1 == concreteRef1);
+  EXPECT_TRUE(concreteRef1 == ref1);
+  EXPECT_FALSE(ref1 == concreteRef2);
+  EXPECT_FALSE(concreteRef2 == ref1);
+}
+
+// ============================================================================
+// Traverse tests
+// ============================================================================
+
+using def = type_system::TypeSystemBuilder::DefinitionHelper;
+using type_system::TypeIds;
+
+// Helper fixture for traverse tests
+struct TraverseTest : ::testing::Test {
+  std::unique_ptr<type_system::TypeSystem> typeSystem;
+
+  static constexpr auto kInnerUri = "facebook.com/thrift/test/Inner";
+  static constexpr auto kOuterUri = "facebook.com/thrift/test/Outer";
+  static constexpr auto kTestUnionUri = "facebook.com/thrift/test/TestUnion";
+
+  TraverseTest() {
+    type_system::TypeSystemBuilder builder;
+
+    // struct Inner { 1: i32 value }
+    builder.addType(
+        kInnerUri,
+        def::Struct({
+            def::Field(
+                def::Identity(1, "value"), def::AlwaysPresent, TypeIds::I32),
+        }));
+
+    // struct Outer {
+    //   1: Inner inner
+    //   2: optional Inner optionalInner
+    //   3: list<i32> numbers
+    //   4: map<string, i32> scores
+    //   5: set<string> tags
+    // }
+    builder.addType(
+        kOuterUri,
+        def::Struct({
+            def::Field(
+                def::Identity(1, "inner"),
+                def::AlwaysPresent,
+                TypeIds::uri(kInnerUri)),
+            def::Field(
+                def::Identity(2, "optionalInner"),
+                def::Optional,
+                TypeIds::uri(kInnerUri)),
+            def::Field(
+                def::Identity(3, "numbers"),
+                def::AlwaysPresent,
+                TypeIds::list(TypeIds::I32)),
+            def::Field(
+                def::Identity(4, "scores"),
+                def::AlwaysPresent,
+                TypeIds::map(TypeIds::String, TypeIds::I32)),
+            def::Field(
+                def::Identity(5, "tags"),
+                def::AlwaysPresent,
+                TypeIds::set(TypeIds::String)),
+        }));
+
+    // union TestUnion { 1: i32 intValue; 2: string strValue }
+    builder.addType(
+        kTestUnionUri,
+        def::Union({
+            def::Field(
+                def::Identity(1, "intValue"), def::Optional, TypeIds::I32),
+            def::Field(
+                def::Identity(2, "strValue"), def::Optional, TypeIds::String),
+        }));
+
+    typeSystem = std::move(builder).build();
+  }
+
+  const type_system::StructNode& outerNode() {
+    return typeSystem->getUserDefinedTypeOrThrow(kOuterUri).asStruct();
+  }
+
+  const type_system::UnionNode& unionNode() {
+    return typeSystem->getUserDefinedTypeOrThrow(kTestUnionUri).asUnion();
+  }
+};
+
+TEST_F(TraverseTest, TraverseStructFields) {
+  // Create an Outer struct with nested inner.value = 42
+  auto outer = DynamicValue::makeDefault(outerNode().asRef());
+  outer.asStruct().getField("inner")->asStruct().setField(
+      "value", DynamicValue::makeI32(42));
+
+  // Build path to inner.value
+  PathBuilder pathBuilder{outerNode().asRef()};
+  auto g1 = pathBuilder.enterField("inner");
+  auto g2 = pathBuilder.enterField("value");
+  Path path = pathBuilder.path();
+
+  // Test const traverse via DynamicConstRef
+  ASSERT_TRUE(DynamicConstRef(outer).traverse(path).has_value());
+  EXPECT_EQ(DynamicConstRef(outer).traverse(path)->asI32(), 42);
+
+  // Test mutable traverse via DynamicRef - modify and verify
+  auto result = DynamicRef(outer).traverse(path);
+  ASSERT_TRUE(result.has_value());
+  result->asI32() = 100;
+  EXPECT_EQ(
+      outer.asStruct().getField("inner")->asStruct().getField("value")->asI32(),
+      100);
+
+  // Test traverse directly on DynamicValue (const and mutable)
+  outer.asStruct().getField("inner")->asStruct().setField(
+      "value", DynamicValue::makeI32(200));
+  const auto& constOuter = outer;
+  EXPECT_EQ(constOuter.traverse(path)->asI32(), 200);
+  outer.traverse(path)->asI32() = 300;
+  EXPECT_EQ(
+      outer.asStruct().getField("inner")->asStruct().getField("value")->asI32(),
+      300);
+
+  // Test unset optional field returns nullopt
+  PathBuilder optPathBuilder{outerNode().asRef()};
+  auto og1 = optPathBuilder.enterField("optionalInner");
+  auto og2 = optPathBuilder.enterField("value");
+  EXPECT_FALSE(
+      DynamicConstRef(outer).traverse(optPathBuilder.path()).has_value());
+}
+
+TEST_F(TraverseTest, TraverseList) {
+  auto outer = DynamicValue::makeDefault(outerNode().asRef());
+  auto& numbers = outer.asStruct().getField("numbers")->asList();
+  numbers.push_back(DynamicValue::makeI32(10));
+  numbers.push_back(DynamicValue::makeI32(20));
+
+  // Build path to numbers[1]
+  PathBuilder pathBuilder{outerNode().asRef()};
+  auto g1 = pathBuilder.enterField("numbers");
+  auto g2 = pathBuilder.enterListElement(1);
+  Path path = pathBuilder.path();
+
+  // Valid index - use mutable DynamicValue::traverse and modify
+  auto result = outer.traverse(path);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->asI32(), 20);
+  result->asI32() = 200;
+  EXPECT_EQ(numbers.at(1).asI32(), 200);
+
+  // Out of bounds - use const DynamicValue::traverse
+  PathBuilder oobPathBuilder{outerNode().asRef()};
+  auto og1 = oobPathBuilder.enterField("numbers");
+  auto og2 = oobPathBuilder.enterListElement(99);
+  const auto& constOuter = outer;
+  EXPECT_FALSE(constOuter.traverse(oobPathBuilder.path()).has_value());
+}
+
+TEST_F(TraverseTest, TraverseMap) {
+  auto outer = DynamicValue::makeDefault(outerNode().asRef());
+  outer.asStruct().getField("scores")->asMap().insert(
+      DynamicValue::makeString("alice"), DynamicValue::makeI32(100));
+
+  // Build path to scores["alice"]
+  PathBuilder pathBuilder{outerNode().asRef()};
+  auto g1 = pathBuilder.enterField("scores");
+  auto g2 = pathBuilder.enterMapValue("alice");
+  Path path = pathBuilder.path();
+
+  // Existing key - use DynamicRef::traverse and modify
+  auto result = DynamicRef(outer).traverse(path);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->asI32(), 100);
+  result->asI32() = 999;
+  EXPECT_EQ(
+      outer.asStruct()
+          .getField("scores")
+          ->asMap()
+          .get(DynamicValue::makeString("alice"))
+          ->asI32(),
+      999);
+
+  // Missing key - use DynamicValue::traverse directly
+  PathBuilder missingPathBuilder{outerNode().asRef()};
+  auto mg1 = missingPathBuilder.enterField("scores");
+  auto mg2 = missingPathBuilder.enterMapValue("missing");
+  EXPECT_FALSE(outer.traverse(missingPathBuilder.path()).has_value());
+}
+
+TEST_F(TraverseTest, TraverseSet) {
+  auto outer = DynamicValue::makeDefault(outerNode().asRef());
+  outer.asStruct().getField("tags")->asSet().insert(
+      DynamicValue::makeString("important"));
+
+  // Build path to tags{"important"}
+  PathBuilder pathBuilder{outerNode().asRef()};
+  auto g1 = pathBuilder.enterField("tags");
+  auto g2 = pathBuilder.enterSetElement("important");
+  Path path = pathBuilder.path();
+
+  // Existing element - use const DynamicValue::traverse
+  // (set elements are immutable, so mutable access throws)
+  const auto& constOuter = outer;
+  auto result = constOuter.traverse(path);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->asString().view(), "important");
+
+  // Missing element - also use const access
+  PathBuilder missingPathBuilder{outerNode().asRef()};
+  auto mg1 = missingPathBuilder.enterField("tags");
+  auto mg2 = missingPathBuilder.enterSetElement("missing");
+  EXPECT_FALSE(constOuter.traverse(missingPathBuilder.path()).has_value());
+}
+
+TEST_F(TraverseTest, TraverseUnion) {
+  auto unionVal = DynamicValue::makeDefault(unionNode().asRef());
+  unionVal.asUnion().setField("intValue", DynamicValue::makeI32(42));
+
+  // Build path to intValue (active field) - use mutable DynamicValue::traverse
+  PathBuilder activePathBuilder{unionNode().asRef()};
+  auto ag1 = activePathBuilder.enterField("intValue");
+  auto result = unionVal.traverse(activePathBuilder.path());
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->asI32(), 42);
+  result->asI32() = 100;
+  EXPECT_EQ(unionVal.asUnion().getField("intValue").asI32(), 100);
+
+  // Build path to strValue (inactive field) - use const DynamicValue::traverse
+  PathBuilder inactivePathBuilder{unionNode().asRef()};
+  auto ig1 = inactivePathBuilder.enterField("strValue");
+  const auto& constUnion = unionVal;
+  EXPECT_FALSE(constUnion.traverse(inactivePathBuilder.path()).has_value());
+}
+
+TEST_F(TraverseTest, TraverseTypeMismatchThrows) {
+  // Try to access a field on a list type - should throw during path building
+  PathBuilder pathBuilder{outerNode().asRef()};
+  auto g1 = pathBuilder.enterField("numbers");
+  EXPECT_THROW(
+      (void)pathBuilder.enterField("nonexistent"), InvalidPathAccessError);
+}
+
+TEST_F(TraverseTest, TraverseEmptyPath) {
+  auto value = DynamicValue::makeI32(42);
+  PathBuilder pathBuilder{type_system::TypeSystem::I32()};
+  Path path = pathBuilder.path();
+
+  // Use DynamicValue::traverse directly (both const and mutable)
+  const auto& constValue = value;
+  EXPECT_EQ(constValue.traverse(path)->asI32(), 42);
+  value.traverse(path)->asI32() = 100;
+  EXPECT_EQ(value.asI32(), 100);
+}
+
+// ============================================================================
+// SimpleJSON serialization tests
+// ============================================================================
+
+TEST(DynamicValueTest, SimpleJSONContainerRoundTrip) {
+  // Test list
+  {
+    auto listType = makeListType(type_system::TypeSystem::I32());
+    auto list = makeList(listType);
+    list.push_back(DynamicValue::makeI32(1));
+    list.push_back(DynamicValue::makeI32(2));
+    list.push_back(DynamicValue::makeI32(3));
+
+    folly::IOBufQueue bufQueue;
+    SimpleJSONProtocolWriter writer;
+    writer.setOutput(&bufQueue);
+    serialize(writer, list);
+
+    auto buf = bufQueue.move();
+    SimpleJSONProtocolReader reader;
+    reader.setInput(buf.get());
+    auto deserList = deserialize(reader, listType, nullptr);
+
+    EXPECT_EQ(list.size(), deserList.size());
+    for (size_t i = 0; i < list.size(); ++i) {
+      EXPECT_EQ(list[i], deserList[i]);
+    }
+  }
+
+  // Test set
+  {
+    static type_system::detail::ContainerTypeCache setCache;
+    auto setType =
+        type_system::TypeRef::Set::of(type_system::TypeSystem::I32(), setCache);
+    auto set = makeSet(setType);
+    set.insert(DynamicValue::makeI32(10));
+    set.insert(DynamicValue::makeI32(20));
+    set.insert(DynamicValue::makeI32(30));
+
+    folly::IOBufQueue bufQueue;
+    SimpleJSONProtocolWriter writer;
+    writer.setOutput(&bufQueue);
+    serialize(writer, set);
+
+    auto buf = bufQueue.move();
+    SimpleJSONProtocolReader reader;
+    reader.setInput(buf.get());
+    auto deserSet = deserialize(reader, setType, nullptr);
+
+    EXPECT_EQ(set.size(), deserSet.size());
+    for (auto elemRef : set) {
+      EXPECT_TRUE(deserSet.contains(elemRef.copy()));
+    }
+  }
+
+  // Test map
+  {
+    static type_system::detail::ContainerTypeCache mapCache;
+    auto mapType = type_system::TypeRef::Map::of(
+        type_system::TypeSystem::String(),
+        type_system::TypeSystem::I32(),
+        mapCache);
+    auto map = makeMap(mapType);
+    map.insert(DynamicValue::makeString("one"), DynamicValue::makeI32(1));
+    map.insert(DynamicValue::makeString("two"), DynamicValue::makeI32(2));
+
+    folly::IOBufQueue bufQueue;
+    SimpleJSONProtocolWriter writer;
+    writer.setOutput(&bufQueue);
+    serialize(writer, map);
+
+    auto buf = bufQueue.move();
+    SimpleJSONProtocolReader reader;
+    reader.setInput(buf.get());
+    auto deserMap = deserialize(reader, mapType, nullptr);
+
+    EXPECT_EQ(map.size(), deserMap.size());
+  }
+}
+
+TEST(DynamicValueTest, SimpleJSONStructRoundTrip) {
+  type_system::TypeSystemBuilder builder;
+  builder.addType(
+      "facebook.com/thrift/test/SimpleJSONTestStruct",
+      def::Struct({
+          def::Field(def::Identity(1, "id"), def::AlwaysPresent, TypeIds::I32),
+          def::Field(
+              def::Identity(2, "name"), def::AlwaysPresent, TypeIds::String),
+          def::Field(def::Identity(3, "active"), def::Optional, TypeIds::Bool),
+          def::Field(
+              def::Identity(4, "count"), def::AlwaysPresent, TypeIds::I64),
+      }));
+  auto typeSystem = std::move(builder).build();
+  const auto& structNode =
+      typeSystem
+          ->getUserDefinedTypeOrThrow(
+              "facebook.com/thrift/test/SimpleJSONTestStruct")
+          .asStruct();
+
+  // Test with all fields set
+  {
+    auto value = DynamicValue::makeDefault(type_system::TypeRef(structNode));
+    auto& structValue = value.asStruct();
+    structValue.setField("id", DynamicValue::makeI32(42));
+    structValue.setField("name", DynamicValue::makeString(String("test")));
+    structValue.setField("active", DynamicValue::makeBool(true));
+    structValue.setField("count", DynamicValue::makeI64(1000));
+
+    folly::IOBufQueue bufQueue;
+    SimpleJSONProtocolWriter writer;
+    writer.setOutput(&bufQueue);
+    serializeValue(writer, value);
+
+    auto buf = bufQueue.move();
+    SimpleJSONProtocolReader reader;
+    reader.setInput(buf.get());
+    auto deserValue =
+        deserializeValue(reader, type_system::TypeRef(structNode), nullptr);
+
+    EXPECT_EQ(value, deserValue);
+  }
+
+  // Test with optional field unset
+  {
+    auto value = DynamicValue::makeDefault(type_system::TypeRef(structNode));
+    auto& structValue = value.asStruct();
+    structValue.setField("id", DynamicValue::makeI32(99));
+    structValue.setField("name", DynamicValue::makeString(String("partial")));
+    structValue.setField("count", DynamicValue::makeI64(500));
+    // active field left unset
+
+    folly::IOBufQueue bufQueue;
+    SimpleJSONProtocolWriter writer;
+    writer.setOutput(&bufQueue);
+    serializeValue(writer, value);
+
+    auto buf = bufQueue.move();
+    SimpleJSONProtocolReader reader;
+    reader.setInput(buf.get());
+    auto deserValue =
+        deserializeValue(reader, type_system::TypeRef(structNode), nullptr);
+
+    auto& deserStruct = deserValue.asStruct();
+    EXPECT_EQ(deserStruct.getField("id")->asI32(), 99);
+    EXPECT_FALSE(deserStruct.hasField("active"));
+  }
+}
+
+// ============================================================================
+// ValidationCallbacks tests
+// ============================================================================
+
+struct RecordingValidationCallbacks {
+  struct UnknownFieldEvent {
+    std::string parentUri;
+    int16_t fieldId;
+    std::string fieldName;
+    protocol::TType wireType;
+  };
+  struct TypeMismatchEvent {
+    std::string context;
+    protocol::TType expected;
+    protocol::TType actual;
+  };
+  struct MultipleUnionFieldsEvent {
+    std::string unionUri;
+    uint32_t fieldCount;
+  };
+
+  std::vector<UnknownFieldEvent> unknownFields;
+  std::vector<TypeMismatchEvent> typeMismatches;
+  std::vector<MultipleUnionFieldsEvent> multipleUnionFields;
+
+  void onUnknownField(
+      const type_system::StructuredNode& parent,
+      int16_t fieldId,
+      std::string_view fieldName,
+      protocol::TType ftype) {
+    unknownFields.push_back(
+        {std::string(parent.uri()), fieldId, std::string(fieldName), ftype});
+  }
+
+  void onTypeMismatch(
+      std::string_view context,
+      protocol::TType expected,
+      protocol::TType actual) {
+    typeMismatches.push_back({std::string(context), expected, actual});
+  }
+
+  void onMultipleUnionFields(
+      const type_system::UnionNode& type, uint32_t fieldCount) {
+    multipleUnionFields.push_back({std::string(type.uri()), fieldCount});
+  }
+};
+
+static_assert(
+    DeserializeValidationCallbacks<detail::ThrowingValidationCallbacks>);
+static_assert(DeserializeValidationCallbacks<RecordingValidationCallbacks>);
+
+struct ValidationCallbacksTest : ::testing::Test {
+  static constexpr auto kWriterStructUri =
+      "facebook.com/thrift/test/WriterStruct";
+  static constexpr auto kReaderStructUri =
+      "facebook.com/thrift/test/ReaderStruct";
+  static constexpr auto kWriterUnionUri =
+      "facebook.com/thrift/test/WriterUnion";
+  static constexpr auto kReaderUnionUri =
+      "facebook.com/thrift/test/ReaderUnion";
+
+  std::unique_ptr<type_system::TypeSystem> writerTypeSystem;
+  std::unique_ptr<type_system::TypeSystem> readerTypeSystem;
+
+  ValidationCallbacksTest() {
+    // Writer schema: struct with fields {1: i32 a, 2: string b, 3: i64 c}
+    {
+      type_system::TypeSystemBuilder builder;
+      builder.addType(
+          kWriterStructUri,
+          def::Struct({
+              def::Field(
+                  def::Identity(1, "a"), def::AlwaysPresent, TypeIds::I32),
+              def::Field(
+                  def::Identity(2, "b"), def::AlwaysPresent, TypeIds::String),
+              def::Field(
+                  def::Identity(3, "c"), def::AlwaysPresent, TypeIds::I64),
+          }));
+      builder.addType(
+          kWriterUnionUri,
+          def::Union({
+              def::Field(
+                  def::Identity(1, "intValue"), def::Optional, TypeIds::I32),
+              def::Field(
+                  def::Identity(2, "strValue"), def::Optional, TypeIds::String),
+          }));
+      writerTypeSystem = std::move(builder).build();
+    }
+
+    // Reader schema: struct with fields {1: i32 a, 2: string b} (no field c)
+    {
+      type_system::TypeSystemBuilder builder;
+      builder.addType(
+          kReaderStructUri,
+          def::Struct({
+              def::Field(
+                  def::Identity(1, "a"), def::AlwaysPresent, TypeIds::I32),
+              def::Field(
+                  def::Identity(2, "b"), def::AlwaysPresent, TypeIds::String),
+          }));
+      builder.addType(
+          kReaderUnionUri,
+          def::Union({
+              def::Field(
+                  def::Identity(1, "intValue"), def::Optional, TypeIds::I32),
+          }));
+      readerTypeSystem = std::move(builder).build();
+    }
+  }
+
+  const type_system::StructNode& writerStructNode() {
+    return writerTypeSystem->getUserDefinedTypeOrThrow(kWriterStructUri)
+        .asStruct();
+  }
+  const type_system::StructNode& readerStructNode() {
+    return readerTypeSystem->getUserDefinedTypeOrThrow(kReaderStructUri)
+        .asStruct();
+  }
+  const type_system::UnionNode& writerUnionNode() {
+    return writerTypeSystem->getUserDefinedTypeOrThrow(kWriterUnionUri)
+        .asUnion();
+  }
+  const type_system::UnionNode& readerUnionNode() {
+    return readerTypeSystem->getUserDefinedTypeOrThrow(kReaderUnionUri)
+        .asUnion();
+  }
+};
+
+TEST_F(ValidationCallbacksTest, UnknownStructField) {
+  // Serialize with writer schema (has fields a, b, c)
+  auto writerValue = DynamicValue::makeDefault(writerStructNode().asRef());
+  writerValue.asStruct().setField("a", DynamicValue::makeI32(10));
+  writerValue.asStruct().setField("b", DynamicValue::makeString("hello"));
+  writerValue.asStruct().setField("c", DynamicValue::makeI64(999));
+
+  folly::IOBufQueue bufQueue;
+  CompactProtocolWriter writer;
+  writer.setOutput(&bufQueue);
+  serializeValue(writer, writerValue);
+
+  // Deserialize with reader schema (only has fields a, b)
+  auto buf = bufQueue.move();
+  CompactProtocolReader reader;
+  reader.setInput(buf.get());
+
+  RecordingValidationCallbacks callbacks;
+  auto result =
+      deserializeValue(reader, readerStructNode().asRef(), nullptr, callbacks);
+
+  // Should have recorded one unknown field event for field c (id=3)
+  ASSERT_EQ(callbacks.unknownFields.size(), 1);
+  EXPECT_EQ(callbacks.unknownFields[0].fieldId, 3);
+  EXPECT_EQ(callbacks.unknownFields[0].wireType, protocol::T_I64);
+
+  // Deserialized struct should have only a and b with correct values
+  EXPECT_EQ(result.asStruct().getField("a")->asI32(), 10);
+  EXPECT_EQ(result.asStruct().getField("b")->asString().view(), "hello");
+}
+
+TEST_F(ValidationCallbacksTest, UnknownUnionField) {
+  // Serialize a union with field strValue (id=2), which is unknown to reader
+  auto writerValue = DynamicValue::makeDefault(writerUnionNode().asRef());
+  writerValue.asUnion().setField("strValue", DynamicValue::makeString("test"));
+
+  folly::IOBufQueue bufQueue;
+  CompactProtocolWriter writer;
+  writer.setOutput(&bufQueue);
+  serializeValue(writer, writerValue);
+
+  // Deserialize with reader schema (only has intValue, id=1)
+  auto buf = bufQueue.move();
+  CompactProtocolReader reader;
+  reader.setInput(buf.get());
+
+  RecordingValidationCallbacks callbacks;
+  auto result =
+      deserializeValue(reader, readerUnionNode().asRef(), nullptr, callbacks);
+
+  // Should have recorded one unknown field event for field strValue (id=2)
+  ASSERT_EQ(callbacks.unknownFields.size(), 1);
+  EXPECT_EQ(callbacks.unknownFields[0].fieldId, 2);
+
+  // Deserialized union should be empty
+  EXPECT_TRUE(result.asUnion().isEmpty());
+}
+
+TEST_F(ValidationCallbacksTest, StructFieldTypeMismatch) {
+  // Write a struct where field 2 (string in schema) is written as i32
+  folly::IOBufQueue bufQueue;
+  CompactProtocolWriter writer;
+  writer.setOutput(&bufQueue);
+
+  writer.writeStructBegin("test");
+  // Field 1: i32 a = 10 (correct type)
+  writer.writeFieldBegin("a", protocol::T_I32, 1);
+  writer.writeI32(10);
+  writer.writeFieldEnd();
+  // Field 2: should be string, but write as i32 (type mismatch)
+  writer.writeFieldBegin("b", protocol::T_I32, 2);
+  writer.writeI32(42);
+  writer.writeFieldEnd();
+  writer.writeFieldStop();
+  writer.writeStructEnd();
+
+  auto buf = bufQueue.move();
+  CompactProtocolReader reader;
+  reader.setInput(buf.get());
+
+  RecordingValidationCallbacks callbacks;
+  auto result =
+      deserializeValue(reader, readerStructNode().asRef(), nullptr, callbacks);
+
+  // Should have recorded one type mismatch for field b
+  ASSERT_EQ(callbacks.typeMismatches.size(), 1);
+  EXPECT_EQ(callbacks.typeMismatches[0].expected, protocol::T_STRING);
+  EXPECT_EQ(callbacks.typeMismatches[0].actual, protocol::T_I32);
+
+  // Field a should have correct value, field b should be default
+  EXPECT_EQ(result.asStruct().getField("a")->asI32(), 10);
+  // Field b is always-present, so it should exist with default value ("")
+  EXPECT_EQ(result.asStruct().getField("b")->asString().view(), "");
+}
+
+TEST_F(ValidationCallbacksTest, MultipleUnionFields) {
+  // Write a union-shaped struct with two fields
+  folly::IOBufQueue bufQueue;
+  CompactProtocolWriter writer;
+  writer.setOutput(&bufQueue);
+
+  writer.writeStructBegin("test");
+  // First field: intValue (id=1)
+  writer.writeFieldBegin("intValue", protocol::T_I32, 1);
+  writer.writeI32(42);
+  writer.writeFieldEnd();
+  // Second field: also i32 to avoid type mismatch, use id=1 again or any
+  // Actually we need a second distinct field. Use field id 99 (unknown).
+  writer.writeFieldBegin("extra", protocol::T_I32, 99);
+  writer.writeI32(100);
+  writer.writeFieldEnd();
+  writer.writeFieldStop();
+  writer.writeStructEnd();
+
+  auto buf = bufQueue.move();
+  CompactProtocolReader reader;
+  reader.setInput(buf.get());
+
+  RecordingValidationCallbacks callbacks;
+  auto result =
+      deserializeValue(reader, readerUnionNode().asRef(), nullptr, callbacks);
+
+  // Should have recorded one multipleUnionFields event
+  ASSERT_EQ(callbacks.multipleUnionFields.size(), 1);
+
+  // The first valid field (intValue) should still be active
+  EXPECT_FALSE(result.asUnion().isEmpty());
+  EXPECT_EQ(result.asUnion().getField("intValue").asI32(), 42);
+}
+
+TEST_F(ValidationCallbacksTest, DefaultBehaviorPreserved) {
+  // Write a struct where field 2 (string in schema) is written as i32
+  folly::IOBufQueue bufQueue;
+  CompactProtocolWriter writer;
+  writer.setOutput(&bufQueue);
+
+  writer.writeStructBegin("test");
+  writer.writeFieldBegin("a", protocol::T_I32, 1);
+  writer.writeI32(10);
+  writer.writeFieldEnd();
+  writer.writeFieldBegin("b", protocol::T_I32, 2);
+  writer.writeI32(42);
+  writer.writeFieldEnd();
+  writer.writeFieldStop();
+  writer.writeStructEnd();
+
+  auto buf = bufQueue.move();
+  CompactProtocolReader reader;
+  reader.setInput(buf.get());
+
+  // The 3-arg overload should throw on type mismatch (same as before)
+  EXPECT_THROW(
+      deserializeValue(reader, readerStructNode().asRef(), nullptr),
+      std::runtime_error);
 }
 
 } // namespace

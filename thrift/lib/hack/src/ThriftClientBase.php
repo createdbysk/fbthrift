@@ -58,7 +58,7 @@ abstract class ThriftClientBase implements IThriftClient {
     ?IThriftMigrationAsyncChannel $channel = null,
   )[leak_safe] {
     $this->input_ = $input;
-    $this->output_ = $output ?: $input;
+    $this->output_ = $output is nonnull ? $output : $input;
     $this->channel_ = $channel;
     $this->asyncHandler_ = new TClientAsyncHandler();
     $this->eventHandler_ = new TClientEventHandler();
@@ -147,41 +147,51 @@ abstract class ThriftClientBase implements IThriftClient {
     try {
       $this->eventHandler_
         ->preSend($function_name, $args, $currentseqid, $service_name);
-      if ($this->output_ is \TBinaryProtocolAccelerated) {
-        thrift_protocol_write_binary(
-          $this->output_,
-          $function_name,
-          TMessageType::CALL,
-          $args,
-          $currentseqid,
-          $this->output_->isStrictWrite(),
-          $is_one_way,
-        );
-      } else if ($this->output_ is \TCompactProtocolAccelerated) {
-        thrift_protocol_write_compact2(
-          $this->output_,
+      if (ThriftSerializationHelper::useCommonRPCHelpers(get_class($this))) {
+        $this->output_->writeRPCMessage(
           $function_name,
           TMessageType::CALL,
           $args,
           $currentseqid,
           $is_one_way,
-          TCompactProtocolBase::VERSION,
         );
       } else {
-        $this->output_->writeMessageBegin(
-          $function_name,
-          TMessageType::CALL,
-          $currentseqid,
-        );
-        $args->write($this->output_);
-        $this->output_->writeMessageEnd();
-        if ($is_one_way) {
-          $this->output_->getTransport()->onewayFlush();
+        if ($this->output_ is TBinaryProtocolAccelerated) {
+          thrift_protocol_write_binary(
+            $this->output_,
+            $function_name,
+            TMessageType::CALL,
+            $args,
+            $currentseqid,
+            $this->output_->isStrictWrite(),
+            $is_one_way,
+          );
+        } else if ($this->output_ is TCompactProtocolAccelerated) {
+          thrift_protocol_write_compact2(
+            $this->output_,
+            $function_name,
+            TMessageType::CALL,
+            $args,
+            $currentseqid,
+            $is_one_way,
+            TCompactProtocolBase::VERSION,
+          );
         } else {
-          $this->output_->getTransport()->flush();
+          $this->output_->writeMessageBegin(
+            $function_name,
+            TMessageType::CALL,
+            $currentseqid,
+          );
+          $args->write($this->output_);
+          $this->output_->writeMessageEnd();
+          if ($is_one_way) {
+            $this->output_->getTransport()->onewayFlush();
+          } else {
+            $this->output_->getTransport()->flush();
+          }
         }
       }
-    } catch (\THandlerShortCircuitException $ex) {
+    } catch (THandlerShortCircuitException $ex) {
       switch ($ex->resultType) {
         case THandlerShortCircuitException::R_EXPECTED_EX:
         case THandlerShortCircuitException::R_UNEXPECTED_EX:
@@ -193,7 +203,7 @@ abstract class ThriftClientBase implements IThriftClient {
           $this->eventHandler_->postSend($function_name, $args, $currentseqid);
           return $currentseqid;
       }
-    } catch (\Exception $ex) {
+    } catch (Exception $ex) {
       $this->eventHandler_
         ->sendError($function_name, $args, $currentseqid, $ex);
       throw $ex;
@@ -214,39 +224,50 @@ abstract class ThriftClientBase implements IThriftClient {
   ): TRet {
     try {
       $this->eventHandler_->preRecv($name, $expectedsequenceid);
-      if ($this->input_ is \TBinaryProtocolAccelerated) {
-        $result = thrift_protocol_read_binary(
-          $this->input_,
-          HH\class_to_classname($result),
-          $this->input_->isStrictRead(),
-          Shapes::idx($options, 'read_options', 0),
-        );
-      } else if ($this->input_ is \TCompactProtocolAccelerated) {
-        $result = thrift_protocol_read_compact(
-          $this->input_,
-          HH\class_to_classname($result),
+      if (ThriftSerializationHelper::useCommonRPCHelpers(get_class($this))) {
+        $result = $this->input_->readRPCMessage(
+          $result,
+          $name,
+          $expectedsequenceid,
           Shapes::idx($options, 'read_options', 0),
         );
       } else {
-        $rseqid = 0;
-        $fname = '';
-        $mtype = 0;
-
-        $this->input_
-          ->readMessageBegin(inout $fname, inout $mtype, inout $rseqid);
-        if ($mtype === TMessageType::EXCEPTION) {
-          $x = new \TApplicationException();
-          $x->read($this->input_);
-          $this->input_->readMessageEnd();
-          throw $x;
-        }
-        $result = $result::withDefaultValues();
-        $result->read($this->input_);
-        $this->input_->readMessageEnd();
-        if ($expectedsequenceid !== null && ($rseqid !== $expectedsequenceid)) {
-          throw new \TProtocolException(
-            $name." failed: sequence id is out of order",
+        if ($this->input_ is TBinaryProtocolAccelerated) {
+          $result = thrift_protocol_read_binary(
+            $this->input_,
+            HH\class_to_classname($result),
+            $this->input_->isStrictRead(),
+            Shapes::idx($options, 'read_options', 0),
           );
+        } else if ($this->input_ is TCompactProtocolAccelerated) {
+          $result = thrift_protocol_read_compact(
+            $this->input_,
+            HH\class_to_classname($result),
+            Shapes::idx($options, 'read_options', 0),
+          );
+        } else {
+          $rseqid = 0;
+          $fname = '';
+          $mtype = 0;
+
+          $this->input_
+            ->readMessageBegin(inout $fname, inout $mtype, inout $rseqid);
+          if ($mtype === TMessageType::EXCEPTION) {
+            $x = new TApplicationException();
+            $x->read($this->input_);
+            $this->input_->readMessageEnd();
+            throw $x;
+          }
+          $result = $result::withDefaultValues();
+          $result->read($this->input_);
+          $this->input_->readMessageEnd();
+          if (
+            $expectedsequenceid !== null && ($rseqid !== $expectedsequenceid)
+          ) {
+            throw new TProtocolException(
+              $name." failed: sequence id is out of order",
+            );
+          }
         }
       }
     } catch (THandlerShortCircuitException $ex) {
@@ -266,7 +287,7 @@ abstract class ThriftClientBase implements IThriftClient {
           // this should just always be null in the ThriftSyncStructWithoutResult case
           return $ex->result;
       }
-    } catch (\Exception $ex) {
+    } catch (Exception $ex) {
       $this->eventHandler_->recvError($name, $expectedsequenceid, $ex);
       throw $ex;
     }
@@ -395,30 +416,40 @@ abstract class ThriftClientBase implements IThriftClient {
     $out_transport = $this->output_->getTransport();
     $in_transport = $this->input_->getTransport();
     invariant(
-      $channel !== null &&
-        $out_transport is \TMemoryBuffer &&
-        $in_transport is \TMemoryBuffer,
-      "Stream methods require nonnull channel and TMemoryBuffer transport",
+      $out_transport is TMemoryBuffer && $in_transport is TMemoryBuffer,
+      "Stream methods require TMemoryBuffer transport",
     );
-    $msg = $out_transport->getBuffer();
-    $out_transport->resetBuffer();
-    list($result_msg, $_read_headers, $stream) =
-      await $channel->genSendRequestStreamResponse($rpc_options, $msg);
-    $disable16kblimit = $this->config_?->getStreamDisable16KBLimit() ?? false;
-    if ($disable16kblimit) {
-      $stream->disable16KBBufferingPolicy();
-    }
+    $decoder = ThriftStreamingSerializationHelpers::decodeStreamHelper(
+      $stream_response_type,
+      $name,
+      $this->input_,
+      $options,
+    );
 
-    $stream_gen = $stream->gen<TStreamType>(
-      ThriftStreamingSerializationHelpers::decodeStreamHelper(
-        $stream_response_type,
-        $name,
-        $this->input_,
-        $options,
-      ),
-    );
-    $in_transport->resetBuffer();
-    $in_transport->write($result_msg);
+    if ($channel !== null) {
+      $msg = $out_transport->getBuffer();
+      $out_transport->resetBuffer();
+      list($result_msg, $_read_headers, $stream) =
+        await $channel->genSendRequestStreamResponse($rpc_options, $msg);
+      $disable16kblimit = $this->config_?->getStreamDisable16KBLimit() ?? false;
+      if ($disable16kblimit) {
+        $stream->disable16KBBufferingPolicy();
+      }
+
+      $stream_gen = $stream->gen<TStreamType>($decoder);
+      $in_transport->resetBuffer();
+      $in_transport->write($result_msg);
+    } else {
+      $raw_stream = await $this->asyncHandler_
+        ->genWaitStream($expectedsequenceid);
+      $stream_gen = (
+        async function() use ($raw_stream, $decoder) {
+          foreach ($raw_stream await as $raw_payload) {
+            yield $decoder($raw_payload, null);
+          }
+        }
+      )();
+    }
     $first_response = $this->recvImplHelper(
       $first_response_type,
       $name,
@@ -458,16 +489,9 @@ abstract class ThriftClientBase implements IThriftClient {
     $out_transport = $this->output_->getTransport();
     $in_transport = $this->input_->getTransport();
     invariant(
-      $channel !== null &&
-        $out_transport is \TMemoryBuffer &&
-        $in_transport is \TMemoryBuffer,
-      "Sink methods require nonnull channel and TMemoryBuffer transport",
+      $out_transport is TMemoryBuffer && $in_transport is TMemoryBuffer,
+      "Sink methods require MemoryBuffer transport",
     );
-
-    $msg = $out_transport->getBuffer();
-    $out_transport->resetBuffer();
-    list($result_msg, $_read_headers, $sink) =
-      await $channel->genSendRequestSink($rpc_options, $msg);
 
     $payload_serializer =
       ThriftStreamingSerializationHelpers::encodeStreamHelper(
@@ -480,18 +504,42 @@ abstract class ThriftClientBase implements IThriftClient {
         $name,
         $this->input_,
       );
-    $client_sink_func = async function(
-      AsyncGenerator<null, TSinkType, void> $pld_generator,
-    ) use ($sink, $payload_serializer, $final_response_deserializer) {
-      return await $sink->genSink<TSinkType, TSinkFinalType>(
-        $pld_generator,
-        $payload_serializer,
-        $final_response_deserializer,
-      );
-    };
 
-    $in_transport->resetBuffer();
-    $in_transport->write($result_msg);
+    if ($channel !== null) {
+      $msg = $out_transport->getBuffer();
+      $out_transport->resetBuffer();
+      list($result_msg, $_read_headers, $sink) =
+        await $channel->genSendRequestSink($rpc_options, $msg);
+      $client_sink_func = async function(
+        AsyncGenerator<null, TSinkType, void> $pld_generator,
+      ) use ($sink, $payload_serializer, $final_response_deserializer) {
+        return await $sink->genSink<TSinkType, TSinkFinalType>(
+          $pld_generator,
+          $payload_serializer,
+          $final_response_deserializer,
+        );
+      };
+
+      $in_transport->resetBuffer();
+      $in_transport->write($result_msg);
+    } else {
+      $sink_fn = await $this->asyncHandler_->genWaitSink($expectedsequenceid);
+      $client_sink_func = async function(
+        AsyncGenerator<null, TSinkType, void> $pld_generator,
+      ) use ($sink_fn, $payload_serializer, $final_response_deserializer) {
+        $raw_gen = (
+          async function() use ($pld_generator, $payload_serializer) {
+            foreach ($pld_generator await as $payload) {
+              list($raw_bytes, $_is_app_ex) =
+                $payload_serializer($payload, null);
+              yield $raw_bytes;
+            }
+          }
+        )();
+        $final_raw = await $sink_fn($raw_gen);
+        return $final_response_deserializer($final_raw, null);
+      };
+    }
     $first_response = $this->recvImplHelper(
       $first_response_type,
       $name,
@@ -502,7 +550,7 @@ abstract class ThriftClientBase implements IThriftClient {
 
     await $this->asyncHandler_
       ->genAfter<TSinkFirstType>($name, $first_response);
-    return new \ResponseAndSink<TSinkFirstType, TSinkType, TSinkFinalType>(
+    return new ResponseAndSink<TSinkFirstType, TSinkType, TSinkFinalType>(
       $first_response,
       $client_sink_func,
     );

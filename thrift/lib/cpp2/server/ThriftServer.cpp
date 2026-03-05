@@ -91,6 +91,7 @@ FOLLY_GFLAGS_DEFINE_bool(
 
 THRIFT_FLAG_DEFINE_bool(server_enable_stoptls, false);
 THRIFT_FLAG_DEFINE_bool(server_enable_stoptlsv2, false);
+THRIFT_FLAG_DEFINE_string(server_fizz_psp_policy, "disabled");
 
 THRIFT_FLAG_DEFINE_bool(dump_snapshot_on_long_shutdown, true);
 
@@ -2232,25 +2233,33 @@ folly::SemiFuture<ThriftServer::ServerSnapshot> ThriftServer::getServerSnapshot(
           // ConnectionManager can be nullptr if the worker didn't have any
           // open connections during shutdown
           if (auto connectionManager = worker->getConnectionManager()) {
-            connectionManager->forEachConnection([&](wangle::ManagedConnection*
-                                                         wangleConnection) {
-              if (auto managedConnection =
-                      dynamic_cast<ManagedConnectionIf*>(wangleConnection)) {
-                auto numActiveRequests =
-                    managedConnection->getNumActiveRequests();
-                auto numPendingWrites =
-                    managedConnection->getNumPendingWrites();
-                auto creationTime = managedConnection->getCreationTime();
-                auto minCreationTime = snapshotTime - options.connectionsAgeMax;
-                if (numActiveRequests > 0 || numPendingWrites > 0 ||
-                    creationTime > minCreationTime) {
-                  connectionSnapshots.emplace(
-                      managedConnection->getPeerAddress(),
-                      ConnectionSnapshot{
-                          numActiveRequests, numPendingWrites, creationTime});
-                }
-              }
-            });
+            connectionManager->forEachConnection(
+                [&](wangle::ManagedConnection* wangleConnection) {
+                  if (auto managedConnection =
+                          dynamic_cast<ManagedConnectionIf*>(
+                              wangleConnection)) {
+                    auto numActiveRequests =
+                        managedConnection->getNumActiveRequests();
+                    auto numPendingWrites =
+                        managedConnection->getNumPendingWrites();
+                    auto creationTime = managedConnection->getCreationTime();
+                    auto minCreationTime =
+                        snapshotTime - options.connectionsAgeMax;
+                    auto interactions =
+                        managedConnection->getInteractionSnapshots();
+                    if (numActiveRequests > 0 || numPendingWrites > 0 ||
+                        creationTime > minCreationTime ||
+                        !interactions.empty()) {
+                      connectionSnapshots.emplace(
+                          managedConnection->getPeerAddress(),
+                          ConnectionSnapshot{
+                              numActiveRequests,
+                              numPendingWrites,
+                              creationTime,
+                              std::move(interactions)});
+                    }
+                  }
+                });
           }
 
           ServerIOMemory serverIOMemory;
@@ -2336,6 +2345,26 @@ folly::observer::Observer<bool> ThriftServer::enableStopTLSV2() {
 
 folly::observer::Observer<bool> ThriftServer::enableReceivingDelegatedCreds() {
   return THRIFT_FLAG_OBSERVE(server_fizz_enable_receiving_dc);
+}
+
+static folly::Optional<PSPUpgradePolicy> parsePSPPolicy(std::string_view s) {
+  if (s == "disabled") {
+    return PSPUpgradePolicy::DISABLED;
+  } else if (s == "always") {
+    return PSPUpgradePolicy::ALWAYS;
+  }
+  return folly::none;
+}
+folly::observer::Observer<PSPUpgradePolicy> ThriftServer::pspUpgradePolicy() {
+  return folly::observer::makeObserver([] {
+    auto flagObserver = THRIFT_FLAG_OBSERVE(server_fizz_psp_policy);
+    auto parsed = parsePSPPolicy(**flagObserver);
+    if (!parsed.has_value()) {
+      LOG(WARNING) << "Invalid or malformed server_fizz_psp_policy.";
+      return PSPUpgradePolicy::DISABLED;
+    }
+    return *parsed;
+  });
 }
 
 folly::observer::CallbackHandle ThriftServer::getSSLCallbackHandle() {

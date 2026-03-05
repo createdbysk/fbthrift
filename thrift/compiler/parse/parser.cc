@@ -223,6 +223,7 @@ class parser {
 
   // namespace: "namespace" identifier (identifier | string_literal) [";"]
   void parse_namespace() {
+    auto range = track_range();
     assert(token_.kind == tok::kw_namespace);
     consume_token();
     auto language = parse_identifier();
@@ -230,7 +231,7 @@ class parser {
         ? lex_string_literal(consume_token())
         : fmt::to_string(parse_identifier().str);
     try_consume_token(';');
-    return actions_.on_namespace(language, ns);
+    return actions_.on_namespace(range, language, ns);
   }
 
   // definition:
@@ -995,6 +996,13 @@ class parser {
     auto map = actions_.on_map_initializer();
     while (token_.kind != '}') {
       auto key = parse_initializer();
+      if (token_.kind == ',' || token_.kind == '}') {
+        // It's intuitive to think sets are declared with curly braces. Ensure
+        // an insightful error to correct this is returned
+        report_error(
+            "Curly braces {{}} are for map initializers. Use square braces [] for list/set initializers");
+        throw parse_error();
+      }
       expect_and_consume(':');
       auto value = parse_initializer();
       map->add_map(std::move(key), std::move(value));

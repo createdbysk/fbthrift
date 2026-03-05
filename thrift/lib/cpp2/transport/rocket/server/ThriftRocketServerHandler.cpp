@@ -26,8 +26,10 @@
 #include <folly/Overload.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/stop_watch.h>
 
 #include <thrift/lib/cpp/TApplicationException.h>
+#include <thrift/lib/cpp/util/EnumUtils.h>
 #include <thrift/lib/cpp2/Flags.h>
 #include <thrift/lib/cpp2/async/ResponseChannel.h>
 #include <thrift/lib/cpp2/server/Cpp2ConnContext.h>
@@ -57,6 +59,8 @@ const int64_t kRocketServerMinVersion = 8;
 
 THRIFT_FLAG_DEFINE_bool(rocket_server_legacy_protocol_key, true);
 THRIFT_FLAG_DEFINE_int64(rocket_server_max_version, kRocketServerMaxVersion);
+THRIFT_FLAG_DEFINE_bool(client_authwall_server_enabled, false);
+THRIFT_FLAG_DEFINE_bool(client_authwall_server_enabled_logging, false);
 
 namespace apache::thrift::rocket {
 
@@ -297,6 +301,33 @@ void ThriftRocketServerHandler::handleSetupFrame(
     serverMeta.set_setupResponse();
     serverMeta.setupResponse()->version() = version_;
     serverMeta.setupResponse()->zstdSupported() = true;
+
+    if (THRIFT_FLAG(client_authwall_server_enabled)) {
+      if (auto securityPolicy =
+              apache::thrift::detail::getConnectionSecurityPolicy(
+                  connContext_)) {
+        // log the security policy to scuba dataset thrift_connection_events
+        // it has to be used for debug purposes
+        if (THRIFT_FLAG(client_authwall_server_enabled_logging)) {
+          THRIFT_CONNECTION_EVENT(thrift.security.policy)
+              .log(connContext_, [&] {
+                auto authorizationStr =
+                    securityPolicy->authorization().has_value()
+                    ? apache::thrift::util::enumNameSafe(
+                          *securityPolicy->authorization())
+                    : "UNDEFINED";
+                auto authWallStr = securityPolicy->authWall().has_value()
+                    ? apache::thrift::util::enumNameSafe(
+                          *securityPolicy->authWall())
+                    : "UNDEFINED";
+                return folly::dynamic::object(
+                    "authorization", authorizationStr)("authWall", authWallStr);
+              });
+        }
+        serverMeta.setupResponse()->securityPolicy() =
+            std::move(*securityPolicy);
+      }
+    }
 
     if (auto ref = meta.compressionSetupRequest()) {
       auto compressionSetupRes =
@@ -1068,6 +1099,7 @@ void ThriftRocketServerHandler::invokeServiceInterceptorsOnConnectionAttempted(
   const auto& serviceInterceptors = server->getServiceInterceptors();
   std::vector<std::pair<std::size_t, std::exception_ptr>> exceptions;
 
+  folly::stop_watch<std::chrono::microseconds> totalTimer;
   for (std::size_t i = 0; i < serviceInterceptors.size(); ++i) {
     ServiceInterceptorBase::ConnectionInfo connectionInfo{
         &connContext_,
@@ -1079,6 +1111,8 @@ void ThriftRocketServerHandler::invokeServiceInterceptorsOnConnectionAttempted(
       exceptions.emplace_back(i, folly::current_exception());
     }
   }
+  server->getInterceptorMetricCallback().onConnectionAttemptedTotalComplete(
+      totalTimer.elapsed());
   if (!exceptions.empty()) {
     std::string message = fmt::format(
         "ServiceInterceptor::onConnectionAttempted threw exceptions:\n[{}] {}\n",
@@ -1106,6 +1140,7 @@ void ThriftRocketServerHandler::
   std::vector<std::pair<std::size_t, std::exception_ptr>> exceptions;
   didExecuteServiceInterceptorsOnConnection_ = true;
 
+  folly::stop_watch<std::chrono::microseconds> totalTimer;
   for (std::size_t i = 0; i < serviceInterceptors.size(); ++i) {
     ServiceInterceptorBase::ConnectionInfo connectionInfo{
         &connContext_,
@@ -1117,6 +1152,8 @@ void ThriftRocketServerHandler::
       exceptions.emplace_back(i, folly::current_exception());
     }
   }
+  server->getInterceptorMetricCallback().onConnectionTotalComplete(
+      totalTimer.elapsed());
   if (!exceptions.empty()) {
     std::string message = fmt::format(
         "ServiceInterceptor::onConnectionEstablished threw exceptions:\n[{}] {}\n",
@@ -1141,6 +1178,7 @@ void ThriftRocketServerHandler::
   if (didExecuteServiceInterceptorsOnConnection_) {
     auto* server = worker_->getServer();
     const auto& serviceInterceptors = server->getServiceInterceptors();
+    folly::stop_watch<std::chrono::microseconds> totalTimer;
     for (std::size_t i = 0; i < serviceInterceptors.size(); ++i) {
       ServiceInterceptorBase::ConnectionInfo connectionInfo{
           &connContext_,
@@ -1149,6 +1187,8 @@ void ThriftRocketServerHandler::
       serviceInterceptors[i]->internal_onConnectionClosed(
           connectionInfo, server->getInterceptorMetricCallback());
     }
+    server->getInterceptorMetricCallback().onConnectionClosedTotalComplete(
+        totalTimer.elapsed());
   }
 #endif // FOLLY_HAS_COROUTINES
 }

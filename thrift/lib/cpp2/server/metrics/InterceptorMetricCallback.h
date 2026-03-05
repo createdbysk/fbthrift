@@ -79,6 +79,84 @@ class InterceptorMetricCallback {
   virtual void onConnectionClosedComplete(
       const ServiceInterceptorQualifiedName& qualifiedName,
       std::chrono::microseconds onConnectionClosedDuration) = 0;
+
+  // ============ Stream Metrics ============
+
+  /**
+   * Records the completion of a single interceptor's onStreamBegin call.
+   */
+  virtual void onStreamBeginComplete(
+      const ServiceInterceptorQualifiedName& qualifiedName,
+      std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the completion of a single interceptor's onStreamPayload call.
+   */
+  virtual void onStreamPayloadComplete(
+      const ServiceInterceptorQualifiedName& qualifiedName,
+      std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the completion of a single interceptor's onStreamEnd call.
+   */
+  virtual void onStreamEndComplete(
+      const ServiceInterceptorQualifiedName& qualifiedName,
+      std::chrono::microseconds duration) = 0;
+
+  // ============ Total (all-interceptors) Metrics ============
+
+  /**
+   * Records the total combined latency of invoking all interceptors'
+   * onRequest calls.
+   */
+  virtual void onRequestTotalComplete(std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the total combined latency of invoking all interceptors'
+   * onResponse calls.
+   */
+  virtual void onResponseTotalComplete(std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the total combined latency of invoking all interceptors'
+   * onConnectionAttempted calls.
+   */
+  virtual void onConnectionAttemptedTotalComplete(
+      std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the total combined latency of invoking all interceptors'
+   * onConnectionEstablished calls.
+   */
+  virtual void onConnectionTotalComplete(
+      std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the total combined latency of invoking all interceptors'
+   * onConnectionClosed calls.
+   */
+  virtual void onConnectionClosedTotalComplete(
+      std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the total combined latency of invoking all interceptors'
+   * onStreamBegin calls.
+   */
+  virtual void onStreamBeginTotalComplete(
+      std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the total combined latency of invoking all interceptors'
+   * onStreamPayload calls.
+   */
+  virtual void onStreamPayloadTotalComplete(
+      std::chrono::microseconds duration) = 0;
+
+  /**
+   * Records the total combined latency of invoking all interceptors'
+   * onStreamEnd calls.
+   */
+  virtual void onStreamEndTotalComplete(std::chrono::microseconds duration) = 0;
 };
 
 class NoopInterceptorMetricCallback : public InterceptorMetricCallback {
@@ -102,6 +180,27 @@ class NoopInterceptorMetricCallback : public InterceptorMetricCallback {
   void onConnectionClosedComplete(
       const ServiceInterceptorQualifiedName&, std::chrono::microseconds) final {
   }
+
+  void onStreamBeginComplete(
+      const ServiceInterceptorQualifiedName&, std::chrono::microseconds) final {
+  }
+
+  void onStreamPayloadComplete(
+      const ServiceInterceptorQualifiedName&, std::chrono::microseconds) final {
+  }
+
+  void onStreamEndComplete(
+      const ServiceInterceptorQualifiedName&, std::chrono::microseconds) final {
+  }
+
+  void onRequestTotalComplete(std::chrono::microseconds) final {}
+  void onResponseTotalComplete(std::chrono::microseconds) final {}
+  void onConnectionAttemptedTotalComplete(std::chrono::microseconds) final {}
+  void onConnectionTotalComplete(std::chrono::microseconds) final {}
+  void onConnectionClosedTotalComplete(std::chrono::microseconds) final {}
+  void onStreamBeginTotalComplete(std::chrono::microseconds) final {}
+  void onStreamPayloadTotalComplete(std::chrono::microseconds) final {}
+  void onStreamEndTotalComplete(std::chrono::microseconds) final {}
 };
 
 } // namespace apache::thrift

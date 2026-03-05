@@ -35,6 +35,7 @@ type MyInteraction interface {
     Frobnicate(ctx context.Context) (int32, error)
     Ping(ctx context.Context) (error)
     Truthify(ctx context.Context) (func(context.Context, chan<- bool) error, error)
+    Encode(ctx context.Context) ([]int32, func(context.Context, iter.Seq2[string, error]) ([]byte, error), error)
 }
 
 type MyInteractionClient interface {
@@ -42,6 +43,7 @@ type MyInteractionClient interface {
     Frobnicate(ctx context.Context) (int32, error)
     Ping(ctx context.Context) (error)
     Truthify(ctx context.Context) (iter.Seq2[bool, error], error)
+    Encode(ctx context.Context) ([]int32, func(iter.Seq2[string, error]) ([]byte, error), error)
 }
 
 type myInteractionClientImpl struct {
@@ -77,8 +79,6 @@ func (c *myInteractionClientImpl) Frobnicate(ctx context.Context) (int32, error)
     )
     if fbthriftErr != nil {
         return 0, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return 0, fbthriftEx
     }
     return fbthriftResp.GetSuccess(), nil
 }
@@ -116,9 +116,6 @@ func (c *myInteractionClientImpl) Truthify(ctx context.Context) (iter.Seq2[bool,
     if fbthriftErr != nil {
         fbthriftStreamCancel()
         return nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        fbthriftStreamCancel()
-        return nil, fbthriftEx
     }
     fbthriftStreamSeqAdapter := func(yield func(bool, error) bool) {
         for elem, err := range fbthriftStreamSeq {
@@ -133,6 +130,51 @@ func (c *myInteractionClientImpl) Truthify(ctx context.Context) (iter.Seq2[bool,
         }
     }
     return fbthriftStreamSeqAdapter, nil
+}
+
+func (c *myInteractionClientImpl) Encode(ctx context.Context) ([]int32, func(iter.Seq2[string, error]) ([]byte, error), error) {
+    var fbthriftFirstRespZero []int32
+    fbthriftReq := &reqMyInteractionEncode{
+    }
+    fbthriftFirstResp := newRespMyInteractionEncode()
+
+    fbthriftChannel := c.ch
+
+    fbthriftSinkFn, fbthriftErr := fbthriftChannel.SendRequestSink(
+        ctx,
+        "MyInteraction.encode",
+        fbthriftReq,
+        fbthriftFirstResp,
+    )
+    if fbthriftErr != nil {
+        return fbthriftFirstRespZero, nil, fbthriftErr
+    }
+
+    fbthriftSinkCallback := func(elemSeq iter.Seq2[string, error]) ([]byte, error) {
+        sinkPayloadSeq := func(yield func(thrift.WritableResult, error) bool) {
+            for elem, err := range elemSeq {
+                sinkPayload := newSinkMyInteractionEncode()
+                if err != nil {
+                    yield(nil, err)
+                    return
+                }
+                sinkPayload.Success = &elem
+                if !yield(sinkPayload, nil) {
+                    return
+                }
+            }
+        }
+        fbthriftFinalResp := newRespFinalMyInteractionEncode()
+        fbthriftFinalErr := fbthriftSinkFn(sinkPayloadSeq, fbthriftFinalResp)
+        if fbthriftFinalErr != nil {
+            return nil, fbthriftFinalErr
+        } else if fbthriftFinalEx := fbthriftFinalResp.Exception(); fbthriftFinalEx != nil {
+            return nil, fbthriftFinalEx
+        }
+        return fbthriftFinalResp.GetSuccess(), nil
+    }
+
+    return fbthriftFirstResp.GetSuccess(), fbthriftSinkCallback, nil
 }
 
 
@@ -151,9 +193,11 @@ func NewMyInteractionProcessor(handler MyInteraction) *MyInteractionProcessor {
     p.AddToProcessorFunctionMap("MyInteraction.frobnicate", &procFuncMyInteractionFrobnicate{handler: handler})
     p.AddToProcessorFunctionMap("MyInteraction.ping", &procFuncMyInteractionPing{handler: handler})
     p.AddToProcessorFunctionMap("MyInteraction.truthify", &procFuncMyInteractionTruthify{handler: handler})
+    p.AddToProcessorFunctionMap("MyInteraction.encode", &procFuncMyInteractionEncode{handler: handler})
     p.AddToFunctionServiceMap("MyInteraction.frobnicate", "MyInteraction")
     p.AddToFunctionServiceMap("MyInteraction.ping", "MyInteraction")
     p.AddToFunctionServiceMap("MyInteraction.truthify", "MyInteraction")
+    p.AddToFunctionServiceMap("MyInteraction.encode", "MyInteraction")
 
     return p
 }
@@ -299,6 +343,24 @@ func (p *procFuncMyInteractionTruthify) RunStreamContext(
     onStreamComplete()
 }
 
+type procFuncMyInteractionEncode struct {
+    handler MyInteraction
+}
+// Compile time interface enforcer
+var _ thrift.ProcessorFunction = (*procFuncMyInteractionEncode)(nil)
+
+func (p *procFuncMyInteractionEncode) NewReqArgs() thrift.ReadableStruct {
+    return newReqMyInteractionEncode()
+}
+
+func (p *procFuncMyInteractionEncode) RunContext(ctx context.Context, reqStruct thrift.ReadableStruct) (thrift.WritableStruct, error) {
+    return nil, errors.New("not supported")
+}
+
+func (p *procFuncMyInteractionEncode) RunStreamContext(ctx context.Context) {
+    // NOT IMPLEMENTED
+}
+
 func (p *MyInteractionProcessor) OnTermination() {
     // If the underlying handler implements OnTermination()
     if terminable, ok := p.handler.(thrift.Terminable); ok {
@@ -310,6 +372,7 @@ type MyInteractionFast interface {
     Frobnicate(ctx context.Context) (int32, error)
     Ping(ctx context.Context) (error)
     Truthify(ctx context.Context) (func(context.Context, chan<- bool) error, error)
+    Encode(ctx context.Context) ([]int32, func(context.Context, iter.Seq2[string, error]) ([]byte, error), error)
 }
 
 type MyInteractionFastClient interface {
@@ -317,6 +380,7 @@ type MyInteractionFastClient interface {
     Frobnicate(ctx context.Context) (int32, error)
     Ping(ctx context.Context) (error)
     Truthify(ctx context.Context) (iter.Seq2[bool, error], error)
+    Encode(ctx context.Context) ([]int32, func(iter.Seq2[string, error]) ([]byte, error), error)
 }
 
 type myInteractionFastClientImpl struct {
@@ -352,8 +416,6 @@ func (c *myInteractionFastClientImpl) Frobnicate(ctx context.Context) (int32, er
     )
     if fbthriftErr != nil {
         return 0, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return 0, fbthriftEx
     }
     return fbthriftResp.GetSuccess(), nil
 }
@@ -391,9 +453,6 @@ func (c *myInteractionFastClientImpl) Truthify(ctx context.Context) (iter.Seq2[b
     if fbthriftErr != nil {
         fbthriftStreamCancel()
         return nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        fbthriftStreamCancel()
-        return nil, fbthriftEx
     }
     fbthriftStreamSeqAdapter := func(yield func(bool, error) bool) {
         for elem, err := range fbthriftStreamSeq {
@@ -408,6 +467,51 @@ func (c *myInteractionFastClientImpl) Truthify(ctx context.Context) (iter.Seq2[b
         }
     }
     return fbthriftStreamSeqAdapter, nil
+}
+
+func (c *myInteractionFastClientImpl) Encode(ctx context.Context) ([]int32, func(iter.Seq2[string, error]) ([]byte, error), error) {
+    var fbthriftFirstRespZero []int32
+    fbthriftReq := &reqMyInteractionFastEncode{
+    }
+    fbthriftFirstResp := newRespMyInteractionFastEncode()
+
+    fbthriftChannel := c.ch
+
+    fbthriftSinkFn, fbthriftErr := fbthriftChannel.SendRequestSink(
+        ctx,
+        "MyInteractionFast.encode",
+        fbthriftReq,
+        fbthriftFirstResp,
+    )
+    if fbthriftErr != nil {
+        return fbthriftFirstRespZero, nil, fbthriftErr
+    }
+
+    fbthriftSinkCallback := func(elemSeq iter.Seq2[string, error]) ([]byte, error) {
+        sinkPayloadSeq := func(yield func(thrift.WritableResult, error) bool) {
+            for elem, err := range elemSeq {
+                sinkPayload := newSinkMyInteractionFastEncode()
+                if err != nil {
+                    yield(nil, err)
+                    return
+                }
+                sinkPayload.Success = &elem
+                if !yield(sinkPayload, nil) {
+                    return
+                }
+            }
+        }
+        fbthriftFinalResp := newRespFinalMyInteractionFastEncode()
+        fbthriftFinalErr := fbthriftSinkFn(sinkPayloadSeq, fbthriftFinalResp)
+        if fbthriftFinalErr != nil {
+            return nil, fbthriftFinalErr
+        } else if fbthriftFinalEx := fbthriftFinalResp.Exception(); fbthriftFinalEx != nil {
+            return nil, fbthriftFinalEx
+        }
+        return fbthriftFinalResp.GetSuccess(), nil
+    }
+
+    return fbthriftFirstResp.GetSuccess(), fbthriftSinkCallback, nil
 }
 
 
@@ -426,9 +530,11 @@ func NewMyInteractionFastProcessor(handler MyInteractionFast) *MyInteractionFast
     p.AddToProcessorFunctionMap("MyInteractionFast.frobnicate", &procFuncMyInteractionFastFrobnicate{handler: handler})
     p.AddToProcessorFunctionMap("MyInteractionFast.ping", &procFuncMyInteractionFastPing{handler: handler})
     p.AddToProcessorFunctionMap("MyInteractionFast.truthify", &procFuncMyInteractionFastTruthify{handler: handler})
+    p.AddToProcessorFunctionMap("MyInteractionFast.encode", &procFuncMyInteractionFastEncode{handler: handler})
     p.AddToFunctionServiceMap("MyInteractionFast.frobnicate", "MyInteractionFast")
     p.AddToFunctionServiceMap("MyInteractionFast.ping", "MyInteractionFast")
     p.AddToFunctionServiceMap("MyInteractionFast.truthify", "MyInteractionFast")
+    p.AddToFunctionServiceMap("MyInteractionFast.encode", "MyInteractionFast")
 
     return p
 }
@@ -568,6 +674,24 @@ func (p *procFuncMyInteractionFastTruthify) RunStreamContext(
     onStreamComplete()
 }
 
+type procFuncMyInteractionFastEncode struct {
+    handler MyInteractionFast
+}
+// Compile time interface enforcer
+var _ thrift.ProcessorFunction = (*procFuncMyInteractionFastEncode)(nil)
+
+func (p *procFuncMyInteractionFastEncode) NewReqArgs() thrift.ReadableStruct {
+    return newReqMyInteractionFastEncode()
+}
+
+func (p *procFuncMyInteractionFastEncode) RunContext(ctx context.Context, reqStruct thrift.ReadableStruct) (thrift.WritableStruct, error) {
+    return nil, errors.New("not supported")
+}
+
+func (p *procFuncMyInteractionFastEncode) RunStreamContext(ctx context.Context) {
+    // NOT IMPLEMENTED
+}
+
 func (p *MyInteractionFastProcessor) OnTermination() {
     // If the underlying handler implements OnTermination()
     if terminable, ok := p.handler.(thrift.Terminable); ok {
@@ -617,8 +741,6 @@ func (c *serialInteractionClientImpl) Frobnicate(ctx context.Context) (error) {
     )
     if fbthriftErr != nil {
         return fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return fbthriftEx
     }
     return nil
 }
@@ -746,8 +868,6 @@ func (c *boxedInteractionClientImpl) GetABox(ctx context.Context) (*ShouldBeBoxe
     )
     if fbthriftErr != nil {
         return nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return nil, fbthriftEx
     }
     return fbthriftResp.GetSuccess(), nil
 }
@@ -883,8 +1003,6 @@ func (c *myServiceClientImpl) Foo(ctx context.Context) (error) {
     )
     if fbthriftErr != nil {
         return fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return fbthriftEx
     }
     return nil
 }
@@ -904,8 +1022,6 @@ func (c *myServiceClientImpl) Interact(ctx context.Context, arg int32) (MyIntera
     )
     if fbthriftErr != nil {
         return nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return nil, fbthriftEx
     }
     return fbthriftInteractionClient, nil
 }
@@ -924,8 +1040,6 @@ func (c *myServiceClientImpl) InteractFast(ctx context.Context) (MyInteractionFa
     )
     if fbthriftErr != nil {
         return nil, 0, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return nil, 0, fbthriftEx
     }
     return fbthriftInteractionClient, fbthriftResp.GetSuccess(), nil
 }
@@ -959,9 +1073,6 @@ func (c *myServiceClientImpl) Serialize(ctx context.Context) (SerialInteractionC
     if fbthriftErr != nil {
         fbthriftStreamCancel()
         return nil, fbthriftRespZero, nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        fbthriftStreamCancel()
-        return nil, fbthriftRespZero, nil, fbthriftEx
     }
     fbthriftStreamSeqAdapter := func(yield func(int32, error) bool) {
         for elem, err := range fbthriftStreamSeq {
@@ -1218,8 +1329,6 @@ func (c *factoriesClientImpl) Foo(ctx context.Context) (error) {
     )
     if fbthriftErr != nil {
         return fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return fbthriftEx
     }
     return nil
 }
@@ -1239,8 +1348,6 @@ func (c *factoriesClientImpl) Interact(ctx context.Context, arg int32) (MyIntera
     )
     if fbthriftErr != nil {
         return nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return nil, fbthriftEx
     }
     return fbthriftInteractionClient, nil
 }
@@ -1259,8 +1366,6 @@ func (c *factoriesClientImpl) InteractFast(ctx context.Context) (MyInteractionFa
     )
     if fbthriftErr != nil {
         return nil, 0, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return nil, 0, fbthriftEx
     }
     return fbthriftInteractionClient, fbthriftResp.GetSuccess(), nil
 }
@@ -1294,9 +1399,6 @@ func (c *factoriesClientImpl) Serialize(ctx context.Context) (SerialInteractionC
     if fbthriftErr != nil {
         fbthriftStreamCancel()
         return nil, fbthriftRespZero, nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        fbthriftStreamCancel()
-        return nil, fbthriftRespZero, nil, fbthriftEx
     }
     fbthriftStreamSeqAdapter := func(yield func(int32, error) bool) {
         for elem, err := range fbthriftStreamSeq {
@@ -1547,8 +1649,6 @@ func (c *performClientImpl) Foo(ctx context.Context) (error) {
     )
     if fbthriftErr != nil {
         return fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return fbthriftEx
     }
     return nil
 }
@@ -1673,8 +1773,6 @@ func (c *interactWithSharedClientImpl) DoSomeSimilarThings(ctx context.Context) 
     )
     if fbthriftErr != nil {
         return nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return nil, fbthriftEx
     }
     return fbthriftResp.GetSuccess(), nil
 }
@@ -1801,8 +1899,6 @@ func (c *boxServiceClientImpl) GetABoxSession(ctx context.Context, req *ShouldBe
     )
     if fbthriftErr != nil {
         return nil, nil, fbthriftErr
-    } else if fbthriftEx := fbthriftResp.Exception(); fbthriftEx != nil {
-        return nil, nil, fbthriftEx
     }
     return fbthriftInteractionClient, fbthriftResp.GetSuccess(), nil
 }

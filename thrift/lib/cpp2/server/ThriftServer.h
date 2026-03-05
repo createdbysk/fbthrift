@@ -90,6 +90,7 @@
 #include <thrift/lib/cpp2/server/ThriftServerConfig.h>
 #include <thrift/lib/cpp2/server/TransportRoutingHandler.h>
 #include <thrift/lib/cpp2/server/metrics/InterceptorMetricCallback.h>
+#include <thrift/lib/cpp2/transport/core/ManagedConnectionIf.h>
 #include <thrift/lib/cpp2/transport/rocket/RequestPayload.h>
 #include <thrift/lib/cpp2/transport/rocket/Types.h>
 #include <thrift/lib/cpp2/transport/rocket/framing/parser/AllocatingParserStrategy.h>
@@ -129,9 +130,19 @@ class ThriftServerInternals;
 }
 namespace rocket {
 class ThriftRocketServerHandler;
-}
+class RocketRequestHandler;
+} // namespace rocket
 
 enum class SSLPolicy { DISABLED, PERMITTED, REQUIRED };
+
+enum class PSPUpgradePolicy {
+  // Server will refuse to negotiate PSP
+  DISABLED,
+
+  // Server will always accept PSP upgrade requests. This will result in
+  // fatal connection errors if this runs on unsupported hardware.
+  ALWAYS,
+};
 
 enum class EffectiveTicketSeedStrategy {
   IN_MEMORY,
@@ -147,6 +158,7 @@ class ThriftTlsConfig : public wangle::CustomConfig {
   bool enableThriftParamsNegotiation{true};
   bool enableStopTLS{false};
   bool enableStopTLSV2{false};
+  folly::Optional<PSPUpgradePolicy> pspUpgradePolicy;
 };
 
 class TLSCredentialWatcher {
@@ -2012,6 +2024,8 @@ class ThriftServer : public apache::thrift::concurrency::Runnable,
   friend class Cpp2Connection;
   friend class Cpp2Worker;
   friend class rocket::ThriftRocketServerHandler;
+  friend class rocket::RocketRequestHandler;
+  friend class rocket::RefactoredThriftRocketServerHandler;
   friend class ThriftQuicServer;
 
   bool tosReflect_{false};
@@ -2673,6 +2687,8 @@ class ThriftServer : public apache::thrift::concurrency::Runnable,
 
   static folly::observer::Observer<bool> enableStopTLSV2();
 
+  static folly::observer::Observer<PSPUpgradePolicy> pspUpgradePolicy();
+
   static folly::observer::Observer<bool> enableReceivingDelegatedCreds();
 
 #if FOLLY_HAS_COROUTINES
@@ -3199,6 +3215,7 @@ class ThriftServer : public apache::thrift::concurrency::Runnable,
     size_t numActiveRequests{0};
     size_t numPendingWrites{0};
     std::chrono::steady_clock::time_point creationTime;
+    std::vector<InteractionInfo> interactions;
   };
   using RequestSnapshots = std::vector<RequestSnapshot>;
   using ConnectionSnapshots =

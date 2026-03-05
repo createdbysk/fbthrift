@@ -19,6 +19,7 @@
 #include <optional>
 
 #include <folly/Overload.h>
+#include <folly/ScopeGuard.h>
 #include <folly/portability/GFlags.h>
 #include <thrift/lib/cpp2/op/Clear.h>
 #include <thrift/lib/cpp2/op/Patch.h>
@@ -129,11 +130,15 @@ std::unique_ptr<folly::IOBuf> applyToSerializedObjectImpl(
   using Writer = ProtocolWriterFor<Protocol>;
   DynamicCursorSerializationWrapper<Reader, Writer> inWrapper(std::move(buf));
   DynamicCursorSerializationWrapper<Reader, Writer> outWrapper;
-  auto reader = inWrapper.beginRead();
-  auto writer = outWrapper.beginWrite();
-  patch.applyAllFieldsInStream(badge, reader, writer);
-  inWrapper.endRead(std::move(reader));
-  outWrapper.endWrite(std::move(writer));
+  {
+    auto reader = inWrapper.beginRead();
+    auto writer = outWrapper.beginWrite();
+    auto guard = folly::makeGuard([&] {
+      inWrapper.endRead(std::move(reader));
+      outWrapper.endWrite(std::move(writer));
+    });
+    patch.applyAllFieldsInStream(badge, reader, writer);
+  }
   return std::move(outWrapper).serializedData();
 }
 } // namespace
@@ -1554,13 +1559,16 @@ void DiffVisitorBase::diffField(
     auto guard = folly::makeGuard([&] { pop(); });
     auto& field = dst.at(id);
 
-    // patch after
-    // We can't ensure the field because it will be ignored for non-optional
-    // field when applied statically.
+    // For non-optional fields (like in terse structs), ensure may be ignored
+    // during typed patch application. Use ensure + patchIfSet with Assign
+    // operation to make sure the value is actually set.
     auto empty = emptyValue(field.getType());
-    auto subPatch = diff(badge, empty, field);
     patch.ensure(id, std::move(empty));
-    patch.patchIfSet(id).merge(DynamicPatch{std::move(subPatch)});
+
+    Object assignPatch;
+    assignPatch[static_cast<FieldId>(op::PatchOp::Assign)] = field;
+    patch.patchIfSet(id).merge(
+        DynamicPatch::fromObject(std::move(assignPatch)));
     return;
   }
 
@@ -1936,9 +1944,8 @@ void DynamicSetPatch::apply(detail::Badge, ValueSet& v) const {
   return customVisit(Visitor{v});
 }
 
-template <class Other>
-detail::if_same_type_after_remove_cvref<Other, DynamicPatch>
-DynamicPatch::merge(Other&& other) {
+template <folly::uncvref_same_as<DynamicPatch> Other>
+void DynamicPatch::merge(Other&& other) {
   // If only one of the patch is Unknown patch, convert the Unknown patch type
   // to the known patch type.
   if (isPatchTypeAmbiguous() && !other.isPatchTypeAmbiguous()) {
@@ -2269,7 +2276,7 @@ void DynamicPatch::applyToDataFieldInsideAny(type::AnyStruct& any) const {
             .toThrift();
 }
 
-void DynamicPatch::applyObjectInAny(type::AnyStruct& any) const {
+void DynamicPatch::applyObjectInAny(detail::Badge, type::AnyStruct& any) const {
   if (any.protocol() == type::StandardProtocol::Binary) {
     any.data() = *applyToSerializedObjectWithoutExtractingMask<
         type::StandardProtocol::Binary>(*any.data());

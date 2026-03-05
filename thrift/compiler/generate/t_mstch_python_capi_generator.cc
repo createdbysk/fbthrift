@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-#include <algorithm>
 #include <filesystem>
-#include <iterator>
-#include <optional>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -30,10 +28,9 @@
 #include <thrift/compiler/generate/common.h>
 #include <thrift/compiler/generate/cpp/name_resolver.h>
 #include <thrift/compiler/generate/cpp/util.h>
-#include <thrift/compiler/generate/mstch_objects.h>
 #include <thrift/compiler/generate/python/util.h>
-#include <thrift/compiler/generate/t_mstch_generator.h>
-#include <thrift/compiler/whisker/mstch_compat.h>
+#include <thrift/compiler/generate/t_whisker_generator.h>
+#include <thrift/compiler/generate/templates.h>
 
 namespace apache::thrift::compiler {
 
@@ -307,411 +304,333 @@ std::string format_marshal_type_unadapted(
   return "";
 }
 
-class python_capi_mstch_program : public mstch_program {
+bool is_capi_eligible_type_annotation(const t_const* annotation) {
+  if (const auto* type_name =
+          annotation->get_value_from_structured_annotation_or_null("name")) {
+    return is_type_iobuf(type_name->get_string());
+  }
+  if (const auto* template_name =
+          annotation->get_value_from_structured_annotation_or_null(
+              "template")) {
+    return is_supported_template(template_name->get_string());
+  }
+  return false;
+}
+
+bool is_capi_eligible_type(const t_type* type) {
+  if (type->has_structured_annotation(kCppAdapterUri)) {
+    return false;
+  }
+
+  if (const auto* cpp_type_anno =
+          type->find_structured_annotation_or_null(kCppTypeUri)) {
+    if (!is_capi_eligible_type_annotation(cpp_type_anno)) {
+      return false;
+    }
+  }
+  // thrift currently lowers structured annotations to unstructured
+  // annotations so this will always be non-null if @cpp.Type annotation
+  // used on type or field
+  // TODO: delete these if structured annotation migration completed
+  if (const std::string* template_anno =
+          type->find_unstructured_annotation_or_null(
+              {"cpp.template", "cpp2.template"})) {
+    if (!is_supported_template(*template_anno)) {
+      return false;
+    }
+  }
+  if (const std::string* type_anno = type->find_unstructured_annotation_or_null(
+          {"cpp.type", "cpp2.type"})) {
+    return is_type_iobuf(*type_anno);
+  }
+  if (const t_list* list = type->try_as<t_list>();
+      list != nullptr && !is_capi_eligible_type(list->elem_type().get_type())) {
+    return false;
+  } else if (const t_set* set = type->try_as<t_set>(); set != nullptr &&
+             !is_capi_eligible_type(set->elem_type().get_type())) {
+    return false;
+  } else if (const t_map* map = type->try_as<t_map>(); map != nullptr &&
+             (!is_capi_eligible_type(&map->key_type().deref()) ||
+              !is_capi_eligible_type(&map->val_type().deref()))) {
+    return false;
+  }
+  if (const t_typedef* tdef = type->try_as<t_typedef>()) {
+    return is_capi_eligible_type(&tdef->type().deref());
+  }
+  return true;
+}
+
+bool is_capi_eligible_field(const t_field& field) {
+  if (field.has_structured_annotation(kCppAdapterUri)) {
+    return false;
+  }
+  if (const auto* cpp_type_anno =
+          field.find_structured_annotation_or_null(kCppTypeUri)) {
+    return is_capi_eligible_type_annotation(cpp_type_anno);
+  }
+  return true;
+}
+
+bool has_types(const t_program& program) {
+  return !program.structured_definitions().empty() || !program.enums().empty();
+}
+
+class python_capi_generator_context {
  public:
-  python_capi_mstch_program(
-      const t_program* p, mstch_context& ctx, mstch_element_position pos)
-      : mstch_program(p, ctx, pos) {
-    register_methods(
-        this,
-        {
-            {"program:capi_includes",
-             &python_capi_mstch_program::capi_includes},
-            {"program:capi_module_prefix",
-             &python_capi_mstch_program::capi_module_prefix},
-            {"program:cpp_namespaces",
-             &python_capi_mstch_program::get_cpp2_namespace},
-            {"program:generate_capi?",
-             &python_capi_mstch_program::has_types_node},
-            {"program:module_path", &python_capi_mstch_program::module_path},
-        });
-    has_marshal_types_ = check_has_marshal_types();
-    if (has_marshal_types_) {
-      gather_capi_includes();
-    }
-    visit_types_for_objects();
-    visit_types_for_typedefs();
+  python_capi_generator_context(
+      const t_program* root_program, bool serialize_python_capi)
+      : root_program_{root_program} {
+    has_marshal_types_ = !serialize_python_capi && has_types(*root_program);
   }
 
-  mstch::node has_types_node() { return has_types(); }
+  const std::set<std::string>& capi_includes() const { return capi_includes_; }
 
-  mstch::node capi_includes() {
-    mstch::array a;
-    a.reserve(capi_includes_.size());
-    for (const auto& it : capi_includes_) {
-      a.emplace_back(it.second.include_prefix);
-    }
-    std::sort(
-        a.begin(), a.end(), [](const mstch::node& m, const mstch::node& n) {
-          // We know the nodes are strings because `include_prefix` is a string
-          return std::get<std::string>(m) < std::get<std::string>(n);
-        });
-    return a;
-  }
-
-  mstch::node capi_module_prefix() { return gen_capi_module_prefix(program_); }
-
-  mstch::node module_path() {
-    return get_py3_namespace_with_name_and_prefix(
-        program_, get_option("root_module_prefix"));
-  }
-
-  mstch::node get_cpp2_namespace() {
-    return cpp2::get_gen_namespace(*program_);
-  }
-
- protected:
-  struct CapiInclude {
-    std::string include_prefix;
-  };
-
-  bool has_types() const {
-    return !program_->structured_definitions().empty() ||
-        !program_->enums().empty();
-  }
-
-  bool check_has_marshal_types() {
-    return has_types() && !has_option("serialize_python_capi");
-  }
-
-  void gather_capi_includes() {
-    for (const t_program* included_program :
-         program_->get_includes_for_codegen()) {
-      if (included_program->structured_definitions().empty() &&
-          included_program->enums().empty() &&
-          included_program->typedefs().empty()) {
-        continue;
-      }
-      capi_includes_[included_program->path()] = CapiInclude{
-          get_capi_include(included_program, program_),
-      };
-    }
-  }
-
-  void add_typedef_namespace(const t_type* type) {
-    auto prog = type->program();
-    if (prog && prog != program_) {
-      const auto& path = prog->path();
-      if (capi_includes_.find(path) != capi_includes_.end()) {
-        return;
-      }
-
-      if (has_marshal_types_) {
-        capi_includes_[prog->path()] =
-            CapiInclude{get_capi_include(prog, program_)};
-      }
-    }
-  }
-
-  // visit structs and exceptions
-  void visit_types_for_objects() {
-    for (const t_structured* object : program_->structured_definitions()) {
-      for (auto&& field : object->fields()) {
-        visit_type(field.type().get_type());
-      }
-    }
-  }
-
-  void visit_types_for_typedefs() {
-    for (const auto typedef_def : program_->typedefs()) {
-      visit_type(&typedef_def->type().deref());
-    }
-  }
-
-  enum TypeDef { NoTypedef, HasTypedef };
-
-  void visit_type(const t_type* orig_type) {
-    return visit_type_with_typedef(orig_type, TypeDef::NoTypedef);
-  }
-
-  void visit_type_with_typedef(const t_type* orig_type, TypeDef is_typedef) {
-    if (!seen_types_.insert(orig_type).second) {
+  void register_visitors(t_whisker_generator::context_visitor& visitor) {
+    if (!has_marshal_types_) {
       return;
     }
-    auto true_type = orig_type->get_true_type();
-    is_typedef = is_typedef == TypeDef::HasTypedef || orig_type->is<t_typedef>()
-        ? TypeDef::HasTypedef
-        : TypeDef::NoTypedef;
-    if (is_typedef == TypeDef::HasTypedef) {
-      add_typedef_namespace(true_type);
-    }
-    if (const t_list* list = true_type->try_as<t_list>()) {
-      visit_type_with_typedef(list->elem_type().get_type(), is_typedef);
-    } else if (const t_set* set = true_type->try_as<t_set>()) {
-      visit_type_with_typedef(set->elem_type().get_type(), is_typedef);
-    } else if (const t_map* map = true_type->try_as<t_map>()) {
-      visit_type_with_typedef(&map->key_type().deref(), is_typedef);
-      visit_type_with_typedef(&map->val_type().deref(), is_typedef);
-    }
-  }
 
-  std::unordered_map<std::string_view, CapiInclude> capi_includes_;
-  std::unordered_set<const t_type*> seen_types_;
-  bool has_marshal_types_ = false;
-};
-
-class python_capi_mstch_struct : public mstch_struct {
- public:
-  python_capi_mstch_struct(
-      const t_structured* s, mstch_context& ctx, mstch_element_position pos)
-      : mstch_struct(s, ctx, pos) {
-    register_methods(
-        this,
-        {
-            {"struct:py_name", &python_capi_mstch_struct::py_name},
-            {"struct:marshal_capi?", &python_capi_mstch_struct::marshal_capi},
-            {"struct:cpp_name", &python_capi_mstch_struct::cpp_name},
-            {"struct:cpp_adapter?", &python_capi_mstch_struct::cpp_adapter},
-            {"struct:num_fields", &python_capi_mstch_struct::num_fields},
-            {"struct:tuple_positions",
-             &python_capi_mstch_struct::tuple_positions},
-        });
-  }
-
-  mstch::node py_name() { return python::get_py3_name(*struct_); }
-
-  mstch::node tuple_positions() {
-    std::vector<std::pair<int, int>> index_keys;
-    size_t cpp_index = 0;
-    for (const auto& f : struct_->fields()) {
-      index_keys.emplace_back(f.id(), cpp_index++);
-    }
-    // sort by key to match thrift-python tuple ordering
-    std::sort(index_keys.begin(), index_keys.end());
-    // replace key with python tuple index
-    for (size_t i = 0; i < index_keys.size(); ++i) {
-      // offset by 1 because tuple position 0 is isset indicator
-      index_keys[i].first = i + 1;
-    }
-    // now sort by cpp index
-    std::sort(
-        index_keys.begin(),
-        index_keys.end(),
-        [](const auto& tup_cpp1, const auto& tup_cpp2) {
-          return tup_cpp1.second < tup_cpp2.second;
-        });
-    mstch::array a;
-    for (size_t i = 0; i < index_keys.size(); ++i) {
-      a.emplace_back(
-          mstch::map{
-              {"tuple:index", index_keys[i].first},
-              {"tuple:comma", std::string_view(i == 0 ? "" : ", ")}});
-    }
-    return a;
-  }
-
-  bool capi_eligible_type_annotation(const t_const* annotation) {
-    if (const auto* type_name =
-            annotation->get_value_from_structured_annotation_or_null("name")) {
-      return is_type_iobuf(type_name->get_string());
-    }
-    if (const auto* template_name =
-            annotation->get_value_from_structured_annotation_or_null(
-                "template")) {
-      return is_supported_template(template_name->get_string());
-    }
-    return false;
-  }
-
-  bool capi_eligible_type(const t_type* type) {
-    if (type->has_structured_annotation(kCppAdapterUri)) {
-      return false;
-    }
-
-    if (const auto* cpp_type_anno =
-            type->find_structured_annotation_or_null(kCppTypeUri)) {
-      if (!capi_eligible_type_annotation(cpp_type_anno)) {
-        return false;
+    using context = t_whisker_generator::whisker_generator_visitor_context;
+    // Gather capi includes for included programs
+    visitor.add_program_visitor([this](const context&, const t_program& p) {
+      if (&p != root_program_) {
+        return;
       }
-    }
-    // thrift currently lowers structured annotations to unstructured
-    // annotations so this will always be non-null if @cpp.Type annotation
-    // used on type or field
-    // TODO: delete these if structured annotation migration completed
-    if (const std::string* template_anno =
-            type->find_unstructured_annotation_or_null(
-                {"cpp.template", "cpp2.template"})) {
-      if (!is_supported_template(*template_anno)) {
-        return false;
+      for (const t_program* included_program : p.get_includes_for_codegen()) {
+        if (!included_program->structured_definitions().empty() ||
+            !included_program->enums().empty() ||
+            !included_program->typedefs().empty()) {
+          capi_includes_.insert(get_capi_include(included_program, &p));
+        }
       }
-    }
-    if (const std::string* type_anno =
-            type->find_unstructured_annotation_or_null(
-                {"cpp.type", "cpp2.type"})) {
-      return is_type_iobuf(*type_anno);
-    }
-    if (const t_list* list = type->try_as<t_list>();
-        list != nullptr && !capi_eligible_type(list->elem_type().get_type())) {
-      return false;
-    } else if (const t_set* set = type->try_as<t_set>(); set != nullptr &&
-               !capi_eligible_type(set->elem_type().get_type())) {
-      return false;
-    } else if (const t_map* map = type->try_as<t_map>(); map != nullptr &&
-               (!capi_eligible_type(&map->key_type().deref()) ||
-                !capi_eligible_type(&map->val_type().deref()))) {
-      return false;
-    }
-    if (const t_typedef* tdef = type->try_as<t_typedef>()) {
-      return capi_eligible_type(&tdef->type().deref());
-    }
-    return true;
-  }
-
-  bool capi_eligible_field(const t_field& field) {
-    if (field.has_structured_annotation(kCppAdapterUri)) {
-      return false;
-    }
-    if (const auto* cpp_type_anno =
-            field.find_structured_annotation_or_null(kCppTypeUri)) {
-      return capi_eligible_type_annotation(cpp_type_anno);
-    }
-    return true;
-  }
-
-  mstch::node marshal_capi() {
-    const auto marshal_override =
-        struct_->find_structured_annotation_or_null(kPythonUseCAPIUri);
-    auto force_serialize = [marshal_override]() {
-      const auto serialize_field = marshal_override
-          ? marshal_override->get_value_from_structured_annotation_or_null(
-                "serialize")
-          : nullptr;
-      return serialize_field && serialize_field->get_bool();
-    };
-
-    if (struct_->generated() || has_option("serialize_python_capi") ||
-        force_serialize()) {
-      return false;
-    }
-    if (has_option("marshal_python_capi") || marshal_override) {
-      return true;
-    }
-    for (const auto& f : struct_->fields()) {
-      if (!capi_eligible_field(f) || !capi_eligible_type(f.type().get_type())) {
-        return false;
+    });
+    visitor.add_field_visitor([&](const context& ctx, const t_field& f) {
+      if (&ctx.program() == root_program_) {
+        visit_type(*f.type(), false);
       }
-    }
-    return true;
-  }
-
-  mstch::node cpp_adapter() {
-    if (auto adapter_annotation =
-            struct_->find_structured_annotation_or_null(kCppAdapterUri)) {
-      return mstch::map{
-          {"cpp_adapter:name",
-           get_annotation_property(adapter_annotation, "name")},
-      };
-    }
-    return false;
-  }
-
-  mstch::node cpp_name() {
-    return cpp_resolver_.get_underlying_namespaced_name(*struct_);
-  }
-
-  mstch::node num_fields() { return struct_->fields().size(); }
-
- private:
-  cpp_name_resolver cpp_resolver_;
-};
-
-class python_capi_mstch_field : public mstch_field {
- public:
-  python_capi_mstch_field(
-      const t_field* field, mstch_context& ctx, mstch_element_position pos)
-      : mstch_field(field, ctx, pos), py_name_(python::get_py3_name(*field)) {
-    register_methods(
-        this,
-        {
-            {"field:cpp_name", &python_capi_mstch_field::cpp_name},
-            {"field:marshal_type", &python_capi_mstch_field::marshal_type},
-            {"field:iobuf?", &python_capi_mstch_field::iobuf},
-        });
-  }
-
-  mstch::node cpp_name() { return cpp2::get_name(field_); }
-
-  mstch::node marshal_type() { return format_marshal_type(*field_); }
-
-  mstch::node iobuf() {
-    const auto* ttype = field_->type()->get_true_type();
-    return ttype->is_binary() && is_type_iobuf(ttype);
+    });
+    visitor.add_typedef_visitor([&](const context& ctx, const t_typedef& td) {
+      if (&ctx.program() == root_program_) {
+        visit_type(*td.type(), false);
+      }
+    });
   }
 
  private:
-  const std::string py_name_;
-};
+  const t_program* root_program_;
+  bool has_marshal_types_;
+  // Ordered set to ensure deterministic output/builds
+  std::set<std::string> capi_includes_;
 
-class python_capi_mstch_enum : public mstch_enum {
- public:
-  python_capi_mstch_enum(
-      const t_enum* e, mstch_context& ctx, mstch_element_position pos)
-      : mstch_enum(e, ctx, pos) {
-    register_methods(
-        this,
-        {
-            {"enum:cpp_name", &python_capi_mstch_enum::cpp_name},
-        });
+  void visit_type(const t_type& orig_type, bool has_typedef) {
+    const t_type& true_type = *orig_type.get_true_type();
+    has_typedef = has_typedef || orig_type.is<t_typedef>();
+    if (has_typedef && true_type.program() != nullptr &&
+        true_type.program() != root_program_) {
+      capi_includes_.insert(
+          get_capi_include(true_type.program(), root_program_));
+    }
+
+    if (const t_list* list = true_type.try_as<t_list>()) {
+      visit_type(*list->elem_type(), has_typedef);
+    } else if (const t_set* set = true_type.try_as<t_set>()) {
+      visit_type(*set->elem_type(), has_typedef);
+    } else if (const t_map* map = true_type.try_as<t_map>()) {
+      visit_type(*map->key_type(), has_typedef);
+      visit_type(*map->val_type(), has_typedef);
+    }
   }
-
-  mstch::node cpp_name() { return cpp2::get_name(enum_); }
 };
 
-class t_mstch_python_capi_generator : public t_mstch_generator {
+class t_mstch_python_capi_generator : public t_whisker_generator {
  public:
-  using t_mstch_generator::t_mstch_generator;
+  using t_whisker_generator::t_whisker_generator;
 
   std::string template_prefix() const override { return "python_capi"; }
 
-  void generate_program() override {
-    generate_root_path_ = package_to_path();
-    out_dir_base_ = "gen-python-capi";
-    auto include_prefix = get_option("include_prefix").value_or("");
-    if (!include_prefix.empty()) {
-      program_->set_include_prefix(std::move(include_prefix));
-    }
-    set_mstch_factories();
-    generate_types();
+  whisker::source_manager template_source_manager() const final {
+    return whisker::source_manager{
+        std::make_unique<in_memory_source_manager_backend>(
+            create_templates_by_path())};
   }
 
- protected:
-  void set_mstch_factories();
+  void generate_program() override {
+    std::filesystem::path generate_root_path =
+        fmt::format("{}", fmt::join(get_py3_namespace(program_), "/"));
+
+    generate_file("thrift_types_capi.pxd", generate_root_path);
+    generate_file("thrift_types_capi.pyx", generate_root_path);
+    generate_file("thrift_types_capi.h", "");
+    generate_file("thrift_types_capi.cpp", "");
+    generate_file("thrift_converter.pxd", generate_root_path);
+    generate_file("thrift_converter.pyx", generate_root_path);
+  }
+
+ private:
+  // Mutable as it contains caches, but needs to be accessed from `const`
+  // contexts
+  mutable cpp_name_resolver cpp_resolver_;
+  std::unique_ptr<python_capi_generator_context> python_capi_context_;
+
+  void process_options(
+      const std::map<std::string, std::string>& options) override {
+    t_whisker_generator::process_options(options);
+    out_dir_base_ = "gen-python-capi";
+    if (std::string_view include_prefix =
+            get_compiler_option("include_prefix").value_or("");
+        !include_prefix.empty()) {
+      program_->set_include_prefix(std::string(include_prefix));
+    }
+  }
+
   void generate_file(
-      const std::string& file, const std::filesystem::path& base);
-  void generate_types();
-  std::filesystem::path package_to_path();
+      const std::string& file, const std::filesystem::path& base) {
+    whisker::object context = whisker::make::native_handle(
+        render_state().prototypes->create<t_program>(*program_));
+    t_whisker_generator::render_to_file(
+        /*output_file=*/base / program_->name() / file,
+        /*template_file=*/file,
+        /*context=*/context);
+  }
 
-  std::filesystem::path generate_root_path_;
+  void initialize_context(context_visitor& visitor) override {
+    python_capi_context_ = std::make_unique<python_capi_generator_context>(
+        program_,
+        /*serialize_python_capi=*/has_compiler_option("serialize_python_capi"));
+    python_capi_context_->register_visitors(visitor);
+  }
+
+  prototype<t_named>::ptr make_prototype_for_named(
+      const prototype_database& proto) const override {
+    auto base = t_whisker_generator::make_prototype_for_named(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_named>::extends(std::move(base));
+
+    def.property(
+        "cpp_name", [](const t_named& self) { return cpp2::get_name(&self); });
+    def.property("py_name", &python::get_py3_name);
+
+    return std::move(def).make();
+  }
+
+  prototype<t_field>::ptr make_prototype_for_field(
+      const prototype_database& proto) const override {
+    auto base = t_whisker_generator::make_prototype_for_field(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_field>::extends(std::move(base));
+
+    def.property("marshal_type", [](const t_field& self) {
+      return format_marshal_type(self);
+    });
+    def.property("iobuf?", [](const t_field& self) {
+      const t_type* ttype = self.type()->get_true_type();
+      return ttype->is_binary() && is_type_iobuf(ttype);
+    });
+
+    return std::move(def).make();
+  }
+
+  prototype<t_program>::ptr make_prototype_for_program(
+      const prototype_database& proto) const override {
+    auto base = t_whisker_generator::make_prototype_for_program(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_program>::extends(std::move(base));
+
+    def.property("capi_includes", [this](const t_program& self) {
+      if (&self != program_) {
+        throw whisker::eval_error(
+            "capi_includes is only valid on root program");
+      }
+      return whisker::array::of(
+          {python_capi_context_->capi_includes().begin(),
+           python_capi_context_->capi_includes().end()});
+    });
+    def.property("capi_module_prefix", [](const t_program& self) {
+      return gen_capi_module_prefix(&self);
+    });
+    def.property("cpp_namespace", &cpp2::get_gen_namespace);
+    def.property("generate_capi?", &has_types);
+    def.property("module_path", [this](const t_program& self) {
+      return get_py3_namespace_with_name_and_prefix(
+          &self,
+          std::string(get_compiler_option("root_module_prefix").value_or("")));
+    });
+
+    return std::move(def).make();
+  }
+
+  prototype<t_structured>::ptr make_prototype_for_structured(
+      const prototype_database& proto) const override {
+    auto base = t_whisker_generator::make_prototype_for_structured(proto);
+    auto def =
+        whisker::dsl::prototype_builder<h_structured>::extends(std::move(base));
+
+    // Override of `cpp_name` for structured types
+    def.property("cpp_name", [this](const t_structured& self) {
+      return cpp_resolver_.get_underlying_namespaced_name(self);
+    });
+    def.property("num_fields", [](const t_structured& self) {
+      return whisker::make::i64(static_cast<int64_t>(self.fields().size()));
+    });
+    def.property("cpp_adapter_name", [](const t_structured& self) {
+      if (const t_const* adapter_annotation =
+              self.find_structured_annotation_or_null(kCppAdapterUri)) {
+        return whisker::make::string(
+            get_annotation_property(adapter_annotation, "name"));
+      }
+      return whisker::make::null;
+    });
+
+    def.property("marshal_capi?", [this](const t_structured& self) {
+      const t_const* marshal_override =
+          self.find_structured_annotation_or_null(kPythonUseCAPIUri);
+      bool force_serialize = false;
+      if (marshal_override != nullptr) {
+        if (const t_const_value* serialize_field =
+                marshal_override->get_value_from_structured_annotation_or_null(
+                    "serialize")) {
+          force_serialize = serialize_field->get_bool();
+        }
+      }
+
+      if (force_serialize || self.generated() ||
+          has_compiler_option("serialize_python_capi")) {
+        return false;
+      }
+      if (marshal_override != nullptr ||
+          has_compiler_option("marshal_python_capi")) {
+        return true;
+      }
+      for (const t_field& f : self.fields()) {
+        if (!is_capi_eligible_field(f) ||
+            !is_capi_eligible_type(&f.type().deref())) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    def.property("tuple_positions", [](const t_structured& self) {
+      std::unordered_map<const t_field*, int64_t> field_tuple_indexes;
+      // Determine 1-based (0 is isset indicator) thrift-python tuple index for
+      // each field
+      int64_t tuple_index = 1;
+      for (const t_field* f : self.fields_id_order()) {
+        field_tuple_indexes[f] = tuple_index++;
+      }
+
+      // Now populate the tuple position array in definition order (to match C++
+      // index)
+      whisker::array::raw a;
+      for (const t_field& f : self.fields()) {
+        a.emplace_back(whisker::make::i64(field_tuple_indexes.at(&f)));
+      }
+      return whisker::make::array(std::move(a));
+    });
+
+    return std::move(def).make();
+  }
 };
-
-void t_mstch_python_capi_generator::set_mstch_factories() {
-  mstch_context_.add<python_capi_mstch_program>();
-  mstch_context_.add<python_capi_mstch_struct>();
-  mstch_context_.add<python_capi_mstch_field>();
-  mstch_context_.add<python_capi_mstch_enum>();
-}
-
-std::filesystem::path t_mstch_python_capi_generator::package_to_path() {
-  auto package = get_py3_namespace(get_program());
-  return fmt::format("{}", fmt::join(package, "/"));
-}
-
-void t_mstch_python_capi_generator::generate_file(
-    const std::string& file, const std::filesystem::path& base = {}) {
-  auto program = get_program();
-  const auto& name = program->name();
-  auto mstch_program = make_mstch_program_cached(program, mstch_context_);
-  render_to_file(mstch_program, file, base / name / file);
-}
-
-void t_mstch_python_capi_generator::generate_types() {
-  generate_file("thrift_types_capi.pxd", generate_root_path_);
-  generate_file("thrift_types_capi.pyx", generate_root_path_);
-  generate_file("thrift_types_capi.h", "");
-  generate_file("thrift_types_capi.cpp", "");
-  generate_file("thrift_converter.pxd", generate_root_path_);
-  generate_file("thrift_converter.pyx", generate_root_path_);
-}
 
 } // namespace
 

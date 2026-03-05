@@ -374,7 +374,7 @@ void RefactoredRocketServerConnection::closeIfNeeded() {
                   ErrorCode::CANCELED,
                   getPayloadSerializer()->packCompact(
                       getStreamConnectionClosingError())));
-          callback->onStreamCancel();
+          callback->handleConnectionClose();
         },
         [](const std::unique_ptr<RocketSinkClientCallback>& callback) {
           bool state = callback->onSinkError(TApplicationException(
@@ -436,14 +436,6 @@ void RefactoredRocketServerConnection::handleFrame(
 
   batcher->handle(std::move(frame), connectionAdapter_, incomingFrameHandler_);
 }
-
-void RefactoredRocketServerConnection::handleStreamFrame(
-    std::unique_ptr<folly::IOBuf>,
-    StreamId,
-    FrameType,
-    Flags,
-    folly::io::Cursor,
-    RocketStreamClientCallback&) {}
 
 void RefactoredRocketServerConnection::handleSinkFrame(
     std::unique_ptr<folly::IOBuf> frame,
