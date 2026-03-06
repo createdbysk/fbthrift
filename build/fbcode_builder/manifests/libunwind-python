@@ -24,4 +24,3 @@ builder = nop
 
 [autoconf.args]
 --with-pic
---enable-shared

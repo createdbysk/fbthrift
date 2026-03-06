@@ -2,14 +2,7 @@
 
 name: linux
 
-on:
-  push:
-    branches:
-    - main
-    - test-all-ci
-  pull_request:
-    branches:
-    - main
+on: [push, pull_request]
 
 permissions:
   contents: read  #  to fetch code (actions/checkout)
