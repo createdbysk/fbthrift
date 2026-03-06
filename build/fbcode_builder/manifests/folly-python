@@ -21,7 +21,7 @@ googletest
 boost-python
 libdwarf-python
 libevent-python
-libsodium-python
+libsodium
 double-conversion-python
 fast_float
 fmt-python
@@ -50,12 +50,12 @@ zlib
 [dependencies.os=linux]
 libaio-python
 libiberty-python
-libunwind-python
+libunwind
 
 # xz depends on autoconf which does not build on
 # Windows
 [dependencies.not(os=windows)]
-xz-python
+xz
 
 [shipit.pathmap]
 fbcode/folly/public_tld = .
