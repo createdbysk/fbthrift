@@ -374,12 +374,7 @@ class MakeBuilder(BuilderBase):
     def _get_prefix(self) -> list[str]:
         return ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
 
-<<<<<<< HEAD
     def _build(self, reconfigure: bool) -> None:
-
-=======
-    def _build(self, reconfigure) -> None:
->>>>>>> 14245f9958 (Build fbthrift-python without --allow-system-packages)
         env = self._compute_env()
 
         # Need to ensure that PREFIX is set prior to install because
