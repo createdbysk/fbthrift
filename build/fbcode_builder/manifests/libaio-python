@@ -21,11 +21,5 @@ builder = nop
 [make.build_args]
 CFLAGS=-fPIC -O2
 
-[make.build_args.shared_libs=off]
-ENABLE_SHARED=0
-
 [make.install_args]
 install
-
-[make.install_args.shared_libs=off]
-ENABLE_SHARED=0
