@@ -40,6 +40,7 @@ wangle-python
 zstd-python
 mvfst-python
 xxhash
+cython
 # Thrift also depends on openssl but since the latter requires a platform-
 # specific configuration we rely on the folly manifest to provide this
 # dependency to avoid duplication.
@@ -47,6 +48,9 @@ xxhash
 [dependencies.os=linux]
 libaio-python
 libevent-python
+
+[sandcastle]
+run_tests = on
 
 [shipit.pathmap]
 xplat/thrift/public_tld = .
@@ -57,3 +61,4 @@ xplat/thrift = thrift
 ^xplat/thrift/perf/canary.py$
 ^xplat/thrift/perf/loadtest.py$
 ^xplat/thrift/.castle/.*
+

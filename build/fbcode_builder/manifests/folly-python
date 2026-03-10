@@ -27,6 +27,7 @@ fast_float
 fmt-python
 lz4-python
 snappy
+cython
 zstd-python
 # no openssl or zlib in the linux case, why?
 # these are usually installed on the system

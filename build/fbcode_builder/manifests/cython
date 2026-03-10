@@ -1,0 +1,11 @@
+[manifest]
+name = cython
+
+[rpms]
+python3-Cython
+
+[debs]
+cython3
+
+[build]
+builder = nop
