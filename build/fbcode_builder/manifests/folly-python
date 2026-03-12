@@ -6,6 +6,7 @@ shipit_fbcode_builder = true
 
 [git]
 repo_url = https://github.com/facebook/folly.git
+rev = 6f5e93923
 
 [build]
 builder = cmake
