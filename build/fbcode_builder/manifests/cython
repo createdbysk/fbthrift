@@ -2,15 +2,11 @@
 name = cython
 
 [download]
-url = https://files.pythonhosted.org/packages/91/85/7574c9cd44b69a27210444b6650f6477f56c75fee1b70d7672d3e4166167/cython-3.2.4.tar.gz
-sha256 = 84226ecd313b233da27dc2eb3601b4f222b8209c3a7216d8733b031da1dc64e6
+url = https://files.pythonhosted.org/packages/12/33/3298a44d201c45bcf0d769659725ae70e9c6c42adf8032f6d89c8241098d/cython-3.2.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+sha256 = 55b6c44cd30821f0b25220ceba6fe636ede48981d2a41b9bbfe3c7902ce44ea7
 
 [build]
-builder = setup-py
-subdir = cython-3.2.4
-
-[rpms]
-python3-Cython
+builder = python-wheel
 
 [debs]
 cython3
