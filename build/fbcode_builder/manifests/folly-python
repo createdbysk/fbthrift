@@ -28,6 +28,7 @@ fmt-python
 lz4-python
 snappy
 cython
+python-setuptools-python
 zstd-python
 # no openssl or zlib in the linux case, why?
 # these are usually installed on the system
