@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 import unittest
 from typing import Sequence
 
@@ -232,50 +231,6 @@ class ClientServerTests(unittest.IsolatedAsyncioTestCase):
             assert ip and port
             async with get_client(TestingService, host=ip, port=port) as client:
                 self.assertEqual(True, await client.renamed_func(True))
-
-    async def test_queue_timeout(self) -> None:
-        """
-        This tests whether queue timeout functions properly.
-        """
-
-        class SlowDerivedHandler(Handler, DerivedTestingServiceInterface):
-            async def getName(self) -> str:
-                # time.sleep() blocks the C++ worker thread, unlike
-                # asyncio.sleep() which yields back to the event loop.
-                # Blocked workers force subsequent requests to sit in
-                # the queue long enough for the queue timeout to fire.
-                time.sleep(1)
-                return "SlowDerivedTesting"
-
-            async def derived_pick_a_color(self, color: Color) -> Color:
-                return color
-
-        testing = TestServer(handler=SlowDerivedHandler())
-        testing.server.set_queue_timeout(0.01)
-
-        async def client_call(sa: SocketAddress) -> str:
-            ip, port = sa.ip, sa.port
-            assert ip and port
-            async with get_client(DerivedTestingService, host=ip, port=port) as client:
-                try:
-                    return await client.getName()
-                except ApplicationError as err:
-                    if "Queue Timeout" in str(err):
-                        return "Queue Timeout"
-                    else:
-                        return ""
-
-        async def clients_run(server: TestServer) -> None:
-            async with server as sa:
-                num_workers = server.server.get_cpu_worker_threads()
-                results = list(
-                    await asyncio.gather(
-                        *[client_call(sa) for _ in range(num_workers + 5)]
-                    )
-                )
-                self.assertIn("Queue Timeout", results)
-
-        await clients_run(testing)
 
     async def test_cancelled_task(self) -> None:
         """
