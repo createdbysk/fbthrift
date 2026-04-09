@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 import asyncio
-import platform
+import time
 import unittest
 from typing import Sequence
 
@@ -240,7 +240,11 @@ class ClientServerTests(unittest.IsolatedAsyncioTestCase):
 
         class SlowDerivedHandler(Handler, DerivedTestingServiceInterface):
             async def getName(self) -> str:
-                await asyncio.sleep(1)
+                # time.sleep() blocks the C++ worker thread, unlike
+                # asyncio.sleep() which yields back to the event loop.
+                # Blocked workers force subsequent requests to sit in
+                # the queue long enough for the queue timeout to fire.
+                time.sleep(1)
                 return "SlowDerivedTesting"
 
             async def derived_pick_a_color(self, color: Color) -> Color:
@@ -263,11 +267,7 @@ class ClientServerTests(unittest.IsolatedAsyncioTestCase):
 
         async def clients_run(server: TestServer) -> None:
             async with server as sa:
-                # Send more requests than CPU workers to guarantee some
-                # will sit in the queue and trigger queue timeout.
                 num_workers = server.server.get_cpu_worker_threads()
-                if "arm64" in platform.machine():
-                    num_workers *= 16
                 results = list(
                     await asyncio.gather(
                         *[client_call(sa) for _ in range(num_workers + 5)]
